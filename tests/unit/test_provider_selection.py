@@ -104,3 +104,51 @@ def test_preparing_an_available_or_in_progress_engine_is_idempotent(settings_fil
     monkeypatch.setattr(selection.local, 'prefetch_models', unexpected_download)
 
     selection.prepare(selection.choice('whisper:small'))
+
+
+def test_third_provider_uses_the_shared_selection_lifecycle(settings_file, monkeypatch):
+    from noisy_coding.providers import engine_registry
+    candidate = dict(id='example:voice', provider='example', direction='tts')
+    prepared = []
+    engine = engine_registry.EngineAdapter(
+        choices=lambda: [candidate],
+        options=lambda choice: {'model': 'voice-v2'},
+        readiness=lambda choice: ('ready', ''),
+        voices=lambda choice: [{'id': 'voice-a', 'label': 'Voice A'}],
+        prepare=lambda choice: prepared.append(choice['id']),
+        active_choice=lambda direction: 'example:voice',
+        validate_language=lambda choice, language: None,
+    )
+    monkeypatch.setitem(engine_registry.adapters, 'example', engine)
+
+    selected = selection.choice('example:voice')
+    selection.apply(selected, selection.revision(), {'lux': 'voice-a'}, ['lux'])
+
+    assert {
+        'active': selection.active_choices()['tts'],
+        'bindings': selection.assignments(selected, ['lux']),
+        'options': config.provider_options('example'),
+    } == {
+        'active': 'example:voice',
+        'bindings': {'lux': 'voice-a'},
+        'options': {'model': 'voice-v2', 'voice_bindings': {'lux': 'voice-a'}},
+    }
+
+
+def test_existing_macos_voice_is_selectable_without_model_download(settings_file, monkeypatch):
+    from noisy_coding.providers import builtin_selection
+    config.save(tts='local', tts_engine='say', tts_voice='Samantha')
+    monkeypatch.setattr(builtin_selection.shutil, 'which', lambda command: '/usr/bin/say')
+    candidate = selection.choice(selection.active_choices()['tts'])
+
+    assert {
+        'id': candidate['id'],
+        'readiness': selection.readiness(candidate)[0],
+        'voices': selection.voices(candidate),
+        'bindings': selection.assignments(candidate, ['lux', 'rex']),
+    } == {
+        'id': 'macos:say',
+        'readiness': 'ready',
+        'voices': [{'id': 'Samantha', 'label': 'Samantha'}],
+        'bindings': {'lux': 'Samantha', 'rex': 'Samantha'},
+    }

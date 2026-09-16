@@ -129,7 +129,7 @@ def test_voice_ready_requires_local_weights_on_disk(providers_file, monkeypatch)
     installed-but-not-downloaded local setup is NOT ready (PR #47 round 2)."""
     providers_file.write_text(json.dumps({"stt": "local", "tts": "local"}))
     monkeypatch.setattr(
-        "noisy_coding.providers.manifest._local_missing", lambda **kw: ""
+        "noisy_coding.providers.builtin_selection.find_spec", lambda name: object()
     )
     monkeypatch.setattr(
         "noisy_coding.providers.local.models_present", lambda **kw: False
@@ -150,7 +150,7 @@ def test_voice_ready_checks_only_the_local_direction(
         json.dumps({"tts": "local", "stt": "grok", "local": {}})
     )
     monkeypatch.setattr(
-        "noisy_coding.providers.manifest._local_missing", lambda **kw: ""
+        "noisy_coding.providers.builtin_selection.find_spec", lambda name: object()
     )
     monkeypatch.setattr(
         "noisy_coding.credentials.api_key", lambda: "xai-test-key"
@@ -178,7 +178,7 @@ def test_catalog_survives_repeated_calls(providers_file):
 def test_mixed_setup_does_not_require_unused_recognition_dependency(providers_file, monkeypatch):
     providers_file.write_text(json.dumps({"tts": "local", "stt": "grok"}))
     monkeypatch.setattr("noisy_coding.credentials.api_key", lambda: "test-key")
-    monkeypatch.setattr("noisy_coding.providers.manifest.find_spec", lambda name: None if name == "faster_whisper" else object())
+    monkeypatch.setattr("noisy_coding.providers.builtin_selection.find_spec", lambda name: None if name == "faster_whisper" else object())
     monkeypatch.setattr("noisy_coding.providers.local.models_present", lambda **kw: True)
     assert providers.voice_ready() is True
 
@@ -219,3 +219,19 @@ def test_switching_provider_preserves_its_settings_for_return(providers_file):
     config.save_selection("tts", "example", {})
 
     assert config.provider_options("example") == {"model": "voice-v2"}
+
+
+@pytest.mark.asyncio
+async def test_grok_voice_bindings_are_frozen_and_used_for_synthesis(providers_file, monkeypatch):
+    from unittest.mock import AsyncMock
+    from noisy_coding.providers.base import SynthesizedAudio
+    synthesize = AsyncMock(return_value=SynthesizedAudio(b'audio', 'audio/mpeg', 1))
+    monkeypatch.setattr('noisy_coding.providers.grok.tts.synthesize', synthesize)
+    config.save_selection('tts', 'grok', {'voice_bindings': {'lux': 'rex'}})
+    prepared = providers.active_tts()
+    config.save_selection('tts', 'grok', {'voice_bindings': {'lux': 'luna'}})
+
+    await prepared.synthesize('Hello', 'lux', 'en', 1)
+
+    synthesize.assert_awaited_once_with('Hello', 'rex', 'en', 1)
+    assert prepared.cache_identity != providers.active_tts().cache_identity

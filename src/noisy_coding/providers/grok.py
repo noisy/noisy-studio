@@ -7,6 +7,8 @@ the provider shape, so the daemon can stop naming Grok directly.
 
 from collections.abc import Callable
 import re
+import json
+from noisy_coding.providers import config
 
 from noisy_coding import tts, tts_stream
 from noisy_coding.listener import pricing, stt, stt_stream
@@ -17,6 +19,14 @@ class GrokTTS:
     name = "grok"
     label = "Grok TTS"
 
+    def __init__(self, options: dict | None = None):
+        self.options = config.provider_options("grok") if options is None else dict(options)
+        self.bindings = dict(self.options.get("voice_bindings", {}))
+        self.cache_identity = "grok:" + json.dumps(self.options, sort_keys=True)
+
+    def _voice(self, identity: str) -> str:
+        return self.bindings.get(identity, identity)
+
     @property
     def supports_streaming(self) -> bool:
         return tts_stream.streaming_available()
@@ -24,7 +34,7 @@ class GrokTTS:
     async def synthesize(
         self, text: str, voice_id: str, language: str, speed: float
     ) -> SynthesizedAudio:
-        return await tts.synthesize(_speech_text(text), voice_id, language, speed)
+        return await tts.synthesize(_speech_text(text), self._voice(voice_id), language, speed)
 
     async def speak_streaming(
         self,
@@ -36,7 +46,7 @@ class GrokTTS:
         on_audio_chunk: Callable[[bytes], None] | None = None,
     ) -> None:
         await tts_stream.speak_streaming(
-            _speech_text(text), voice_id, language, speed,
+            _speech_text(text), self._voice(voice_id), language, speed,
             on_first_audio=on_first_audio, on_audio_chunk=on_audio_chunk,
         )
 

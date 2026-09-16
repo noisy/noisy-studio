@@ -25,3 +25,14 @@ export const DownloadFailed = story('error','tts');
 export const MissingOfflineSupport = story('setup','stt');
 export const Narrow = story('ready','tts',380);
 export const ThirdProvider: Story = {render: () => ({components:{SpeechSettings},setup(){const info=speechFixture();info.engines.push({...info.engines[1]!,id:'example:tts',provider:'example',label:'Example provider',state:'setup',detail:'Fixture only: tests a third provider without special UI code.'});setSpeechSettingsFixture(info);},template:'<SpeechSettings />'})};
+
+export const SharedSystemVoice: Story = {render: () => ({
+  components: {SpeechSettings},
+  setup() {
+    const info = speechFixture();
+    info.engines.push({id:'macos:say',provider:'local',direction:'tts',label:'macOS voice',location:'On this Mac',model:'say',live:false,description:'Uses the system voice. All agents share one voice.',languages:'Depends on the selected macOS voice',state:'ready',detail:'Uses the installed macOS voice; no model download.',voices:[{id:'system',label:'macOS system voice'}],bindings:{lux:'system',rex:'system',luna:'system'}});
+    info.active.tts = 'macos:say';
+    setSpeechSettingsFixture(info);
+  },
+  template: '<div style="max-width:940px;padding:24px"><SpeechSettings /></div>',
+})};

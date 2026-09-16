@@ -1107,7 +1107,9 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     voice = str(body.get('voice', ''))
                     if voice not in {v['id'] for v in selection.voices(candidate)}:
                         raise ValueError('Choose a voice from this engine.')
-                    provider = tts_provider(candidate['provider'], selection.options_for(candidate))
+                    options = selection.options_for(candidate)
+                    options.pop('voice_bindings', None)  # Preview the chosen native voice, not an identity mapping.
+                    provider = tts_provider(candidate['provider'], options)
                     audio = asyncio.run(provider.synthesize(
                         'The search now ignores capital letters. All twelve tests passed. Shall I deploy it?',
                         voice, 'en', 1.0))

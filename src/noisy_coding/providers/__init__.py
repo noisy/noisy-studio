@@ -33,7 +33,7 @@ __all__ = [
 def _grok_tts(options=None) -> TTSProvider:
     from noisy_coding.providers.grok import GrokTTS
 
-    return GrokTTS()
+    return GrokTTS(options)
 
 
 def _grok_stt(options=None) -> STTProvider:
@@ -70,21 +70,14 @@ def voice_ready() -> bool:
     provider for each direction is ready (key present / installs in
     place). This — not "is an xAI key set" — is what the first-contact
     gate must ask, or a local-only user can never get past it."""
-    from noisy_coding import credentials
-    from noisy_coding.providers.local import models_present
-    from noisy_coding.providers.manifest import _local_missing
+    from noisy_coding.providers import selection
 
-    names = (config.tts_provider_name(), config.stt_provider_name())
-    if names[0] not in _TTS_FACTORIES or names[1] not in _STT_FACTORIES:
+    try:
+        active = selection.active_choices()
+        return all(selection.readiness(selection.choice(active[direction]))[0] == 'ready'
+                   for direction in ('stt', 'tts'))
+    except ValueError:
         return False
-    if "grok" in names and not credentials.api_key():
-        return False
-    tts_local, stt_local = names[0] == "local", names[1] == "local"
-    if tts_local or stt_local:
-        return not _local_missing(tts=tts_local, stt=stt_local) and models_present(
-            tts=tts_local, stt=stt_local
-        )
-    return True
 
 
 def available() -> dict[str, list[str]]:

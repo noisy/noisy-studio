@@ -2,19 +2,11 @@
 
 import hashlib
 import json
-from importlib.util import find_spec
 
-from noisy_coding import credentials
-from noisy_coding.providers import config, downloads, local
-from noisy_coding.providers.manifest import KOKORO_VOICES
+from noisy_coding.providers import config, local, engine_registry
+from noisy_coding.providers.builtin_selection import WHISPER_MODELS
 
-WHISPER_MODELS = {
-    'base': 'Compact · lower memory use',
-    'small': 'Larger · more recognition capacity',
-    'medium': 'Large · needs more memory and processing',
-    'large-v3': 'Largest · try on this Mac before choosing',
-    'tiny': 'Smallest · intended for quick experiments',
-}
+
 
 
 def revision() -> str:
@@ -22,21 +14,7 @@ def revision() -> str:
 
 
 def choices() -> list[dict]:
-    result = []
-    for direction in ('stt', 'tts'):
-        result.append(dict(id=f'grok:{direction}', provider='grok', direction=direction,
-                           label='Grok', location='Online', model='', live=True,
-                           description='Text appears while you speak.' if direction == 'stt'
-                           else 'Replies begin playing as audio arrives.', languages='Multilingual'))
-    for model, description in WHISPER_MODELS.items():
-        result.append(dict(id=f'whisper:{model}', provider='local', direction='stt',
-                           label=f'Whisper {model}', location='On this Mac', model=model,
-                           live=False, description=description, languages='Multilingual'))
-    result.append(dict(id='kokoro:1', provider='local', direction='tts', label='Kokoro',
-                       location='On this Mac', model='kokoro', live=False,
-                       description='The full reply is generated before playback.',
-                       languages='English voices in this integration'))
-    return result
+    return [candidate for adapter in engine_registry.adapters.values() for candidate in adapter.choices()]
 
 
 def choice(choice_id: str) -> dict:
@@ -47,51 +25,30 @@ def choice(choice_id: str) -> dict:
 
 
 def options_for(candidate: dict) -> dict:
-    options = config.provider_options(candidate['provider'])
-    if candidate['provider'] == 'local':
-        options['stt_model' if candidate['direction'] == 'stt' else 'tts_engine'] = candidate['model']
-    return options
+    return engine_registry.adapter(candidate['provider']).options(candidate)
 
 
 def readiness(candidate: dict) -> tuple[str, str]:
-    if candidate['provider'] == 'grok':
-        return ('ready', 'Connection is checked when you try a sample.') if credentials.api_key() else (
-            'setup', 'Add your xAI API key in System settings to use Grok.')
-    direction = candidate['direction']
-    dependency = 'faster_whisper' if direction == 'stt' else 'kokoro_onnx'
-    if find_spec(dependency) is None:
-        return 'setup', 'This installation is missing offline speech support. Install the current desktop release.'
-    if local.models_present(tts=direction == 'tts', stt=direction == 'stt', options=options_for(candidate)):
-        return 'ready', 'Model files are on this Mac. Try a sample before switching.'
-    names = {f"whisper-{candidate['model']}"} if direction == 'stt' else {'kokoro-v1.0.onnx', 'voices-v1.0.bin'}
-    relevant = [d for d in downloads.status() if d['name'] in names]
-    if any(d['state'] == 'downloading' for d in relevant):
-        return 'downloading', 'Preparing this model. Your current setup stays active.'
-    if any(d['state'] == 'error' for d in relevant):
-        return 'error', 'The download did not finish. Retry when your connection is available.'
-    return 'download', 'Download once, then use without an internet connection.'
+    return engine_registry.adapter(candidate['provider']).readiness(candidate)
 
 
 def active_choices() -> dict:
-    options = config.local_options()
-    return {
-        'stt': 'grok:stt' if config.stt_provider_name() == 'grok' else f"whisper:{options.get('stt_model') or config.DEFAULT_LOCAL_STT_MODEL}",
-        'tts': 'grok:tts' if config.tts_provider_name() == 'grok' else ('kokoro:1' if options.get('tts_engine', 'kokoro') == 'kokoro' else 'macos:say'),
-    }
+    result = {}
+    for direction, name in [('stt', config.stt_provider_name()), ('tts', config.tts_provider_name())]:
+        adapter = engine_registry.adapters.get(name)
+        result[direction] = adapter.active_choice(direction) if adapter else f'unavailable:{name}:{direction}'
+    return result
 
 
 def voices(candidate: dict) -> list[dict]:
-    if candidate['direction'] != 'tts':
-        return []
-    if candidate['provider'] == 'grok':
-        from noisy_coding.listener.state import VOICE_POOL
-        return [dict(id=v, label=v.title()) for v in VOICE_POOL]
-    return [dict(id=v, label=v.split('_', 1)[1].title() + (' · UK' if v.startswith('b') else ' · US')) for v in KOKORO_VOICES]
+    return engine_registry.adapter(candidate['provider']).voices(candidate)
 
 
 def assignments(candidate: dict, identities: list[str]) -> dict[str, str]:
     available = [v['id'] for v in voices(candidate)]
     saved = config.provider_options(candidate['provider']).get('voice_bindings', {})
+    if not available:
+        return {}
     result = {identity: saved[identity] for identity in identities if saved.get(identity) in available}
     for identity in identities:
         if identity in result:
@@ -115,16 +72,8 @@ def prepare(candidate: dict) -> None:
     state, detail = readiness(candidate)
     if state == 'setup':
         raise ValueError(detail)
-    if state in ('ready', 'downloading'):
-        return
-    if candidate['provider'] == 'local':
-        accepted = local.prefetch_models(
-            tts=candidate['direction'] == 'tts',
-            stt=candidate['direction'] == 'stt',
-            options=options_for(candidate),
-        )
-        if not accepted:
-            raise ValueError('Another model is being prepared. Wait for it to finish, then retry this download.')
+    if state not in ('ready', 'downloading'):
+        engine_registry.adapter(candidate['provider']).prepare(candidate)
 
 
 def apply(candidate: dict, expected_revision: str, bindings: dict, identities: list[str], language: str = "auto") -> None:
@@ -134,8 +83,7 @@ def apply(candidate: dict, expected_revision: str, bindings: dict, identities: l
         state, detail = readiness(candidate)
         if state != 'ready':
             raise ValueError(detail)
-        if candidate['id'] == 'kokoro:1' and language not in ('', 'auto', 'en', 'en-US', 'en-GB'):
-            raise ValueError('Kokoro currently supports English in this app. Keep your current engine for this language.')
+        engine_registry.adapter(candidate['provider']).validate_language(candidate, language)
         options = options_for(candidate)
         if not isinstance(bindings, dict):
             raise ValueError('Review the voice assignments before switching.')
@@ -143,15 +91,22 @@ def apply(candidate: dict, expected_revision: str, bindings: dict, identities: l
             allowed = {v['id'] for v in voices(candidate)}
             if set(bindings) != set(identities) or any(v not in allowed for v in bindings.values()):
                 raise ValueError('Review the voice for every speaker before switching.')
-            if candidate['provider'] == 'local':
-                options['voice_bindings'] = {**options.get('voice_bindings', {}), **bindings}
+            options['voice_bindings'] = {**options.get('voice_bindings', {}), **bindings}
         config.save_selection(candidate['direction'], candidate['provider'], options)
 
 
 def active_voice_labels() -> dict[str, str]:
     """Keep dashboard portraits stable while naming the voice actually heard."""
     if config.tts_provider_name() != 'local':
-        return {}
+        name = config.tts_provider_name()
+        adapter = engine_registry.adapters.get(name)
+        if not adapter:
+            return {}
+        candidate = next((c for c in adapter.choices() if c['id'] == adapter.active_choice('tts')), None)
+        if not candidate:
+            return {}
+        labels = {v['id']: v['label'] for v in adapter.voices(candidate)}
+        return {identity: labels.get(voice, voice) for identity, voice in config.provider_options(name).get('voice_bindings', {}).items()}
     provider = local.LocalTTS()
     from noisy_coding.listener.state import VOICE_POOL
     if provider.options.get('tts_engine') == 'say':
