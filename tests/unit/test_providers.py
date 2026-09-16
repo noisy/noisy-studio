@@ -129,7 +129,7 @@ def test_voice_ready_requires_local_weights_on_disk(providers_file, monkeypatch)
     installed-but-not-downloaded local setup is NOT ready (PR #47 round 2)."""
     providers_file.write_text(json.dumps({"stt": "local", "tts": "local"}))
     monkeypatch.setattr(
-        "noisy_coding.providers.manifest._local_missing", lambda: ""
+        "noisy_coding.providers.manifest._local_missing", lambda **kw: ""
     )
     monkeypatch.setattr(
         "noisy_coding.providers.local.models_present", lambda **kw: False
@@ -150,7 +150,7 @@ def test_voice_ready_checks_only_the_local_direction(
         json.dumps({"tts": "local", "stt": "grok", "local": {}})
     )
     monkeypatch.setattr(
-        "noisy_coding.providers.manifest._local_missing", lambda: ""
+        "noisy_coding.providers.manifest._local_missing", lambda **kw: ""
     )
     monkeypatch.setattr(
         "noisy_coding.credentials.api_key", lambda: "xai-test-key"
@@ -173,3 +173,11 @@ def test_catalog_survives_repeated_calls(providers_file):
     'catalog' — the second HTTP GET /providers then 500'd)."""
     assert providers.catalog() == providers.catalog()
     assert callable(providers.catalog)
+
+
+def test_mixed_setup_does_not_require_unused_recognition_dependency(providers_file, monkeypatch):
+    providers_file.write_text(json.dumps({"tts": "local", "stt": "grok"}))
+    monkeypatch.setattr("noisy_coding.credentials.api_key", lambda: "test-key")
+    monkeypatch.setattr("noisy_coding.providers.manifest.find_spec", lambda name: None if name == "faster_whisper" else object())
+    monkeypatch.setattr("noisy_coding.providers.local.models_present", lambda **kw: True)
+    assert providers.voice_ready() is True
