@@ -131,7 +131,7 @@ def test_third_provider_uses_the_shared_selection_lifecycle(settings_file, monke
     } == {
         'active': 'example:voice',
         'bindings': {'lux': 'voice-a'},
-        'options': {'model': 'voice-v2', 'voice_bindings': {'lux': 'voice-a'}},
+        'options': {'model': 'voice-v2', 'voice_bindings': {'lux': 'voice-a'}, 'voice_bindings_by_engine': {'example:voice': {'lux': 'voice-a'}}},
     }
 
 
@@ -152,3 +152,13 @@ def test_existing_macos_voice_is_selectable_without_model_download(settings_file
         'voices': [{'id': 'Samantha', 'label': 'Samantha'}],
         'bindings': {'lux': 'Samantha', 'rex': 'Samantha'},
     }
+
+
+def test_switching_local_engines_restores_each_engines_reviewed_voices(settings_file, monkeypatch):
+    monkeypatch.setattr(selection, 'readiness', lambda candidate: ('ready', ''))
+    identities = ['lux', 'rex']
+    original = {'lux': 'bf_emma', 'rex': 'am_adam'}
+    selection.apply(selection.choice('kokoro:1'), selection.revision(), original, identities)
+    selection.apply(selection.choice('macos:say'), selection.revision(), {'lux': 'system', 'rex': 'system'}, identities)
+
+    assert selection.assignments(selection.choice('kokoro:1'), identities) == original

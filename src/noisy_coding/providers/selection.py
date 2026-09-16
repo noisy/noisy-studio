@@ -46,7 +46,8 @@ def voices(candidate: dict) -> list[dict]:
 
 def assignments(candidate: dict, identities: list[str]) -> dict[str, str]:
     available = [v['id'] for v in voices(candidate)]
-    saved = config.provider_options(candidate['provider']).get('voice_bindings', {})
+    options = config.provider_options(candidate['provider'])
+    saved = options.get('voice_bindings_by_engine', {}).get(candidate['id'], options.get('voice_bindings', {}))
     if not available:
         return {}
     result = {identity: saved[identity] for identity in identities if saved.get(identity) in available}
@@ -92,6 +93,10 @@ def apply(candidate: dict, expected_revision: str, bindings: dict, identities: l
             if set(bindings) != set(identities) or any(v not in allowed for v in bindings.values()):
                 raise ValueError('Review the voice for every speaker before switching.')
             options['voice_bindings'] = {**options.get('voice_bindings', {}), **bindings}
+            options['voice_bindings_by_engine'] = {
+                **options.get('voice_bindings_by_engine', {}),
+                candidate['id']: options['voice_bindings'],
+            }
         config.save_selection(candidate['direction'], candidate['provider'], options)
 
 

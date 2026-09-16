@@ -235,3 +235,10 @@ async def test_grok_voice_bindings_are_frozen_and_used_for_synthesis(providers_f
 
     synthesize.assert_awaited_once_with('Hello', 'rex', 'en', 1)
     assert prepared.cache_identity != providers.active_tts().cache_identity
+
+
+def test_kokoro_replaces_bindings_from_another_local_engine():
+    from noisy_coding.providers.manifest import KOKORO_VOICES
+    provider = LocalTTS({'tts_engine':'kokoro', 'voice_bindings':{'lux':'system', 'rex':'am_adam'}})
+    assert provider.options['voice_bindings']['lux'] in KOKORO_VOICES
+    assert provider.options['voice_bindings']['rex'] == 'am_adam'

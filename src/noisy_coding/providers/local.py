@@ -291,12 +291,12 @@ class LocalTTS:
 
     def __init__(self, options: dict | None = None):
         self.options = dict(config.local_options() if options is None else options)
-        if self.options.get("voice_bindings"):
+        if self.options.get("voice_bindings") and self.options.get("tts_engine", "kokoro") == "kokoro":
             from noisy_coding.listener.state import VOICE_POOL
             from noisy_coding.providers.manifest import KOKORO_VOICES
             bindings = dict(self.options["voice_bindings"])
             for identity in VOICE_POOL:
-                if identity not in bindings:
+                if bindings.get(identity) not in KOKORO_VOICES:
                     bindings[identity] = next((v for v in KOKORO_VOICES if v not in bindings.values()), KOKORO_VOICES[len(bindings) % len(KOKORO_VOICES)])
             self.options["voice_bindings"] = bindings
         self.cache_identity = "local:" + json.dumps(self.options, sort_keys=True)
