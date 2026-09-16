@@ -75,7 +75,8 @@ class LocalSTT:
                 downloads.report(key, label, "downloading")
                 try:
                     LocalSTT._model = WhisperModel(
-                        model_name, device="auto", compute_type="auto"
+                        model_name, device="auto", compute_type="auto",
+                        local_files_only=_whisper_cached(model_name)
                     )
                 except Exception as error:
                     downloads.report(key, label, "error", detail=str(error)[:200])
@@ -167,7 +168,16 @@ class _KokoroEngine:
             return cls._model
 
 
+_download_lock = threading.Lock()
+
+
 def _ensure_downloaded(url: str, filename: str) -> Path:
+    # Preparation and synthesis can request the same file concurrently.
+    with _download_lock:
+        return _download_file(url, filename)
+
+
+def _download_file(url: str, filename: str) -> Path:
     """The model files land in the config dir once; every later run is
     offline. Progress goes to the downloads registry so the dashboard can
     draw a bar instead of the user staring at dead air."""
@@ -192,6 +202,8 @@ def _ensure_downloaded(url: str, filename: str) -> Path:
                     out.write(chunk)
                     done += len(chunk)
                     downloads.report(filename, label, "downloading", done, total)
+        if done == 0 or (total > 0 and done != total):
+            raise OSError("The model download was incomplete. Retry the download.")
         partial.replace(target)
         downloads.report(filename, label, "done", done, total or done)
     except (httpx.HTTPError, OSError) as error:
@@ -212,7 +224,12 @@ def _whisper_cached(model_name: str) -> bool:
     result = try_to_load_from_cache(
         f"Systran/faster-whisper-{model_name}", "model.bin"
     )
-    return isinstance(result, str)
+    if not isinstance(result, str):
+        return False
+    directory = Path(result).parent
+    # Missing tokenizer data triggers a network fallback inside faster-whisper.
+    return all((directory / filename).is_file() and (directory / filename).stat().st_size > 0
+               for filename in ("model.bin", "config.json", "tokenizer.json"))
 
 
 def models_present(tts: bool = True, stt: bool = True, options: dict | None = None) -> bool:
