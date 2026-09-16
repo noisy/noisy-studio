@@ -192,3 +192,30 @@ def test_mixed_setup_does_not_require_unused_recognition_dependency(providers_fi
 def test_effective_mode_reflects_engine_capabilities(providers_file, direction, provider, preferred, expected):
     providers_file.write_text(json.dumps({direction: provider}))
     assert providers.effective_mode(direction, preferred) == expected
+
+
+def test_third_provider_receives_its_own_options_without_overwriting_local_settings(providers_file, monkeypatch):
+    config.save(stt="local", stt_model="small", voice_bindings={"lux": "af_sarah"})
+    config.save_selection("tts", "example", {"model": "voice-v2", "voice_bindings": {"lux": "voice-a"}})
+    received = []
+    monkeypatch.setitem(providers._TTS_FACTORIES, "example", lambda options: received.append(options))
+
+    providers.active_tts()
+
+    assert {
+        "factory_options": received,
+        "local_options": config.local_options(),
+        "recognition": config.stt_provider_name(),
+    } == {
+        "factory_options": [{"model": "voice-v2", "voice_bindings": {"lux": "voice-a"}}],
+        "local_options": {"stt_model": "small", "voice_bindings": {"lux": "af_sarah"}},
+        "recognition": "local",
+    }
+
+
+def test_switching_provider_preserves_its_settings_for_return(providers_file):
+    config.save_selection("tts", "example", {"model": "voice-v2"})
+    config.save_selection("tts", "grok", {})
+    config.save_selection("tts", "example", {})
+
+    assert config.provider_options("example") == {"model": "voice-v2"}

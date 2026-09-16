@@ -52,8 +52,33 @@ def stt_provider_name() -> str:
 
 
 def local_options() -> dict[str, Any]:
-    options = _read().get("local")
-    return options if isinstance(options, dict) else {}
+    return provider_options("local")
+
+
+def provider_options(provider: str) -> dict[str, Any]:
+    """Provider-owned settings, retaining the existing local file layout."""
+    data = _read()
+    if provider == "local":
+        options = data.get("local")
+    else:
+        options = data.get("providers", {}).get(provider)
+    return dict(options) if isinstance(options, dict) else {}
+
+
+def save_selection(direction: str, provider: str, options: dict[str, Any]) -> None:
+    """Atomically select one direction and retain every other provider's settings."""
+    if direction not in ("stt", "tts"):
+        raise ValueError("Unknown speech direction")
+    with _lock:
+        data = _read()
+        data[direction] = provider
+        if provider == "local":
+            data["local"] = {**data.get("local", {}), **options}
+        else:
+            settings = dict(data.get("providers", {}))
+            settings[provider] = {**settings.get(provider, {}), **options}
+            data["providers"] = settings
+        _write(data)
 
 
 def save(tts: str | None = None, stt: str | None = None, **local: Any) -> None:
@@ -70,6 +95,10 @@ def _save(tts, stt, local):
         data["stt"] = stt
     if local:
         data["local"] = {**data.get("local", {}), **local}
+    _write(data)
+
+
+def _write(data):
     PROVIDERS_FILE.parent.mkdir(parents=True, exist_ok=True)
     backup = PROVIDERS_FILE.with_suffix(".json.bak")
     if PROVIDERS_FILE.exists() and not backup.exists():

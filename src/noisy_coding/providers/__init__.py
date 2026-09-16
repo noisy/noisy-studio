@@ -96,7 +96,7 @@ def active_tts() -> TTSProvider:
     if name not in _TTS_FACTORIES:
         raise TTSError(f"Unknown speech provider: {name}. Choose an available engine in Settings.")
     factory = _TTS_FACTORIES[name]
-    return factory()
+    return factory(config.provider_options(name))
 
 
 def active_stt() -> STTProvider:
@@ -104,7 +104,7 @@ def active_stt() -> STTProvider:
     if name not in _STT_FACTORIES:
         raise STTError(f"Unknown recognition provider: {name}. Choose an available engine in Settings.")
     factory = _STT_FACTORIES[name]
-    return factory()
+    return factory(config.provider_options(name))
 
 
 def stt_provider(name: str, options: dict | None = None) -> STTProvider:

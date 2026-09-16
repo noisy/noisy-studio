@@ -47,7 +47,7 @@ def choice(choice_id: str) -> dict:
 
 
 def options_for(candidate: dict) -> dict:
-    options = dict(config.local_options())
+    options = config.provider_options(candidate['provider'])
     if candidate['provider'] == 'local':
         options['stt_model' if candidate['direction'] == 'stt' else 'tts_engine'] = candidate['model']
     return options
@@ -91,7 +91,7 @@ def voices(candidate: dict) -> list[dict]:
 
 def assignments(candidate: dict, identities: list[str]) -> dict[str, str]:
     available = [v['id'] for v in voices(candidate)]
-    saved = config.local_options().get('voice_bindings', {}) if candidate['provider'] == 'local' else {}
+    saved = config.provider_options(candidate['provider']).get('voice_bindings', {})
     result = {identity: saved[identity] for identity in identities if saved.get(identity) in available}
     for identity in identities:
         if identity in result:
@@ -145,7 +145,7 @@ def apply(candidate: dict, expected_revision: str, bindings: dict, identities: l
                 raise ValueError('Review the voice for every speaker before switching.')
             if candidate['provider'] == 'local':
                 options['voice_bindings'] = {**options.get('voice_bindings', {}), **bindings}
-        config.save(**{candidate['direction']: candidate['provider']}, **options)
+        config.save_selection(candidate['direction'], candidate['provider'], options)
 
 
 def active_voice_labels() -> dict[str, str]:
