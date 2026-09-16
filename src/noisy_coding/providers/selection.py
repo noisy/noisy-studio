@@ -115,8 +115,16 @@ def prepare(candidate: dict) -> None:
     state, detail = readiness(candidate)
     if state == 'setup':
         raise ValueError(detail)
+    if state in ('ready', 'downloading'):
+        return
     if candidate['provider'] == 'local':
-        local.prefetch_models(tts=candidate['direction'] == 'tts', stt=candidate['direction'] == 'stt', options=options_for(candidate))
+        accepted = local.prefetch_models(
+            tts=candidate['direction'] == 'tts',
+            stt=candidate['direction'] == 'stt',
+            options=options_for(candidate),
+        )
+        if not accepted:
+            raise ValueError('Another model is being prepared. Wait for it to finish, then retry this download.')
 
 
 def apply(candidate: dict, expected_revision: str, bindings: dict, identities: list[str], language: str = "auto") -> None:

@@ -23,7 +23,7 @@ def test_failed_preparation_preserves_the_working_provider(settings_file, monkey
 def test_local_recognition_preparation_does_not_switch_or_download_speech(settings_file, monkeypatch):
     calls = []
     monkeypatch.setattr(selection, 'readiness', lambda candidate: ('download', 'Download first'))
-    monkeypatch.setattr(selection.local, 'prefetch_models', lambda **kwargs: calls.append(kwargs))
+    monkeypatch.setattr(selection.local, 'prefetch_models', lambda **kwargs: calls.append(kwargs) or True)
 
     selection.prepare(selection.choice('whisper:small'))
 
@@ -83,3 +83,24 @@ def test_provider_settings_http_applies_only_the_requested_direction(settings_fi
     finally:
         connection.close()
         server.shutdown()
+
+
+def test_busy_download_reports_rejection_without_changing_settings(settings_file, monkeypatch):
+    monkeypatch.setattr(selection, 'readiness', lambda candidate: ('download', 'Download first'))
+    monkeypatch.setattr(selection.local, 'prefetch_models', lambda **kwargs: False)
+    original = selection.revision()
+
+    with pytest.raises(ValueError, match='Another model is being prepared'):
+        selection.prepare(selection.choice('whisper:small'))
+
+    assert selection.revision() == original
+
+
+@pytest.mark.parametrize('state', ['ready', 'downloading'])
+def test_preparing_an_available_or_in_progress_engine_is_idempotent(settings_file, monkeypatch, state):
+    monkeypatch.setattr(selection, 'readiness', lambda candidate: (state, ''))
+    def unexpected_download(**kwargs):
+        pytest.fail('An available or in-progress model must not start another download')
+    monkeypatch.setattr(selection.local, 'prefetch_models', unexpected_download)
+
+    selection.prepare(selection.choice('whisper:small'))
