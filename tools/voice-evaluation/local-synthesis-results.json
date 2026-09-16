@@ -1,0 +1,38 @@
+{
+  "scope": "Cached model smoke test; first sample includes model initialization; not a quality benchmark.",
+  "results": [
+    {
+      "identity": "lux",
+      "voice": "af_sarah",
+      "elapsed_ms": 6158,
+      "content_type": "audio/wav",
+      "sample_rate": 24000,
+      "channels": 1,
+      "sample_width": 2,
+      "duration_seconds": 3.605,
+      "bytes": 173100
+    },
+    {
+      "identity": "rex",
+      "voice": "am_adam",
+      "elapsed_ms": 1641,
+      "content_type": "audio/wav",
+      "sample_rate": 24000,
+      "channels": 1,
+      "sample_width": 2,
+      "duration_seconds": 3.371,
+      "bytes": 161836
+    },
+    {
+      "identity": "luna",
+      "voice": "bf_emma",
+      "elapsed_ms": 1204,
+      "content_type": "audio/wav",
+      "sample_rate": 24000,
+      "channels": 1,
+      "sample_width": 2,
+      "duration_seconds": 3.435,
+      "bytes": 164908
+    }
+  ]
+}

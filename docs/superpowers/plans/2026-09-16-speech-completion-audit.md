@@ -13,11 +13,11 @@ The goal remains active. Earlier plan checkboxes describe implemented increments
 
 ## Remaining acceptance work
 
-- Provider-neutral configuration metadata: selection.py still branches on Grok/local and synthesizes IDs. A frontend third-provider fixture alone does not prove backend extensibility.
-- Preserve and expose legacy macOS speech selections through the same catalog; currently they remain executable but cannot be chosen in the new UI.
-- Confirm active runtime capability reporting outside settings. Configured Live mode must not imply streaming for a batch-only engine.
-- Exercise setup/test/apply against isolated real provider runtime, including audio formats, readiness and recovery; existing UI tests mock preview I/O.
-- Review download scheduling: a second preparation request can currently be rejected silently by the global prefetch guard. Preparation must return accurate accepted/busy state.
+- Provider lifecycle now delegates through EngineAdapter, with a backend third-provider apply/bindings test. Further review must cover runtime registration and the remaining identity label compatibility path.
+- Legacy macOS speech is restored in the catalog and covered by a shared-voice Storybook state and backend preservation test.
+- Effective recognition mode is now reported by the status API and shown in the dashboard; provider capability combinations are tested. Review remaining mode selectors for clarity.
+- Real cached Kokoro synthesis and isolated HTTP prepare/apply/preview now pass (tools/voice-evaluation). Browser microphone capture, streamed cloud output and failure recovery still need end-to-end coverage.
+- Preparation now reports busy rejection explicitly and handles already-ready/in-progress requests idempotently; tested.
 - Expand Storybook coverage for mixed/active local, voice sharing, unsupported language and actual preparation transitions.
 - Benchmark coverage remains preliminary. The approved measurement matrix (Polish, identifiers, interruptions, cold/warm memory and actual conversational timing) is not satisfied by the current English batch transcription experiment. Report these gaps explicitly rather than implying a general model recommendation.
 - Audit all original acceptance requirements against current code and test coverage before marking the goal complete.

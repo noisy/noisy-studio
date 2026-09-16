@@ -58,3 +58,11 @@ python tools/voice-evaluation/compare_nemotron.py --models /path/to/pinned-model
 ```
 
 The model files and temporary virtual environment are not application assets and are not committed. Re-run results are allowed to differ; retain runtime/hardware details when comparing.
+
+## Cached local synthesis and settings API verification
+
+`verify_local_synthesis.py` exercises the actual Kokoro adapter with three identity-to-voice mappings and validates the generated WAV headers. The recorded run produced mono 24 kHz, 16-bit WAVs for Sarah, Adam and Emma. Its first request includes initialization; subsequent requests are warm. These three samples are a runtime smoke check, not a listening study or latency distribution.
+
+`verify_settings_api.py` starts an isolated loopback server with a temporary provider configuration. It verifies that preparing cached weights leaves the active selection unchanged, applying Kokoro changes only synthesis, and the preview endpoint returns real WAV audio without queueing a conversation message. Neither script changes the running daemon, downloads models, or sends audio to a cloud provider.
+
+Run either script with `PYTHONPATH=src` in the project's Python environment. Results are retained beside the scripts for reproducibility.

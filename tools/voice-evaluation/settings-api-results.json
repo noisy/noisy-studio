@@ -1,0 +1,11 @@
+{
+  "prepare_preserved_selection": true,
+  "applied": {
+    "stt": "grok:stt",
+    "tts": "kokoro:1"
+  },
+  "preview_content_type": "audio/wav",
+  "preview_sample_rate": 24000,
+  "preview_seconds": 4.992,
+  "agent_messages_queued": 0
+}
