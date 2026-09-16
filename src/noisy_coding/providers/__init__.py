@@ -3,8 +3,7 @@
 Callers ask for `active_tts()` / `active_stt()` at the moment of use;
 the selection in providers.json is re-read on every call, so switching
 provider is a file write away, no restart (same contract as the API key
-in credentials.py). Unknown names fall back to Grok rather than mute
-the daemon.
+in credentials.py). Unknown names fail explicitly instead of silently sending speech to another service.
 """
 
 from noisy_coding.providers import config
@@ -94,12 +93,18 @@ def available() -> dict[str, list[str]]:
 
 
 def active_tts() -> TTSProvider:
-    factory = _TTS_FACTORIES.get(config.tts_provider_name(), _grok_tts)
+    name = config.tts_provider_name()
+    if name not in _TTS_FACTORIES:
+        raise TTSError(f"Unknown speech provider: {name}. Choose an available engine in Settings.")
+    factory = _TTS_FACTORIES[name]
     return factory()
 
 
 def active_stt() -> STTProvider:
-    factory = _STT_FACTORIES.get(config.stt_provider_name(), _grok_stt)
+    name = config.stt_provider_name()
+    if name not in _STT_FACTORIES:
+        raise STTError(f"Unknown recognition provider: {name}. Choose an available engine in Settings.")
+    factory = _STT_FACTORIES[name]
     return factory()
 
 

@@ -711,6 +711,11 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         "selected": state.input_device,
                     }
                 )
+            elif url.path == "/speech-settings":
+                from noisy_coding.providers import selection
+                identities = sorted({c['voice'] for c in state.all_characters().values()} |
+                                    set(state.voice_claims().values()) | {state.character()['voice']})
+                self._respond(selection.snapshot(identities))
             elif url.path == "/providers":
                 # Voice engines: the full catalog (setup metadata per
                 # provider) plus what is active per direction — the
@@ -1043,6 +1048,70 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     self._respond(result)
                 else:
                     self._respond({"error": "no known setting in body"}, status=400)
+            elif self.path == "/speech-settings":
+                from noisy_coding.providers import selection
+                body = self._read_json_body()
+                identities = sorted({c['voice'] for c in state.all_characters().values()} |
+                                    set(state.voice_claims().values()) | {state.character()['voice']})
+                try:
+                    candidate = selection.choice(str(body.get('choice', '')))
+                    operation = body.get('operation')
+                    if operation == 'prepare':
+                        selection.prepare(candidate)
+                    elif operation == 'apply':
+                        selection.apply(candidate, str(body.get('revision', '')),
+                                        body.get('bindings', {}), identities, state.language)
+                    else:
+                        raise ValueError('Choose prepare or apply.')
+                    self._respond(selection.snapshot(identities))
+                except (ValueError, TypeError) as error:
+                    self._respond({'error': str(error)}, status=400)
+            elif self.path == "/speech-settings/transcribe":
+                import base64
+                import io
+                import wave
+                from noisy_coding.providers import selection
+                from noisy_coding.providers.grok import GrokSTT
+                from noisy_coding.providers.local import LocalSTT
+                body = self._read_json_body()
+                try:
+                    candidate = selection.choice(str(body.get('choice', '')))
+                    if candidate['direction'] != 'stt' or selection.readiness(candidate)[0] != 'ready':
+                        raise ValueError('Prepare recognition before testing it.')
+                    encoded = body.get('audio', '')
+                    if not isinstance(encoded, str) or len(encoded) > 1_400_000:
+                        raise ValueError('Record a sample shorter than 15 seconds.')
+                    audio = base64.b64decode(encoded, validate=True)
+                    with wave.open(io.BytesIO(audio)) as sample:
+                        if sample.getnchannels() != 1 or sample.getsampwidth() != 2 or sample.getframerate() != 16000 or sample.getnframes() > 256000:
+                            raise ValueError('Use a short mono 16 kHz speech sample.')
+                    provider = GrokSTT() if candidate['provider'] == 'grok' else LocalSTT(selection.options_for(candidate))
+                    started = time.monotonic()
+                    text = provider.transcribe(audio, '' if state.language == 'auto' else state.language)
+                    self._respond({'text': text, 'elapsed_ms': round((time.monotonic() - started)*1000)})
+                except (ValueError, RuntimeError, wave.Error, EOFError) as error:
+                    self._respond({'error': str(error)}, status=400)
+            elif self.path == "/speech-settings/preview":
+                import asyncio
+                import base64
+                from noisy_coding.providers import selection
+                from noisy_coding.providers.grok import GrokTTS
+                from noisy_coding.providers.local import LocalTTS
+                body = self._read_json_body()
+                try:
+                    candidate = selection.choice(str(body.get('choice', '')))
+                    if candidate['direction'] != 'tts' or selection.readiness(candidate)[0] != 'ready':
+                        raise ValueError('Prepare the voice engine before previewing it.')
+                    voice = str(body.get('voice', ''))
+                    if voice not in {v['id'] for v in selection.voices(candidate)}:
+                        raise ValueError('Choose a voice from this engine.')
+                    provider = GrokTTS() if candidate['provider'] == 'grok' else LocalTTS(selection.options_for(candidate))
+                    audio = asyncio.run(provider.synthesize(
+                        'The search now ignores capital letters. All twelve tests passed. Shall I deploy it?',
+                        voice, 'en', 1.0))
+                    self._respond({'audio': base64.b64encode(audio.audio).decode(), 'content_type': audio.content_type})
+                except (ValueError, RuntimeError) as error:
+                    self._respond({'error': str(error)}, status=400)
             elif self.path == "/providers":
                 # Switch voice engines and/or store per-provider options.
                 # The selection lives in providers.json and is re-read on
@@ -1073,6 +1142,22 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 if not choice and not local and not prefetch_requested:
                     self._respond({"error": "nothing to change"}, status=400)
                     return
+                from noisy_coding.providers import selection
+                if set(local) - {'stt_model', 'tts_engine', 'tts_voice'}:
+                    self._respond({'error': 'Unsupported local speech option.'}, status=400)
+                    return
+                if local.get('stt_model', provider_config.DEFAULT_LOCAL_STT_MODEL) not in selection.WHISPER_MODELS or local.get('tts_engine', 'kokoro') not in ('kokoro', 'say'):
+                    self._respond({'error': 'Choose an available local model.'}, status=400)
+                    return
+                pending_options = {**provider_config.local_options(), **local}
+                pending_tts = choice.get('tts', provider_config.tts_provider_name()) == 'local'
+                pending_stt = choice.get('stt', provider_config.stt_provider_name()) == 'local'
+                if (choice or local) and (pending_tts or pending_stt):
+                    from noisy_coding.providers import local as local_provider
+                    if not local_provider.models_present(tts=pending_tts, stt=pending_stt, options=pending_options):
+                        local_provider.prefetch_models(tts=pending_tts, stt=pending_stt, options=pending_options)
+                        self._respond({'error': 'Preparing local models. Your current engines remain active; apply again after the download finishes.'}, status=409)
+                        return
                 if choice or local:
                     provider_config.save(
                         tts=choice.get("tts"), stt=choice.get("stt"), **local

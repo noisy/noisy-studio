@@ -15,11 +15,16 @@ providers.json shape:
 """
 
 import json
+import os
+import tempfile
+import threading
 from typing import Any
 
 from noisy_coding.config_dir import CONFIG_DIR
 
 PROVIDERS_FILE = CONFIG_DIR / "providers.json"
+
+_lock = threading.RLock()
 
 DEFAULT_TTS = "grok"
 DEFAULT_STT = "grok"
@@ -52,6 +57,11 @@ def local_options() -> dict[str, Any]:
 
 def save(tts: str | None = None, stt: str | None = None, **local: Any) -> None:
     """Update the selection, keeping unspecified fields as they are."""
+    with _lock:
+        _save(tts, stt, local)
+
+
+def _save(tts, stt, local):
     data = _read()
     if tts is not None:
         data["tts"] = tts
@@ -60,4 +70,11 @@ def save(tts: str | None = None, stt: str | None = None, **local: Any) -> None:
     if local:
         data["local"] = {**data.get("local", {}), **local}
     PROVIDERS_FILE.parent.mkdir(parents=True, exist_ok=True)
-    PROVIDERS_FILE.write_text(json.dumps(data, indent=2))
+    with tempfile.NamedTemporaryFile(mode="w", dir=PROVIDERS_FILE.parent, delete=False) as output:
+        path = output.name
+        json.dump(data, output, indent=2)
+    try:
+        os.replace(path, PROVIDERS_FILE)
+    finally:
+        if os.path.exists(path):
+            os.unlink(path)

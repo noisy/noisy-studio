@@ -215,13 +215,14 @@ def _whisper_cached(model_name: str) -> bool:
     return isinstance(result, str)
 
 
-def models_present(tts: bool = True, stt: bool = True) -> bool:
+def models_present(tts: bool = True, stt: bool = True, options: dict | None = None) -> bool:
     """Every weight the CURRENT local configuration needs is on disk —
     the first utterance will not block on a download. Direction-aware:
     a mixed setup (say local TTS + cloud STT) needs only its own half."""
     from noisy_coding.config_dir import CONFIG_DIR
 
-    engine = str(config.local_options().get("tts_engine") or "kokoro")
+    options = config.local_options() if options is None else options
+    engine = str(options.get("tts_engine") or "kokoro")
     if tts and engine != "say":
         kokoro_dir = CONFIG_DIR / "models" / "kokoro"
         for filename in ("kokoro-v1.0.onnx", "voices-v1.0.bin"):
@@ -230,7 +231,7 @@ def models_present(tts: bool = True, stt: bool = True) -> bool:
                 return False
     if stt:
         model_name = str(
-            config.local_options().get("stt_model") or config.DEFAULT_LOCAL_STT_MODEL
+            options.get("stt_model") or config.DEFAULT_LOCAL_STT_MODEL
         )
         return _whisper_cached(model_name)
     return True
@@ -264,20 +265,22 @@ def download_status() -> list[dict]:
     return downloads.status()
 
 
-def prefetch_models() -> bool:
+def prefetch_models(*, tts: bool = True, stt: bool = True, options: dict | None = None) -> bool:
     """Start fetching every local weight in the background — called when
     the user switches an engine to local, so the first utterance finds
     the models already on disk."""
-    engine = str(config.local_options().get("tts_engine") or "kokoro")
+    options = dict(config.local_options() if options is None else options)
+    engine = str(options.get("tts_engine") or "kokoro")
     targets = []
-    if engine != "say":
+    if tts and engine != "say":
         targets.append(
             lambda: _ensure_downloaded(_KOKORO_MODEL_URL, "kokoro-v1.0.onnx")
         )
         targets.append(
             lambda: _ensure_downloaded(_KOKORO_VOICES_URL, "voices-v1.0.bin")
         )
-    targets.append(lambda: LocalSTT()._load_model())
+    if stt:
+        targets.append(lambda: LocalSTT(options)._load_model())
     return downloads.prefetch(targets)
 
 
@@ -288,11 +291,21 @@ class LocalTTS:
 
     def __init__(self, options: dict | None = None):
         self.options = dict(config.local_options() if options is None else options)
+        if self.options.get("voice_bindings"):
+            from noisy_coding.listener.state import VOICE_POOL
+            from noisy_coding.providers.manifest import KOKORO_VOICES
+            bindings = dict(self.options["voice_bindings"])
+            for identity in VOICE_POOL:
+                if identity not in bindings:
+                    bindings[identity] = next((v for v in KOKORO_VOICES if v not in bindings.values()), KOKORO_VOICES[len(bindings) % len(KOKORO_VOICES)])
+            self.options["voice_bindings"] = bindings
         self.cache_identity = "local:" + json.dumps(self.options, sort_keys=True)
 
     async def synthesize(
         self, text: str, voice_id: str, language: str, speed: float
     ) -> SynthesizedAudio:
+        if language not in ("", "auto", "en", "en-US", "en-GB") and self.options.get("tts_engine", "kokoro") == "kokoro":
+            raise TTSError("Kokoro currently supports English in this app. Choose another engine for this language.")
         text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)
         engine = str(self.options.get("tts_engine") or "kokoro")
         if engine == "say":
@@ -325,6 +338,9 @@ class LocalTTS:
         known = set(model.get_voices())
         if voice_id in known:
             return voice_id
+        mapped = self.options.get("voice_bindings", {}).get(voice_id)
+        if mapped in known:
+            return mapped
         configured = str(self.options.get("tts_voice") or "")
         if configured in known:
             return configured

@@ -34,9 +34,10 @@ def test_selection_is_read_per_call(providers_file):
     assert isinstance(providers.active_tts(), LocalTTS)
 
 
-def test_unknown_name_falls_back_to_grok(providers_file):
+def test_unknown_provider_never_silently_sends_speech_to_grok(providers_file):
     providers_file.write_text(json.dumps({"tts": "no-such-engine"}))
-    assert isinstance(providers.active_tts(), GrokTTS)
+    with pytest.raises(providers.TTSError, match="Unknown speech provider"):
+        providers.active_tts()
 
 
 def test_broken_file_falls_back_to_grok(providers_file):
