@@ -1,0 +1,49 @@
+{
+  "export_revision": "3f1f6020667b151d0b6820cc4b8ae4f42b6d35fc",
+  "runtime": "1.13.8",
+  "threads": 4,
+  "load_ms": 2433,
+  "note": "Unpaced replay in 100ms chunks; processing time is not conversational latency.",
+  "clips": [
+    {
+      "clip": "u1",
+      "script_reference": "The search stopped working after the last change. It finds exact names, but part of a name gives me nothing.",
+      "duration_s": 12.63609999999404,
+      "transcript": "The search stopped working after the last change.  It finds exact names, but part of a name gives me nothing",
+      "inference_ms": 1669,
+      "first_partial_after_audio_s": 3.5
+    },
+    {
+      "clip": "u2",
+      "script_reference": "Yes, and ignore capital letters too. If I type just part of a name, I still want to find it.",
+      "duration_s": 14.28319999999553,
+      "transcript": "Uh yes and ignore capital letters too if I type just part of a name I still want to find it",
+      "inference_ms": 3747,
+      "first_partial_after_audio_s": 4.1
+    },
+    {
+      "clip": "u3",
+      "script_reference": "Great. Add a test for both cases so we don't break this again.",
+      "duration_s": 9.624099999994039,
+      "transcript": "Uh great other tests for both cases so we don't break this again",
+      "inference_ms": 1164,
+      "first_partial_after_audio_s": 1.8
+    },
+    {
+      "clip": "u4",
+      "script_reference": "Great. My hands are full. Can you deploy that to production for me?",
+      "duration_s": 9.26740000000596,
+      "transcript": "Great my hands are full.  Can you deploy that to production for me",
+      "inference_ms": 1266,
+      "first_partial_after_audio_s": 4.1
+    },
+    {
+      "clip": "u5",
+      "script_reference": "Perfect. Thanks.",
+      "duration_s": 4.74280000000447,
+      "transcript": "Perfect thanks",
+      "inference_ms": 540,
+      "first_partial_after_audio_s": 2.4
+    }
+  ]
+}
