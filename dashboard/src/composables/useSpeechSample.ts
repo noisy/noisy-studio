@@ -14,13 +14,16 @@ export function useSpeechSample(onSample: (wav: string) => Promise<void>) {
     const input = await navigator.mediaDevices.getUserMedia({audio:true});
     if(request!==generation){input.getTracks().forEach(t=>t.stop());return;}
     stream=input; const parts: Blob[]=[];
-    recorder=new MediaRecorder(input);
+    try { recorder=new MediaRecorder(input); }
+    catch (cause) { input.getTracks().forEach(t=>t.stop()); stream=undefined; throw cause; }
     recorder.ondataavailable=e=>{if(e.data.size)parts.push(e.data);};
     recorder.onstop=async()=>{
-      input.getTracks().forEach(t=>t.stop()); recording.value=false;clearTimeout(timer);
+      input.getTracks().forEach(t=>t.stop());
       if(request!==generation)return;
-      const context=new AudioContext();
+      recording.value=false;clearTimeout(timer);
+      let context: AudioContext | undefined;
       try {
+        context=new AudioContext();
         const decoded=await context.decodeAudioData(await new Blob(parts).arrayBuffer());
         const pcm=floatToInt16(resampleTo16k(decoded.getChannelData(0),decoded.sampleRate));
         const buffer=new ArrayBuffer(44+pcm.length*2);const view=new DataView(buffer);
@@ -28,9 +31,12 @@ export function useSpeechSample(onSample: (wav: string) => Promise<void>) {
         str(0,'RIFF');view.setUint32(4,36+pcm.length*2,true);str(8,'WAVE');str(12,'fmt ');view.setUint32(16,16,true);view.setUint16(20,1,true);view.setUint16(22,1,true);view.setUint32(24,16000,true);view.setUint32(28,32000,true);view.setUint16(32,2,true);view.setUint16(34,16,true);str(36,'data');view.setUint32(40,pcm.length*2,true);
         pcm.forEach((sample,i)=>view.setInt16(44+i*2,sample,true));
         if(request===generation) await onSample(btoa(Array.from(new Uint8Array(buffer),b=>String.fromCharCode(b)).join('')));
-      } catch { if(request===generation) error.value='This browser could not process the recording. Try another microphone or browser.'; } finally {await context.close();}
+      } catch { if(request===generation) error.value='This browser could not process the recording. Try another microphone or browser.'; } finally {await context?.close();}
     };
-    recorder.start();recording.value=true;timer=setTimeout(()=>recorder?.stop(),15000);
+    try { recorder.start(); }
+    catch (cause) { cancel(); throw cause; }
+    recording.value=true;
+    timer=setTimeout(()=>{if(request===generation && recorder?.state==='recording')recorder.stop();},15000);
   }
   function finish(){if(recorder?.state==='recording')recorder.stop();}
   onUnmounted(cancel);
