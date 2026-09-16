@@ -23,6 +23,8 @@ later by transcribing the growing buffer.
 
 import asyncio
 import io
+import json
+import re
 import tempfile
 import threading
 import wave
@@ -55,10 +57,11 @@ class LocalSTT:
     _model_name = ""
     _lock = threading.Lock()
 
+    def __init__(self, options: dict | None = None):
+        self.options = dict(config.local_options() if options is None else options)
+
     def _load_model(self):
-        model_name = str(
-            config.local_options().get("stt_model") or config.DEFAULT_LOCAL_STT_MODEL
-        )
+        model_name = str(self.options.get("stt_model") or config.DEFAULT_LOCAL_STT_MODEL)
         with LocalSTT._lock:
             if LocalSTT._model is None or LocalSTT._model_name != model_name:
                 try:
@@ -283,10 +286,15 @@ class LocalTTS:
     label = "local TTS (kokoro)"
     supports_streaming = False
 
+    def __init__(self, options: dict | None = None):
+        self.options = dict(config.local_options() if options is None else options)
+        self.cache_identity = "local:" + json.dumps(self.options, sort_keys=True)
+
     async def synthesize(
         self, text: str, voice_id: str, language: str, speed: float
     ) -> SynthesizedAudio:
-        engine = str(config.local_options().get("tts_engine") or "kokoro")
+        text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)
+        engine = str(self.options.get("tts_engine") or "kokoro")
         if engine == "say":
             return await self._synthesize_say(text, speed)
         return await asyncio.to_thread(self._synthesize_kokoro, text, voice_id, speed)
@@ -317,13 +325,13 @@ class LocalTTS:
         known = set(model.get_voices())
         if voice_id in known:
             return voice_id
-        configured = str(config.local_options().get("tts_voice") or "")
+        configured = str(self.options.get("tts_voice") or "")
         if configured in known:
             return configured
         return DEFAULT_KOKORO_VOICE
 
     async def _synthesize_say(self, text: str, speed: float) -> SynthesizedAudio:
-        voice = str(config.local_options().get("tts_voice") or "")
+        voice = str(self.options.get("tts_voice") or "")
         # `say` rate is words per minute; ~180 wpm reads as speed 1.0.
         rate = max(90, min(360, int(180 * speed)))
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as out:
@@ -355,7 +363,7 @@ class LocalTTS:
         raise TTSError("Local TTS does not stream — use the batch path.")
 
     async def list_voices(self) -> list[dict]:
-        engine = str(config.local_options().get("tts_engine") or "kokoro")
+        engine = str(self.options.get("tts_engine") or "kokoro")
         if engine != "say":
             names = await asyncio.to_thread(
                 lambda: list(_KokoroEngine.model().get_voices())

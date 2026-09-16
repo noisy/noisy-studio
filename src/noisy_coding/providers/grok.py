@@ -6,6 +6,7 @@ the provider shape, so the daemon can stop naming Grok directly.
 """
 
 from collections.abc import Callable
+import re
 
 from noisy_coding import tts, tts_stream
 from noisy_coding.listener import pricing, stt, stt_stream
@@ -23,7 +24,7 @@ class GrokTTS:
     async def synthesize(
         self, text: str, voice_id: str, language: str, speed: float
     ) -> SynthesizedAudio:
-        return await tts.synthesize(text, voice_id, language, speed)
+        return await tts.synthesize(_speech_text(text), voice_id, language, speed)
 
     async def speak_streaming(
         self,
@@ -35,7 +36,7 @@ class GrokTTS:
         on_audio_chunk: Callable[[bytes], None] | None = None,
     ) -> None:
         await tts_stream.speak_streaming(
-            text, voice_id, language, speed,
+            _speech_text(text), voice_id, language, speed,
             on_first_audio=on_first_audio, on_audio_chunk=on_audio_chunk,
         )
 
@@ -72,3 +73,7 @@ class GrokSTT:
 
     def streaming_cost_usd(self, audio_seconds: float) -> float:
         return pricing.stt_streaming_cost_usd(audio_seconds)
+
+
+def _speech_text(text: str) -> str:
+    return re.sub(r"\*\*(.+?)\*\*", r"<loud>\1</loud>", text)
