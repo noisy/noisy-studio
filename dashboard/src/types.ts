@@ -36,6 +36,8 @@ export interface DaemonStatus {
   session_cost_usd: { user: number; claude: number };
   usage: { stt_seconds: number; tts_chars: number };
   credits_usd: number | null;
+  recognition_live_available?: boolean;
+  speech_live_available?: boolean;
   recognition_mode?: "batch" | "live" | "unavailable";
   speech_output_mode?: "batch" | "live" | "unavailable";
   mode: "batch" | "live";

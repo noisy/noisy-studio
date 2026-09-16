@@ -607,13 +607,13 @@ const LANGUAGES: Record<string, string> = {
                  directions (Claude's voice out vs your voice in). -->
             <div class="ctlrow" title="Agent speech: batch renders the whole clip first, live streams as it synthesizes">
               <span class="lbl">Agent speech</span>
-              <button class="ctl small" :class="{ on: status?.tts_mode === 'batch' }" @click="setTtsMode('batch')">Batch</button>
-              <button class="ctl small" :class="{ on: status?.tts_mode === 'live' }" @click="setTtsMode('live')">Live</button>
+              <button class="ctl small" :class="{ on: (status?.speech_output_mode ?? status?.tts_mode) === 'batch' }" @click="setTtsMode('batch')">Batch</button>
+              <button class="ctl small" :class="{ on: (status?.speech_output_mode ?? status?.tts_mode) === 'live' }" :disabled="status?.speech_live_available === false" :title="status?.speech_live_available === false ? 'This voice engine generates complete replies before playback.' : undefined" @click="setTtsMode('live')">Live</button>
             </div>
-            <div class="ctlrow" title="Your speech: batch transcribes after silence ($0.10/h), live streams while you talk ($0.20/h)">
+            <div class="ctlrow" title="Your speech: batch transcribes after you finish, live transcribes while you talk when supported by your engine">
               <span class="lbl">Your speech</span>
-              <button class="ctl small" :class="{ on: status?.mode === 'batch' }" @click="setSttMode('batch')">Batch</button>
-              <button class="ctl small" :class="{ on: status?.mode === 'live' }" @click="setSttMode('live')">Live</button>
+              <button class="ctl small" :class="{ on: (status?.recognition_mode ?? status?.mode) === 'batch' }" @click="setSttMode('batch')">Batch</button>
+              <button class="ctl small" :class="{ on: (status?.recognition_mode ?? status?.mode) === 'live' }" :disabled="status?.recognition_live_available === false" :title="status?.recognition_live_available === false ? 'This recognition engine transcribes after you finish speaking.' : undefined" @click="setSttMode('live')">Live</button>
             </div>
             <div class="ctlrow" title="Subtle blips on conversation events; pick which in Settings">
               <span class="lbl">Sound cues</span>

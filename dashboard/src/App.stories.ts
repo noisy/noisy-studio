@@ -9,6 +9,7 @@ function story(scenario:Scenario):StoryObj {
   return {render:()=>{ resetScenario(scenario); return {components:{App},template:'<App />'}; }};
 }
 export const Conversation=story('conversation');
+export const LocalSpeech=story('local-speech');
 export const Recording=story('recording');
 export const Speaking=story('speaking');
 export const Queued=story('queued');
