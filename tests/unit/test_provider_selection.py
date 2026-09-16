@@ -162,3 +162,11 @@ def test_switching_local_engines_restores_each_engines_reviewed_voices(settings_
     selection.apply(selection.choice('macos:say'), selection.revision(), {'lux': 'system', 'rex': 'system'}, identities)
 
     assert selection.assignments(selection.choice('kokoro:1'), identities) == original
+
+
+def test_catalog_explains_language_mismatch_before_apply(settings_file, monkeypatch):
+    monkeypatch.setattr(selection, 'readiness', lambda candidate: ('ready', ''))
+    monkeypatch.setattr(selection.local, 'download_status', lambda: [])
+    engines = selection.snapshot(['lux'], language='pl')['engines']
+    kokoro = next(engine for engine in engines if engine['id']=='kokoro:1')
+    assert (kokoro['state'], 'English' in kokoro['detail']) == ('unsupported', True)

@@ -92,7 +92,7 @@ onUnmounted(() => { clearInterval(poll); stop(); });
         <div class="choices" role="group" :aria-label="section.title + ' engine'">
           <button v-for="engine in info?.engines.filter(e => e.direction === section.id)" :key="engine.id" class="choice" :aria-pressed="selected === engine.id" :class="{selected: selected === engine.id}" :disabled="busy" @click="choose(engine)">
             <span class="choice-heading">{{ engine.label }} <span>{{ engine.location }}</span></span>
-            <small>{{ engine.description }}</small><span class="choice-status">{{ engine.state === 'ready' ? 'Available' : engine.state === 'setup' ? 'Setup needed' : engine.state === 'downloading' ? 'Preparing…' : engine.state === 'error' ? 'Retry download' : 'Download needed' }}</span>
+            <small>{{ engine.description }}</small><span class="choice-status">{{ engine.state === 'unsupported' ? 'Unavailable for your language' : engine.state === 'ready' ? 'Available' : engine.state === 'setup' ? 'Setup needed' : engine.state === 'downloading' ? 'Preparing…' : engine.state === 'error' ? 'Retry download' : 'Download needed' }}</span>
           </button>
         </div>
         <div v-if="candidate" class="details">

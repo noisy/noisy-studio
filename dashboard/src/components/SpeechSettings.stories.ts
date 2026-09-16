@@ -36,3 +36,16 @@ export const SharedSystemVoice: Story = {render: () => ({
   },
   template: '<div style="max-width:940px;padding:24px"><SpeechSettings /></div>',
 })};
+
+
+export const UnsupportedLanguage: Story = {render: () => ({
+  components: {SpeechSettings},
+  setup() {
+    const info=speechFixture();
+    const engine=info.engines.find(e=>e.id==='kokoro:1')!;
+    engine.state='unsupported';
+    engine.detail='Kokoro currently supports English in this app. Keep your current engine for Polish.';
+    setSpeechSettingsFixture(info);
+  },
+  template:'<div style="max-width:940px;padding:24px"><SpeechSettings /></div>',
+})};

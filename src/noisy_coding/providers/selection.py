@@ -59,10 +59,14 @@ def assignments(candidate: dict, identities: list[str]) -> dict[str, str]:
     return result
 
 
-def snapshot(identities: list[str]) -> dict:
+def snapshot(identities: list[str], language: str = "auto") -> dict:
     engines = []
     for candidate in choices():
         state, detail = readiness(candidate)
+        try:
+            engine_registry.adapter(candidate['provider']).validate_language(candidate, language)
+        except ValueError as error:
+            state, detail = 'unsupported', str(error)
         engines.append({**candidate, 'state': state, 'detail': detail,
                         'voices': voices(candidate),
                         'bindings': assignments(candidate, identities) if candidate['direction'] == 'tts' else {}})

@@ -719,7 +719,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 from noisy_coding.providers import selection
                 identities = sorted({c['voice'] for c in state.all_characters().values()} |
                                     set(state.voice_claims().values()) | {state.character()['voice']})
-                self._respond(selection.snapshot(identities))
+                self._respond(selection.snapshot(identities, state.language))
             elif url.path == "/providers":
                 # Voice engines: the full catalog (setup metadata per
                 # provider) plus what is active per direction — the
@@ -1067,7 +1067,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                                         body.get('bindings', {}), identities, state.language)
                     else:
                         raise ValueError('Choose prepare or apply.')
-                    self._respond(selection.snapshot(identities))
+                    self._respond(selection.snapshot(identities, state.language))
                 except (ValueError, TypeError) as error:
                     self._respond({'error': str(error)}, status=400)
             elif self.path == "/speech-settings/transcribe":
