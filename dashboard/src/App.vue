@@ -777,7 +777,7 @@ const LANGUAGES: Record<string, string> = {
       <span v-if="status?.input_device === 'browser'">
         TAB MIC <b :class="status?.tab_audio ? 'ok' : 'bad'">{{ status?.tab_audio ? "Live" : "NO TAB" }}</b>
       </span>
-      <span>Recognition <b>{{ status?.mode?.toUpperCase() ?? "—" }}</b></span>
+      <span>Recognition <b>{{ (status?.recognition_mode ?? status?.mode)?.toUpperCase() ?? "—" }}</b></span>
       <span>Language <b>{{ status?.language || "Auto" }}</b></span>
       <span>Queue <b>{{ status?.queued ?? "—" }}</b></span>
       <span v-if="lastError" class="lasterr" :title="`${lastError.detail} (${errors.length} error(s) this session)`">

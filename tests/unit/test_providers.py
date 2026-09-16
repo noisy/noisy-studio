@@ -181,3 +181,14 @@ def test_mixed_setup_does_not_require_unused_recognition_dependency(providers_fi
     monkeypatch.setattr("noisy_coding.providers.manifest.find_spec", lambda name: None if name == "faster_whisper" else object())
     monkeypatch.setattr("noisy_coding.providers.local.models_present", lambda **kw: True)
     assert providers.voice_ready() is True
+
+
+@pytest.mark.parametrize('provider,preferred,expected', [
+    ('grok', 'live', 'live'), ('grok', 'batch', 'batch'),
+    ('local', 'live', 'batch'), ('local', 'batch', 'batch'),
+    ('unknown', 'live', 'unavailable'),
+])
+@pytest.mark.parametrize('direction', ['stt', 'tts'])
+def test_effective_mode_reflects_engine_capabilities(providers_file, direction, provider, preferred, expected):
+    providers_file.write_text(json.dumps({direction: provider}))
+    assert providers.effective_mode(direction, preferred) == expected

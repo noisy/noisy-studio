@@ -119,3 +119,12 @@ def tts_provider(name: str, options: dict | None = None) -> TTSProvider:
     if name not in _TTS_FACTORIES:
         raise TTSError(f"Unknown speech provider: {name}")
     return _TTS_FACTORIES[name](options)
+
+
+def effective_mode(direction: str, preferred: str) -> str:
+    """Report usable behavior without overwriting the user's preference."""
+    try:
+        provider = active_stt() if direction == 'stt' else active_tts()
+    except (STTError, TTSError):
+        return 'unavailable'
+    return 'live' if preferred == 'live' and provider.supports_streaming else 'batch'
