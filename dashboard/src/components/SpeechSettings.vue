@@ -2,6 +2,7 @@
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
 import { getSpeechSettings, updateSpeechSettings, previewSpeechVoice, previewRecognition, getStatus, setMuted, type SpeechSettingsInfo, type SpeechEngine } from '../api/client';
 
+import ModelDownloadProgress from './ModelDownloadProgress.vue';
 import { useSpeechSample } from '../composables/useSpeechSample';
 
 const emit = defineEmits<{configure: []}>();
@@ -68,7 +69,7 @@ async function preview(engine: SpeechEngine, voice: string, identity: string) {
     await audio.play(); loadingSample.value = false;
   } catch { if (request === previewRequest) { error.value = 'Could not play this voice. Check the provider connection and try again.'; playing.value = ''; } }
 }
-onMounted(() => { void reload(); poll = setInterval(() => { if (!busy.value && info.value?.engines.some(e => e.state === 'downloading')) void reload(); }, 1500); });
+onMounted(() => { void reload(); poll = setInterval(() => { if (!busy.value) void reload(); }, 1500); });
 onUnmounted(() => { clearInterval(poll); stop(); });
 </script>
 
@@ -78,6 +79,7 @@ onUnmounted(() => { clearInterval(poll); stop(); });
     <p v-if="error && !editing" class="feedback error" role="alert">{{ error }} <button v-if="!info" @click="reload">Retry</button></p>
     <p v-if="notice" class="feedback" role="status">{{ notice }}</p>
     <p v-if="!info && !error">Loading speech engines…</p>
+    <ModelDownloadProgress :downloads="info?.downloads.filter(d => d.state !== 'missing') ?? []" />
     <section v-for="section in sections" v-show="info" :key="section.id" class="speech-card" :class="{editing: editing === section.id}">
       <div class="summary">
         <div><span class="eyebrow">{{ section.title }}</span><p>{{ section.intro }}</p>
