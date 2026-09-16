@@ -256,3 +256,24 @@ export function setProviders(patch: {
 export function requestHotkeyPermission(): Promise<HotkeyState> {
   return postJson<HotkeyState>("/hotkeys/permission", {});
 }
+
+export interface SpeechEngine {
+  id: string; provider: string; direction: 'stt' | 'tts'; label: string;
+  location: string; model: string; live: boolean; description: string; languages: string;
+  state: 'ready' | 'setup' | 'download' | 'downloading' | 'error'; detail: string;
+  voices: {id: string; label: string}[]; bindings: Record<string, string>;
+}
+export interface SpeechSettingsInfo {
+  revision: string; active: {stt: string; tts: string}; engines: SpeechEngine[]; downloads: ModelDownload[];
+}
+export interface SpeechSettingsPatch {
+  operation: 'prepare' | 'apply'; choice: string; revision: string; bindings: Record<string, string>;
+}
+export function getSpeechSettings(): Promise<SpeechSettingsInfo> { return getJson('/speech-settings'); }
+export function updateSpeechSettings(patch: SpeechSettingsPatch): Promise<SpeechSettingsInfo> { return postJson('/speech-settings', patch); }
+export function previewSpeechVoice(choice: string, voice: string): Promise<{audio: string; content_type: string}> {
+  return postJson('/speech-settings/preview', {choice, voice});
+}
+export function previewRecognition(choice: string, audio: string): Promise<{text: string; elapsed_ms: number}> {
+  return postJson('/speech-settings/transcribe', {choice, audio});
+}

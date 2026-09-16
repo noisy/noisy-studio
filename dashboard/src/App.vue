@@ -749,6 +749,7 @@ const LANGUAGES: Record<string, string> = {
               <section class="railbox">
                 <VoicePersona
                   :voice="character?.voice ?? ''"
+                  :voice-labels="status?.voice_labels"
                   :speaking="!!viewedAgent && (status?.speaking_agents ?? []).includes(viewedAgent)"
                   :muted="!!viewedAgent && (status?.muted_agents ?? []).includes(viewedAgent)"
                   @change="(v) => changeCharacter({ voice: v })"

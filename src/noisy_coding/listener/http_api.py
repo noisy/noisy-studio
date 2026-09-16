@@ -546,6 +546,7 @@ def status_payload(state: ListenerState) -> dict:
     never disagree about what the daemon means."""
     _maybe_refresh_latest_version(state)
     from noisy_coding import providers as _providers
+    from noisy_coding.providers import selection
 
     return {
                             "listening": not state.paused,
@@ -556,6 +557,7 @@ def status_payload(state: ListenerState) -> dict:
                             # selected both ways? (A local-only setup is
                             # configured with no key at all.) Additive key.
                             "voice_ready": _providers.voice_ready(),
+                            "voice_labels": selection.active_voice_labels(),
                             # Named speakers whose bubbles carry a platform
                             # tint (twitch purple / youtube red).
                             "speaker_colors": state.speaker_colors(),
@@ -1071,8 +1073,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 import io
                 import wave
                 from noisy_coding.providers import selection
-                from noisy_coding.providers.grok import GrokSTT
-                from noisy_coding.providers.local import LocalSTT
+                from noisy_coding.providers import stt_provider
                 body = self._read_json_body()
                 try:
                     candidate = selection.choice(str(body.get('choice', '')))
@@ -1085,7 +1086,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     with wave.open(io.BytesIO(audio)) as sample:
                         if sample.getnchannels() != 1 or sample.getsampwidth() != 2 or sample.getframerate() != 16000 or sample.getnframes() > 256000:
                             raise ValueError('Use a short mono 16 kHz speech sample.')
-                    provider = GrokSTT() if candidate['provider'] == 'grok' else LocalSTT(selection.options_for(candidate))
+                    provider = stt_provider(candidate['provider'], selection.options_for(candidate))
                     started = time.monotonic()
                     text = provider.transcribe(audio, '' if state.language == 'auto' else state.language)
                     self._respond({'text': text, 'elapsed_ms': round((time.monotonic() - started)*1000)})
@@ -1095,8 +1096,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 import asyncio
                 import base64
                 from noisy_coding.providers import selection
-                from noisy_coding.providers.grok import GrokTTS
-                from noisy_coding.providers.local import LocalTTS
+                from noisy_coding.providers import tts_provider
                 body = self._read_json_body()
                 try:
                     candidate = selection.choice(str(body.get('choice', '')))
@@ -1105,7 +1105,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     voice = str(body.get('voice', ''))
                     if voice not in {v['id'] for v in selection.voices(candidate)}:
                         raise ValueError('Choose a voice from this engine.')
-                    provider = GrokTTS() if candidate['provider'] == 'grok' else LocalTTS(selection.options_for(candidate))
+                    provider = tts_provider(candidate['provider'], selection.options_for(candidate))
                     audio = asyncio.run(provider.synthesize(
                         'The search now ignores capital letters. All twelve tests passed. Shall I deploy it?',
                         voice, 'en', 1.0))

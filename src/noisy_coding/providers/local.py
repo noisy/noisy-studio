@@ -381,9 +381,9 @@ class LocalTTS:
     async def list_voices(self) -> list[dict]:
         engine = str(self.options.get("tts_engine") or "kokoro")
         if engine != "say":
-            names = await asyncio.to_thread(
-                lambda: list(_KokoroEngine.model().get_voices())
-            )
+            from noisy_coding.providers.manifest import KOKORO_VOICES
+
+            names = KOKORO_VOICES
             # Kokoro voice ids lead with a locale+gender prefix ("af_" =
             # American female); surface that as the language column.
             return [{"voice_id": name, "language": name.split("_")[0]} for name in names]

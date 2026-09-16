@@ -40,3 +40,9 @@ describe("VoiceSelector", () => {
     expect(wrapper.emitted("change")).toBeUndefined();
   });
 });
+
+it('uses the active provider voice label without changing portrait identity', () => {
+  const wrapper = mount(VoiceSelector, {props:{voice:'lux',voiceLabels:{lux:'Sarah · US'}}});
+  expect(wrapper.find('.vname').text()).toBe('SARAH · US');
+  wrapper.unmount();
+});

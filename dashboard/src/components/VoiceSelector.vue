@@ -6,7 +6,7 @@ import VoiceAvatar from "./VoiceAvatar.vue";
 // The voice picker: a collapsed current pick that unfolds into a
 // scrollable list (portrait thumb left, name right). Emits the new voice
 // name; persisting it is the parent's business.
-const props = defineProps<{ voice: string }>();
+const props = defineProps<{ voice: string; voiceLabels?: Record<string, string> }>();
 const emit = defineEmits<{ change: [voice: string] }>();
 
 const THUMB_PX = 44;
@@ -67,7 +67,7 @@ function pick(name: string) {
         <circle cx="7" cy="7" r="5.5" fill="none" stroke="var(--violet)" stroke-width="1" />
         <circle cx="7" cy="7" r="2" fill="var(--violet)" />
       </svg>
-      <span class="vname">{{ voice.toUpperCase() || "—" }}</span>
+      <span class="vname">{{ (voiceLabels?.[voice] ?? voice).toUpperCase() || "—" }}</span>
       <span class="arrow">{{ open ? "▴" : "▾" }}</span>
     </button>
     <div v-if="open" class="voicelist" :style="listStyle">
@@ -80,7 +80,7 @@ function pick(name: string) {
         @click="pick(name)"
       >
         <VoiceAvatar class="thumb" :voice="name" :size="THUMB_PX" />
-        <span class="name">{{ name.toUpperCase() }}</span>
+        <span class="name">{{ (voiceLabels?.[name] ?? name).toUpperCase() }}</span>
       </button>
     </div>
   </div>

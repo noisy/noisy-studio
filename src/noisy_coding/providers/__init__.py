@@ -30,28 +30,28 @@ __all__ = [
 ]
 
 
-def _grok_tts() -> TTSProvider:
+def _grok_tts(options=None) -> TTSProvider:
     from noisy_coding.providers.grok import GrokTTS
 
     return GrokTTS()
 
 
-def _grok_stt() -> STTProvider:
+def _grok_stt(options=None) -> STTProvider:
     from noisy_coding.providers.grok import GrokSTT
 
     return GrokSTT()
 
 
-def _local_tts() -> TTSProvider:
+def _local_tts(options=None) -> TTSProvider:
     from noisy_coding.providers.local import LocalTTS
 
-    return LocalTTS()
+    return LocalTTS(options)
 
 
-def _local_stt() -> STTProvider:
+def _local_stt(options=None) -> STTProvider:
     from noisy_coding.providers.local import LocalSTT
 
-    return LocalSTT()
+    return LocalSTT(options)
 
 
 _TTS_FACTORIES = {"grok": _grok_tts, "local": _local_tts}
@@ -108,9 +108,15 @@ def active_stt() -> STTProvider:
     return factory()
 
 
-def stt_provider(name: str) -> STTProvider:
+def stt_provider(name: str, options: dict | None = None) -> STTProvider:
     """A named STT engine, regardless of what the daemon has active -
     for harnesses that compare engines side by side."""
     if name not in _STT_FACTORIES:
         raise KeyError(f"unknown STT provider {name!r}; have {sorted(_STT_FACTORIES)}")
-    return _STT_FACTORIES[name]()
+    return _STT_FACTORIES[name](options)
+
+
+def tts_provider(name: str, options: dict | None = None) -> TTSProvider:
+    if name not in _TTS_FACTORIES:
+        raise TTSError(f"Unknown speech provider: {name}")
+    return _TTS_FACTORIES[name](options)

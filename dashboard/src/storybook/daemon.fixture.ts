@@ -79,3 +79,17 @@ export async function setProviders(patch:{tts?:string;stt?:string;prefetch?:bool
   return clone(providers.active);
 }
 resetScenario('conversation');
+
+import type { SpeechSettingsInfo, SpeechSettingsPatch } from '../api/client';
+import { speechFixture } from '../components/speechSettings.fixture';
+let speechSettings = speechFixture();
+export function setSpeechSettingsFixture(value: SpeechSettingsInfo) { speechSettings = clone(value); }
+export async function getSpeechSettings() { return clone(speechSettings); }
+export async function updateSpeechSettings(patch: SpeechSettingsPatch) {
+  const engine = speechSettings.engines.find(e => e.id === patch.choice)!;
+  if (patch.operation === 'prepare') { engine.state = 'ready'; engine.detail = 'Model files are on this Mac.'; }
+  else { speechSettings.active[engine.direction] = engine.id; engine.bindings = {...patch.bindings}; }
+  return clone(speechSettings);
+}
+export async function previewSpeechVoice() { throw new Error('Storybook has no live provider account. Voice preview errors are shown inline.'); }
+export async function previewRecognition() {return {text:'The search should ignore capital letters.',elapsed_ms:640};}

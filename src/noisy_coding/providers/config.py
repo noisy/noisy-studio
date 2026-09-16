@@ -17,6 +17,7 @@ providers.json shape:
 import json
 import os
 import tempfile
+import shutil
 import threading
 from typing import Any
 
@@ -70,6 +71,9 @@ def _save(tts, stt, local):
     if local:
         data["local"] = {**data.get("local", {}), **local}
     PROVIDERS_FILE.parent.mkdir(parents=True, exist_ok=True)
+    backup = PROVIDERS_FILE.with_suffix(".json.bak")
+    if PROVIDERS_FILE.exists() and not backup.exists():
+        shutil.copy2(PROVIDERS_FILE, backup)
     with tempfile.NamedTemporaryFile(mode="w", dir=PROVIDERS_FILE.parent, delete=False) as output:
         path = output.name
         json.dump(data, output, indent=2)

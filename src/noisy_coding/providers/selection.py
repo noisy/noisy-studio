@@ -138,3 +138,19 @@ def apply(candidate: dict, expected_revision: str, bindings: dict, identities: l
             if candidate['provider'] == 'local':
                 options['voice_bindings'] = {**options.get('voice_bindings', {}), **bindings}
         config.save(**{candidate['direction']: candidate['provider']}, **options)
+
+
+def active_voice_labels() -> dict[str, str]:
+    """Keep dashboard portraits stable while naming the voice actually heard."""
+    if config.tts_provider_name() != 'local':
+        return {}
+    provider = local.LocalTTS()
+    from noisy_coding.listener.state import VOICE_POOL
+    if provider.options.get('tts_engine') == 'say':
+        label = provider.options.get('tts_voice') or 'macOS system voice'
+        return {identity: label for identity in VOICE_POOL}
+    bindings = provider.options.get('voice_bindings', {})
+    fallback = provider.options.get('tts_voice') or local.DEFAULT_KOKORO_VOICE
+    bindings = {identity: bindings.get(identity, fallback) for identity in VOICE_POOL}
+    labels = {v['id']: v['label'] for v in voices(choice('kokoro:1'))}
+    return {identity: labels.get(voice, voice) for identity, voice in bindings.items()}

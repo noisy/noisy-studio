@@ -24,6 +24,7 @@ export interface DaemonStatus {
   api_key_set: boolean;
   /** A ready engine is selected both ways (local counts — no key needed). */
   voice_ready?: boolean;
+  voice_labels?: Record<string, string>;
   api_key_hint: string;
   stt_latency_ms: number | null;
   tts_latency_ms: number | null;
