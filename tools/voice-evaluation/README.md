@@ -66,3 +66,5 @@ The model files and temporary virtual environment are not application assets and
 `verify_settings_api.py` starts an isolated loopback server with a temporary provider configuration. It verifies that preparing cached weights leaves the active selection unchanged, applying Kokoro changes only synthesis, and the preview endpoint returns real WAV audio without queueing a conversation message. Neither script changes the running daemon, downloads models, or sends audio to a cloud provider.
 
 Run either script with `PYTHONPATH=src` in the project's Python environment. Results are retained beside the scripts for reproducibility.
+
+`verify_offline_recognition.py` additionally transcribes the first preserved hero utterance with Whisper base while `HF_HUB_OFFLINE=1`. It refuses incomplete caches, preserves the original recording, and stores the resulting transcript in `offline-recognition-results.json`. This verifies offline loading and recognition on the tested cached model, not accuracy across other languages or models.
