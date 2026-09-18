@@ -24,8 +24,8 @@ Independent follow-up review found and confirmed closure of microphone cancellat
 
 ## Verification on 2026-09-18
 
-- Full Python suite: **386 passed, 1 skipped**.
-- Full dashboard suite: **288 passed, 43 files**.
+- Full Python suite: **394 passed, 1 skipped**. After adding the changed-backup stale-request case, the affected provider-selection suite passed **22 tests**.
+- Full dashboard suite: **291 passed, 44 files**.
 - Dashboard production build and Storybook build passed. Storybook retains its existing large-chunk warning.
 - Isolated HTTP test: real Kokoro WAV preview, no queued agent messages, keyless local readiness and selection confirmed.
 - Cached Whisper offline test and earlier Kokoro synthesis experiments retained in `tools/voice-evaluation`.
@@ -36,7 +36,7 @@ Independent follow-up review found and confirmed closure of microphone cancellat
 
 - Real browser microphone permission/recording interaction and live cloud streaming/recovery have not been exercised end to end in this pass. Automated lifecycle and playback-boundary tests do not substitute for those hardware/network checks.
 - The broad research matrix is incomplete: Polish-language speech, coding identifiers, noise, end-of-turn latency, concurrent coding workload, cloud comparisons and blind listening quality still need a suitable corpus/runs. Current human recordings are English with a Polish accent. Do not claim a general model-quality winner or change defaults from these results.
-- Malformed options are rejected by the selection/legacy HTTP workflows, but arbitrary manual corruption of `providers.json` is not a complete recovery flow; its legacy unreadable-file default behavior remains.
+- Saved-settings corruption now fails closed without selecting an online fallback. The dashboard offers an explicit restore when a valid backup exists, preserves the damaged file, and rejects stale actions when either file changes. API/filesystem tests and the rendered Storybook recovery action verify this path. Without a valid backup, manual repair remains necessary; no defaults are silently written.
 - Adding OpenAI still requires its runtime adapter, credentials integration and provider-specific streaming event handling. The redesign supplies extension boundaries; it does not implement OpenAI.
 
 See `docs/speech-provider-integration.md` for the concrete extension points. These limits remain visible rather than treating green tests as proof of every original acceptance item.
