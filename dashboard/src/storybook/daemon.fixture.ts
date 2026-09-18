@@ -96,4 +96,4 @@ export async function updateSpeechSettings(patch: SpeechSettingsPatch) {
 export async function previewSpeechVoice() { throw new Error('Storybook has no live provider account. Voice preview errors are shown inline.'); }
 export async function previewRecognition() {return {text:'The search should ignore capital letters.',elapsed_ms:640};}
 
-export async function restoreSpeechSettings(_revision:string) { speechSettingsError=undefined; return getSpeechSettings(); }
+export async function restoreSpeechSettings(_revision:string) { speechSettingsError=undefined; status.voice_ready=true; return getSpeechSettings(); }

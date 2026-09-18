@@ -112,3 +112,5 @@
 @media (max-width:900px), (max-height:700px) { .hud .convo-body { flex-direction:column; overflow-y:auto; } .hud .convo-main { flex:none; min-height:450px; } .hud .convo-rail { width:100%; overflow:visible; border-left:0; border-top:1px solid var(--line); padding:20px 0 0; } }
 @media (max-width:760px) { .hud .cols { display:flex; flex-direction:column; flex:none; } .hud .col-mid { order:-1; } .hud .col-left { overflow:visible; } .hud .convo-panel { min-height:650px; } .hud .convo-body { overflow:visible; } .hud .conversation-heading { align-items:flex-start; } .hud .topbar { gap:8px; } .hud .logo svg { width:32px; } .hud .logo .title { font-size:16px; } .hud .logo .sub, .hud .vm-sub { display:none; } .hud .vm-label { font-size:12px; } }
 @media (max-width:600px) { .hud .conversation-heading { flex-direction:column; } .hud .recipient { max-width:100%; } .hud .topbar { flex-wrap:wrap; } .hud .topbar-logobox { width:100%; justify-content:space-between; gap:8px; } .hud .sysstate { width:100%; } .hud .header-action { flex:1; } }
+
+.setup-box.speech-recovery-box { max-width:900px; max-height:90vh; overflow:auto; }

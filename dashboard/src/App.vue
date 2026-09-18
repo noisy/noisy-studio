@@ -13,6 +13,7 @@ import ConversationLog from "./components/ConversationLog.vue";
 import ConversationTelemetry from "./components/ConversationTelemetry.vue";
 import DiagnosticChecklist from "./components/DiagnosticChecklist.vue";
 import EngineChoice from "./components/EngineChoice.vue";
+import SpeechSettings from "./components/SpeechSettings.vue";
 import HudPanel from "./components/HudPanel.vue";
 import Oscilloscope from "./components/Oscilloscope.vue";
 import TurnHistory from "./components/TurnHistory.vue";
@@ -207,6 +208,7 @@ const firstContactVerifying = ref(false);
 const firstContactFailed = ref(false);
 // Which path the engine cards picked; the key form belongs to "cloud".
 const gateMode = ref<"cloud" | "local">("cloud");
+const setupSpeechSettings = ref(false);
 // "Unconfigured" asks about a READY engine, not about a key: a local-only
 // setup has no key at all. voice_ready is additive — an older daemon
 // without it falls back to the key check.
@@ -452,10 +454,15 @@ const LANGUAGES: Record<string, string> = {
   <!-- First contact: the HUD itself is the demo — live scopes prove the
        mic works, API-dependent sections sit dimmed behind the key prompt. -->
   <div v-if="unconfigured" class="setup-overlay" role="dialog" aria-modal="true" aria-labelledby="setup-title">
-    <div class="setup-box">
+    <div class="setup-box" :class="{ 'speech-recovery-box': setupSpeechSettings }">
       <div id="setup-title" class="setup-title">Welcome to Noisy Studio</div>
       <!-- Engine first, key second (#36/#37): the cards decide whether the
            key form below applies at all. -->
+      <button class="ctl" @click="setupSpeechSettings = !setupSpeechSettings">
+        {{ setupSpeechSettings ? 'Back to setup' : 'Speech settings and recovery' }}
+      </button>
+      <SpeechSettings v-if="setupSpeechSettings" @configure="setupSpeechSettings = false" />
+      <template v-else>
       <EngineChoice @mode="gateMode = $event" />
       <!-- The welcome pitch has done its job the moment a key is submitted:
            from then on the box is a verification panel, and every saved
@@ -508,6 +515,7 @@ const LANGUAGES: Record<string, string> = {
         moment (<a href="https://status.x.ai" target="_blank" rel="noreferrer">status.x.ai</a>)
         — in that case the very same key might pass if you retry in a while.
       </p>
+      </template>
     </div>
   </div>
 
