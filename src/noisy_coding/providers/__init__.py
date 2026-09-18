@@ -88,20 +88,24 @@ def available() -> dict[str, list[str]]:
 
 
 def active_tts() -> TTSProvider:
-    name = config.tts_provider_name()
-    if name not in _TTS_FACTORIES:
-        raise TTSError(f"Unknown speech provider: {name}. Choose an available engine in Settings.")
-    factory = _TTS_FACTORIES[name]
-    return factory(config.provider_options(name))
-
+    try:
+        name = config.tts_provider_name()
+        if name not in _TTS_FACTORIES:
+            raise TTSError(f"Unknown speech provider: {name}. Choose an available engine in Settings.")
+        factory = _TTS_FACTORIES[name]
+        return factory(config.provider_options(name))
+    except config.ConfigurationError as error:
+        raise TTSError(str(error)) from None
 
 def active_stt() -> STTProvider:
-    name = config.stt_provider_name()
-    if name not in _STT_FACTORIES:
-        raise STTError(f"Unknown recognition provider: {name}. Choose an available engine in Settings.")
-    factory = _STT_FACTORIES[name]
-    return factory(config.provider_options(name))
-
+    try:
+        name = config.stt_provider_name()
+        if name not in _STT_FACTORIES:
+            raise STTError(f"Unknown recognition provider: {name}. Choose an available engine in Settings.")
+        factory = _STT_FACTORIES[name]
+        return factory(config.provider_options(name))
+    except config.ConfigurationError as error:
+        raise STTError(str(error)) from None
 
 def stt_provider(name: str, options: dict | None = None) -> STTProvider:
     """A named STT engine, regardless of what the daemon has active -

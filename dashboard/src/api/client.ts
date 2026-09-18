@@ -270,11 +270,17 @@ export interface SpeechSettingsInfo {
 export interface SpeechSettingsPatch {
   operation: 'prepare' | 'apply'; choice: string; revision: string; bindings: Record<string, string>;
 }
-export function getSpeechSettings(): Promise<SpeechSettingsInfo> { return getJson('/speech-settings'); }
-export function updateSpeechSettings(patch: SpeechSettingsPatch): Promise<SpeechSettingsInfo> { return postJson('/speech-settings', patch); }
+async function speechRequest<T>(path: string, body?: object): Promise<T> {
+  const response = await fetch(path, body === undefined ? undefined : {method:'POST', body:JSON.stringify(body)});
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) throw new Error(typeof payload?.error === 'string' ? payload.error : 'Could not reach speech settings. Check the connection and retry.');
+  return payload as T;
+}
+export function getSpeechSettings(): Promise<SpeechSettingsInfo> { return speechRequest('/speech-settings'); }
+export function updateSpeechSettings(patch: SpeechSettingsPatch): Promise<SpeechSettingsInfo> { return speechRequest('/speech-settings', patch); }
 export function previewSpeechVoice(choice: string, voice: string): Promise<{audio: string; content_type: string}> {
-  return postJson('/speech-settings/preview', {choice, voice});
+  return speechRequest('/speech-settings/preview', {choice, voice});
 }
 export function previewRecognition(choice: string, audio: string): Promise<{text: string; elapsed_ms: number}> {
-  return postJson('/speech-settings/transcribe', {choice, audio});
+  return speechRequest('/speech-settings/transcribe', {choice, audio});
 }

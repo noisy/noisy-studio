@@ -2,8 +2,8 @@
 
 Same philosophy as credentials.py: no env-var maze, one source of truth
 in the config dir, and because every call re-reads it, switching provider
-is a file write — no daemon restart. The file is optional; missing or
-broken means the defaults (Grok both ways).
+is a file write — no daemon restart. A missing file uses defaults. An unreadable or malformed existing file
+stops provider selection instead of silently falling back to an online service.
 
 providers.json shape:
 
@@ -35,12 +35,47 @@ DEFAULT_STT = "grok"
 DEFAULT_LOCAL_STT_MODEL = "base"
 
 
+class ConfigurationError(ValueError):
+    """Saved speech choices cannot be used safely; never include their contents."""
+
+
+def _settings_error() -> ConfigurationError:
+    return ConfigurationError(
+        'Saved speech settings are unreadable or invalid. No fallback engine was selected. '
+        'Restore providers.json from a valid backup, then retry.'
+    )
+
+
 def _read() -> dict[str, Any]:
     try:
         data = json.loads(PROVIDERS_FILE.read_text())
-        return data if isinstance(data, dict) else {}
-    except (OSError, ValueError):
+    except FileNotFoundError:
         return {}
+    except (OSError, ValueError):
+        raise _settings_error() from None
+    if not isinstance(data, dict):
+        raise _settings_error()
+    for direction in ('stt', 'tts'):
+        if direction in data and (not isinstance(data[direction], str) or not data[direction].strip()):
+            raise _settings_error()
+    local = data.get('local', {})
+    providers = data.get('providers', {})
+    if not isinstance(local, dict) or not isinstance(providers, dict):
+        raise _settings_error()
+    for options in [local, *providers.values()]:
+        if not isinstance(options, dict):
+            raise _settings_error()
+        bindings = options.get('voice_bindings', {})
+        catalogs = options.get('voice_bindings_by_engine', {})
+        if not isinstance(catalogs, dict):
+            raise _settings_error()
+        for mapping in [bindings, *catalogs.values()]:
+            if not isinstance(mapping, dict) or any(not isinstance(voice, str) for voice in mapping.values()):
+                raise _settings_error()
+    for field in ('stt_model', 'tts_engine', 'tts_voice'):
+        if field in local and not isinstance(local[field], str):
+            raise _settings_error()
+    return data
 
 
 def tts_provider_name() -> str:

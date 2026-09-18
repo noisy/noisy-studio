@@ -61,9 +61,10 @@ async function reload() {
   try {
     const [settings, status] = await Promise.all([getSpeechSettings(), getStatus().catch(() => undefined)]);
     info.value = settings;
+    if (!editing.value) error.value = '';
     runtimeModes.value = {stt:status?.recognition_mode, tts:status?.speech_output_mode};
   }
-  catch { error.value = 'Could not load speech settings. Check the connection and retry.'; }
+  catch (cause) { error.value = cause instanceof Error ? cause.message : 'Could not load speech settings. Check the connection and retry.'; }
 }
 async function save(operation: 'prepare' | 'apply') {
   if (!info.value || !candidate.value) return;

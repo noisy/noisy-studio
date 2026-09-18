@@ -40,9 +40,20 @@ def test_unknown_provider_never_silently_sends_speech_to_grok(providers_file):
         providers.active_tts()
 
 
-def test_broken_file_falls_back_to_grok(providers_file):
-    providers_file.write_text("{not json")
-    assert isinstance(providers.active_tts(), GrokTTS)
+@pytest.mark.parametrize('contents', [
+    '{not json', '[]', '{"stt":null}', '{"providers":[]}',
+    '{"local":{"tts_engine":[]}}', '{"local":{"voice_bindings":[]}}',
+    '{"providers":{"grok":{"voice_bindings_by_engine":{"grok:tts":[]}}}}',
+])
+def test_invalid_saved_settings_never_fall_back_or_get_overwritten(providers_file, contents):
+    providers_file.write_text(contents)
+    with pytest.raises(providers.TTSError, match="No fallback engine"):
+        providers.active_tts()
+    with pytest.raises(providers.STTError, match="No fallback engine"):
+        providers.active_stt()
+    with pytest.raises(config.ConfigurationError):
+        config.save(tts='grok')
+    assert providers_file.read_text() == contents
 
 
 def test_save_merges_local_options(providers_file):

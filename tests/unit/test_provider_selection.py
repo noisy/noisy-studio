@@ -198,3 +198,35 @@ def test_capture_readiness_depends_only_on_the_selected_recognizer(settings_file
     assert {'capture':providers.direction_ready('stt'), 'complete_setup':providers.voice_ready()} == {
         'capture':expected, 'complete_setup':False,
     }
+
+
+def test_invalid_configuration_keeps_status_alive_and_settings_recovers_after_repair(settings_file, monkeypatch):
+    import http.client
+    import json
+    from noisy_coding.listener import http_api
+    from noisy_coding.listener.state import ListenerState
+    monkeypatch.setattr(http_api, '_maybe_refresh_latest_version', lambda state: None)
+    monkeypatch.setattr(http_api.credentials, 'api_key', lambda: '')
+    monkeypatch.setattr(http_api.credentials, 'api_key_hint', lambda: '')
+    settings_file.write_text('{invalid')
+    server = http_api.start_http_api(ListenerState(), 0)
+    connection = http.client.HTTPConnection('127.0.0.1', server.server_address[1])
+    try:
+        connection.request('GET', '/status')
+        response = connection.getresponse()
+        status = json.loads(response.read())
+        assert (response.status, status['voice_ready'], status['recognition_mode'], status['speech_output_mode']) == (200, False, 'unavailable', 'unavailable')
+        connection.request('GET', '/speech-settings')
+        response = connection.getresponse()
+        error = json.loads(response.read())
+        assert (response.status, error['code'], settings_file.read_text()) == (409, 'invalid_speech_settings', '{invalid')
+
+        settings_file.write_text('{"stt":"grok","tts":"grok"}')
+        connection.request('GET', '/speech-settings')
+        response = connection.getresponse()
+        recovered = json.loads(response.read())
+        assert (response.status, recovered['active']) == (200, {'stt':'grok:stt', 'tts':'grok:tts'})
+    finally:
+        connection.close()
+        server.shutdown()
+        server.server_close()

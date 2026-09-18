@@ -107,7 +107,10 @@ def apply(candidate: dict, expected_revision: str, bindings: dict, identities: l
 
 def active_voice_labels() -> dict[str, str]:
     """Keep dashboard portraits stable while naming the voice actually heard."""
-    name = config.tts_provider_name()
+    try:
+        name = config.tts_provider_name()
+    except config.ConfigurationError:
+        return {}
     adapter = engine_registry.adapters.get(name)
     if not adapter:
         return {}

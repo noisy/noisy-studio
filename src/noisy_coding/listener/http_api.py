@@ -14,6 +14,7 @@ from urllib.parse import parse_qs, urlparse
 
 from noisy_coding import credentials, diagnostics, harness, playback
 from noisy_coding.config_dir import CONFIG_DIR
+from noisy_coding.providers.config import ConfigurationError
 from noisy_coding.listener import stt_lab
 from noisy_coding.listener import pricing, speech, tab_audio
 from noisy_coding.listener.dashboard import DASHBOARD_HTML
@@ -630,6 +631,12 @@ def state_snapshot(state: ListenerState) -> dict:
 def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
     class Handler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
+            try:
+                self._handle_GET()
+            except ConfigurationError as error:
+                self._respond({"error": str(error), "code": "invalid_speech_settings"}, status=409)
+
+        def _handle_GET(self) -> None:
             url = urlparse(self.path)
             if url.path == "/":
                 # The Vue HUD is the main dashboard; the legacy one stays
@@ -764,6 +771,12 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 self._respond({"error": "not found"}, status=404)
 
         def do_POST(self) -> None:
+            try:
+                self._handle_POST()
+            except ConfigurationError as error:
+                self._respond({"error": str(error), "code": "invalid_speech_settings"}, status=409)
+
+        def _handle_POST(self) -> None:
             if self.path == "/harness/event":
                 body = self._read_json_body()
                 name = str(body.get("harness") or "")
