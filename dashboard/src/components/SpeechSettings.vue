@@ -123,7 +123,7 @@ onUnmounted(() => { clearInterval(poll); stop(); });
           <div v-if="needsMicPause" class="feedback"><p>Pause the main microphone so samples cannot become messages in your conversation.</p><button @click="pauseMainMic">Pause main microphone</button></div>
           <p v-if="error" class="error" role="alert">{{ error }} <button @click="cancel(); reload()">Refresh settings</button></p>
           <p class="apply-note">{{ section.id === 'tts' ? 'Applies to new speech. Already prepared replies keep their original voice.' : 'Applies to your next recording. Your current conversation is unchanged.' }}</p>
-          <button v-if="candidate.state === 'setup'" @click="emit('configure')">Open System settings</button>
+          <button v-if="candidate.state === 'setup' && candidate.setup_action === 'system-settings'" @click="emit('configure')">Open System settings</button>
           <footer>
             <button :disabled="busy" @click="cancel">Cancel</button>
             <button v-if="candidate.state === 'download' || candidate.state === 'error'" class="primary" :disabled="busy" @click="save('prepare')">{{ busy ? 'Preparing…' : candidate.state === 'error' ? 'Retry download' : 'Download model' }}</button>

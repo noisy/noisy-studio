@@ -17,7 +17,7 @@ def choices() -> list[dict]:
     result = []
     for direction in ('stt', 'tts'):
         result.append(dict(id=f'grok:{direction}', provider='grok', direction=direction,
-                           label='Grok', location='Online', model='', live=True,
+                           label='Grok', location='Online', model='', live=True, setup_action='system-settings',
                            description='Text appears while you speak.' if direction == 'stt'
                            else 'Replies begin playing as audio arrives.', languages='Multilingual'))
     for model, description in WHISPER_MODELS.items():
@@ -53,7 +53,7 @@ def readiness(candidate: dict) -> tuple[str, str]:
         return ('ready', 'Uses the installed macOS voice; no model download.') if shutil.which('say') else ('setup', 'macOS speech is unavailable on this computer.')
     dependency = 'faster_whisper' if direction == 'stt' else 'kokoro_onnx'
     if find_spec(dependency) is None:
-        return 'setup', 'This installation is missing offline speech support. Install the current desktop release.'
+        return 'setup', 'This installation is missing offline speech support. Use a desktop build with offline support, or keep your current engine.'
     if local.models_present(tts=direction == 'tts', stt=direction == 'stt', options=options_for(candidate)):
         return 'ready', 'Model files are on this Mac. Try a sample before switching.'
     names = {f"whisper-{candidate['model']}"} if direction == 'stt' else {'kokoro-v1.0.onnx', 'voices-v1.0.bin'}

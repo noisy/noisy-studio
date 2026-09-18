@@ -261,6 +261,7 @@ export interface SpeechEngine {
   id: string; provider: string; direction: 'stt' | 'tts'; label: string;
   location: string; model: string; live: boolean; description: string; languages: string;
   state: 'ready' | 'setup' | 'download' | 'downloading' | 'error' | 'unsupported'; detail: string;
+  setup_action?: 'system-settings';
   voices: {id: string; label: string}[]; bindings: Record<string, string>;
 }
 export interface SpeechSettingsInfo {
