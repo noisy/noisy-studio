@@ -1,0 +1,48 @@
+{
+  "scope": "One English human utterance with Polish accent. Offline batch inference, not end-to-end latency or quality ranking.",
+  "method": "Fresh process per model. OS disk cache is not flushed. RSS includes Python and runtime, not just model weights.",
+  "platform": "macOS-26.6.1-arm64-arm-64bit-Mach-O",
+  "python": "3.13.0",
+  "versions": {
+    "faster-whisper": "1.2.1",
+    "ctranslate2": "4.8.1",
+    "numpy": "2.5.1"
+  },
+  "clip": "u1",
+  "audio_seconds": 12.63609999999404,
+  "runs": [
+    {
+      "model": "tiny",
+      "process_cold_load_ms": 3107,
+      "first_inference_ms": 965,
+      "warm_runs": 20,
+      "warm_median_ms": 238,
+      "warm_p95_ms": 265,
+      "peak_process_rss_bytes": 373129216,
+      "cached_snapshot_bytes": 78203619,
+      "transcript": "The search stopped working after the last change. It finds exact names, but part of a name gives me nothing."
+    },
+    {
+      "model": "base",
+      "process_cold_load_ms": 368,
+      "first_inference_ms": 464,
+      "warm_runs": 20,
+      "warm_median_ms": 414,
+      "warm_p95_ms": 481,
+      "peak_process_rss_bytes": 549912576,
+      "cached_snapshot_bytes": 147882941,
+      "transcript": "The search stopped working after the last change. It finds exact names but part of a name gives me nothing."
+    },
+    {
+      "model": "small",
+      "process_cold_load_ms": 759,
+      "first_inference_ms": 1272,
+      "warm_runs": 20,
+      "warm_median_ms": 1244,
+      "warm_p95_ms": 1345,
+      "peak_process_rss_bytes": 960954368,
+      "cached_snapshot_bytes": 486212372,
+      "transcript": "The search stopped working after the last change it finds exact names, but part of a name gives me nothing"
+    }
+  ]
+}

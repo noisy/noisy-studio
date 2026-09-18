@@ -7,5 +7,40 @@
   "preview_content_type": "audio/wav",
   "preview_sample_rate": 24000,
   "preview_seconds": 4.992,
-  "agent_messages_queued": 0
+  "agent_messages_queued": 0,
+  "keyless_local_ready": true,
+  "final_selection": {
+    "stt": "whisper:base",
+    "tts": "kokoro:1"
+  },
+  "current_voice_labels": {
+    "ara": "Heart \u00b7 US",
+    "carina": "Bella \u00b7 US",
+    "eve": "Nicole \u00b7 US",
+    "iris": "Nova \u00b7 US",
+    "luna": "Sarah \u00b7 US",
+    "celeste": "Sky \u00b7 US",
+    "ursa": "Adam \u00b7 US",
+    "liora": "Echo \u00b7 US",
+    "aurora": "Michael \u00b7 US",
+    "altair": "Onyx \u00b7 US",
+    "atlas": "Puck \u00b7 US",
+    "kepler": "Alice \u00b7 UK",
+    "rex": "Emma \u00b7 UK",
+    "cosmo": "Isabella \u00b7 UK",
+    "helios": "Daniel \u00b7 UK",
+    "leo": "George \u00b7 UK",
+    "sirius": "Lewis \u00b7 UK",
+    "castor": "Bella \u00b7 US",
+    "helix": "Heart \u00b7 US",
+    "lumen": "Nicole \u00b7 US",
+    "lux": "Nova \u00b7 US",
+    "naksh": "Sarah \u00b7 US",
+    "orion": "Sky \u00b7 US",
+    "perseus": "Adam \u00b7 US",
+    "rigel": "Echo \u00b7 US",
+    "sal": "Michael \u00b7 US",
+    "zagan": "Onyx \u00b7 US",
+    "zenith": "Puck \u00b7 US"
+  }
 }

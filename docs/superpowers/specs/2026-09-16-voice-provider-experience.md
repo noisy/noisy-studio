@@ -1,6 +1,6 @@
 # Speech settings: provider experience redesign
 
-Status: proposed design for review; implementation and measured model comparison not yet completed.
+Status: implemented and regression-tested; broader empirical validation remains incomplete. See the completion audit in ../plans/2026-09-16-speech-completion-audit.md.
 Date: 2026-09-16. Baseline: origin/v3-desktop, 789fe39 (v3.0.0-alpha.9).
 Worktree: noisy-coding-provider-experience. Branch: codex/voice-provider-redesign.
 
@@ -136,4 +136,4 @@ Deferred: automatic model ranking, installing arbitrary runtimes, voice cloning,
 
 ## Review decision
 
-Recommended direction: two task-oriented sections with draft/test/apply and explicit voice reassignment. Approve this behavior and scope before implementing the panel. Model quality rankings remain an empirical follow-up, not an assumption embedded in this proposal.
+Implemented direction: two task-oriented sections with draft/test/apply and explicit voice reassignment. Model quality rankings remain an empirical follow-up, not an assumption embedded in this proposal.

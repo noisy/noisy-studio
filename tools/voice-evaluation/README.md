@@ -63,8 +63,22 @@ The model files and temporary virtual environment are not application assets and
 
 `verify_local_synthesis.py` exercises the actual Kokoro adapter with three identity-to-voice mappings and validates the generated WAV headers. The recorded run produced mono 24 kHz, 16-bit WAVs for Sarah, Adam and Emma. Its first request includes initialization; subsequent requests are warm. These three samples are a runtime smoke check, not a listening study or latency distribution.
 
-`verify_settings_api.py` starts an isolated loopback server with a temporary provider configuration. It verifies that preparing cached weights leaves the active selection unchanged, applying Kokoro changes only synthesis, and the preview endpoint returns real WAV audio without queueing a conversation message. Neither script changes the running daemon, downloads models, or sends audio to a cloud provider.
+`verify_settings_api.py` starts an isolated loopback server with a temporary provider configuration. It verifies that preparing cached weights leaves the active selection unchanged, applying Kokoro changes only synthesis, and the preview endpoint returns real WAV audio without queueing a conversation message. Neither script changes the running daemon, downloads models, or sends audio to a cloud provider. The updated HTTP test also selects cached Whisper base and verifies complete local readiness with the API-key reader explicitly disabled in that isolated process.
 
 Run either script with `PYTHONPATH=src` in the project's Python environment. Results are retained beside the scripts for reproducibility.
 
 `verify_offline_recognition.py` additionally transcribes the first preserved hero utterance with Whisper base while `HF_HUB_OFFLINE=1`. It refuses incomplete caches, preserves the original recording, and stores the resulting transcript in `offline-recognition-results.json`. This verifies offline loading and recognition on the tested cached model, not accuracy across other languages or models.
+
+## Isolated process memory and warm inference (2026-09-18)
+
+`measure_local_resources.py` uses the first preserved hero utterance (12.64 seconds, English with a Polish accent). Each cached Whisper model runs in a fresh offline process, with one first inference and 20 warm repetitions. Originals and live configuration remain untouched. Runtime versions and raw results are in `local-resource-results.json`.
+
+| Model | Cached snapshot | Peak process RSS | Warm median / p95 |
+| --- | ---: | ---: | ---: |
+| tiny | 78.2 MB | 373.1 MB | 238 / 265 ms |
+| base | 147.9 MB | 549.9 MB | 414 / 481 ms |
+| small | 486.2 MB | 961.0 MB | 1244 / 1345 ms |
+
+These are decimal MB and batch inference times after recording, not the full conversational delay. Peak RSS includes Python and runtime overhead. A fresh process does not imply cold disk caches: model load times were 3107 / 368 / 759 ms respectively, so do not rank cold startup from this single sequential run. Machine load also explains variation from the earlier timing pass. No default changes are justified by these results alone.
+
+Reproduce with `PYTHONPATH=src python tools/voice-evaluation/measure_local_resources.py`. Missing models are skipped; `HF_HUB_OFFLINE=1` is set before provider imports. Polish-language recognition, code identifiers, background noise, endpointing, cloud comparison and listening quality remain unmeasured.
