@@ -3,10 +3,13 @@ import base64
 import http.client
 import io
 import json
+import os
+import subprocess
 import tempfile
 import wave
 from pathlib import Path
 
+os.environ['HF_HUB_OFFLINE'] = '1'
 from noisy_coding import credentials, providers
 from noisy_coding.listener.http_api import start_http_api
 from noisy_coding.listener.state import ListenerState
@@ -46,6 +49,21 @@ def main():
             assert result['agent_messages_queued'] == 0
             post('/speech-settings', {'operation':'apply', 'choice':'whisper:base', 'revision':selection.revision(), 'bindings':{}})
             assert providers.direction_ready('stt') and providers.voice_ready(), 'Keyless local setup is not ready'
+            take = Path(__file__).resolve().parents[2] / 'tools/demo-recorder/takes/hero-v1'
+            events = json.loads((take / 'timeline.json').read_text())['events']
+            start = next(event for event in events if event['type'] == 'user-start')
+            end = next(event for event in events if event['type'] == 'user-end' and event['utterance'] == start['utterance'])
+            sample = Path(directory) / 'recognition.wav'
+            subprocess.run(['ffmpeg', '-v', 'error', '-ss', str(start['atMs'] / 1000), '-i', str(take / 'original.webm'), '-t', str((end['atMs'] - start['atMs']) / 1000), '-ar', '16000', '-ac', '1', '-c:a', 'pcm_s16le', str(sample)], check=True)
+            state.set_language('en')
+            selection_before_preview = selection.active_choices()
+            transcript = post('/speech-settings/transcribe', {'choice': 'whisper:base', 'audio': base64.b64encode(sample.read_bytes()).decode('ascii')})
+            assert transcript['text'].strip(), 'Recognition preview returned no text'
+            assert selection.active_choices() == selection_before_preview, 'Recognition preview changed selection'
+            assert len(state.drain()) == 0, 'Recognition preview queued agent messages'
+            result['recognition_preview'] = transcript
+            result['recognition_preview_preserved_selection'] = True
+            result['recognition_preview_queued_messages'] = 0
             result['keyless_local_ready'] = True
             result['final_selection'] = selection.active_choices()
             result['current_voice_labels'] = selection.active_voice_labels()

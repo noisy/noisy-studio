@@ -8,6 +8,12 @@
   "preview_sample_rate": 24000,
   "preview_seconds": 4.992,
   "agent_messages_queued": 0,
+  "recognition_preview": {
+    "text": "The search stopped working after the last change. It finds exact names but part of a name gives me nothing.",
+    "elapsed_ms": 1143
+  },
+  "recognition_preview_preserved_selection": true,
+  "recognition_preview_queued_messages": 0,
   "keyless_local_ready": true,
   "final_selection": {
     "stt": "whisper:base",
