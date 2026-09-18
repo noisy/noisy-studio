@@ -73,6 +73,7 @@ export async function saveApiKey() { status.api_key_set=true;status.voice_ready=
 export async function getProviders():Promise<ProvidersInfo> { if(!providers) throw new Error('Simulated unavailable providers endpoint'); return clone(providers); }
 export async function setProviders(patch:{tts?:string;stt?:string;prefetch?:boolean}) {
   if(!providers) throw new Error('Simulated unavailable providers endpoint');
+  if ((patch.tts === 'local' || patch.stt === 'local') && providers.downloads?.some(d => d.state !== 'done')) throw new Error('{"error":"Preparing local models. Your current engines remain active; apply again after the download finishes."}');
   if(patch.tts) providers.active.tts=patch.tts;
   if(patch.stt) providers.active.stt=patch.stt;
   if(providers.active.tts==='local') status.voice_ready=true;

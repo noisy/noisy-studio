@@ -114,3 +114,18 @@ export const DownloadFailed = story({
     },
   ],
 });
+
+
+export const PreparingBeforeApply: StoryObj<typeof EngineChoice> = {
+  ...story({
+    catalog:[GROK, LOCAL], active:{stt:'grok',tts:'grok'},
+    downloads:[{name:'whisper-base',label:'Whisper base',state:'downloading',done_bytes:0,total_bytes:0,detail:''}],
+  }),
+  play: async ({canvasElement}) => {
+    for (let attempt=0; attempt<30; attempt++) {
+      const button=[...canvasElement.querySelectorAll('button')].find(b=>b.textContent?.includes('Local · Offline'));
+      if (button) {button.click();return;}
+      await new Promise(resolve=>setTimeout(resolve,30));
+    }
+  },
+};

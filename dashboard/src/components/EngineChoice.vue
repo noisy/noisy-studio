@@ -1,13 +1,5 @@
 <script setup lang="ts">
-// The first-contact question, asked FIRST: which voice engine? (#36/#37)
-//
-// Before providers existed the gate opened with "paste an xAI key" — which
-// silently assumed the answer. Now it offers one card per engine kind:
-// CLOUD keeps the existing pitch + key + verification flow (the parent owns
-// that; we only tell it which path is chosen), LOCAL is one click — select
-// local both ways, kick the weight prefetch, and show the download bars
-// right here in the gate. Self-contained like ProviderSettings: fetches
-// /providers itself, so the parent grows one tag and one event handler.
+// Prepare local models before selecting them; the working engines stay active.
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { getProviders, setProviders, type ProvidersInfo } from "../api/client";
 
@@ -17,6 +9,7 @@ const info = ref<ProvidersInfo | null>(null);
 const chosen = ref<"cloud" | "local">("cloud");
 const busy = ref(false);
 const error = ref("");
+const pendingLocal = ref(false);
 
 const POLL_MS = 1000;
 let pollTimer: ReturnType<typeof setInterval> | undefined;
@@ -47,10 +40,13 @@ async function refresh() {
   } catch {
     info.value = null; // an old daemon — the parent's key flow still works
   }
-  clearInterval(pollTimer);
-  if (downloading.value) pollTimer = setInterval(refresh, POLL_MS);
 }
-onMounted(refresh);
+onMounted(() => {
+  void refresh();
+  pollTimer = setInterval(() => {
+    if (!busy.value && (chosen.value === 'local' || downloading.value)) void refresh();
+  }, POLL_MS);
+});
 onUnmounted(() => clearInterval(pollTimer));
 
 // The daemon answers errors as {"error": "..."} — surface that wording;
@@ -72,15 +68,13 @@ async function pickLocal() {
   busy.value = true;
   error.value = "";
   try {
-    // Benchmark-optimal default: local hearing is faster than the cloud
-    // round-trip, but local speech takes ~5 s per reply - so when a Grok
-    // key exists, keep the cloud voice and go local only for STT.
-    const grokReady = info.value?.catalog.find((p) => p.name === "grok")?.ready;
-    await setProviders({ stt: "local", tts: grokReady ? "grok" : "local" });
-    await refresh();
+    pendingLocal.value = true;
+    await setProviders({ stt: "local", tts: "local" });
+    pendingLocal.value = false;
   } catch (e) {
     error.value = friendly(e);
   } finally {
+    await refresh();
     busy.value = false;
   }
 }
@@ -92,17 +86,8 @@ function megabytes(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(0)} MB`;
 }
 
-async function retryDownloads() {
-  busy.value = true;
-  try {
-    await setProviders({ prefetch: true });
-    await refresh();
-  } catch (e) {
-    error.value = friendly(e);
-  } finally {
-    busy.value = false;
-  }
-}
+async function retryDownloads() { await pickLocal(); }
+
 </script>
 
 <template>
@@ -118,7 +103,7 @@ async function retryDownloads() {
         <span class="card-title">Cloud · Grok (xAI)</span>
         <span class="card-text">
           The full experience: natural voices, live streaming both ways.
-          Needs an API key — runs on pennies.
+          Requires an xAI API key and an internet connection.
         </span>
       </button>
       <button
@@ -130,9 +115,9 @@ async function retryDownloads() {
       >
         <span class="card-title">Local · Offline</span>
         <span class="card-text">
-          No key needed: whisper transcribes you on this machine — faster
-          than the cloud. One click; the models download while you watch.
-          (Without a key, Kokoro also speaks locally: ~5 s per reply.)
+          Whisper transcribes your speech; Kokoro speaks in English on this
+          machine. Download the models first, then choose Use local engines.
+          Text appears after you finish; replies are generated before playback.
         </span>
       </button>
     </div>
@@ -171,6 +156,9 @@ async function retryDownloads() {
         ✓ Local voice is set up — this gate closes by itself. A cloud key can
         be added any time in SETTINGS.
       </p>
+      <button v-if="pendingLocal && localEntry?.ready" class="retry" :disabled="busy || downloading" @click="pickLocal">
+        {{ downloading ? 'Preparing local engines…' : 'Use local engines' }}
+      </button>
       <p v-if="error" class="remedy">{{ error }}</p>
     </template>
   </div>
