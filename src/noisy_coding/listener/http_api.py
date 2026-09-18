@@ -560,8 +560,7 @@ def status_payload(state: ListenerState) -> dict:
                             "voice_labels": selection.active_voice_labels(),
                             "recognition_mode": _providers.effective_mode("stt", state.mode),
                             "recognition_live_available": _providers.effective_mode("stt", "live") == "live",
-                            "speech_live_available": _providers.effective_mode("tts", "live") == "live",
-                            "speech_output_mode": _providers.effective_mode("tts", state.tts_mode),
+                            **speech.output_status(state),
                             # Named speakers whose bubbles carry a platform
                             # tint (twitch purple / youtube red).
                             "speaker_colors": state.speaker_colors(),

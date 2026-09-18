@@ -346,17 +346,30 @@ def _hold_for_user_turn(state: ListenerState, utterance_id: int) -> None:
         _log(f"[speak] user finished — held playback {time.monotonic() - held_since:.1f}s")
 
 
+def _streaming_available(state: ListenerState, provider: providers.TTSProvider) -> bool:
+    # Browser playback currently consumes complete clips, not streamed chunks.
+    return provider.supports_streaming and state.output_device != "browser"
+
+
 def _tts_streaming(state: ListenerState, provider: providers.TTSProvider) -> bool:
     """Whether to stream TTS: env override wins, else the daemon's tts_mode."""
-    if not provider.supports_streaming:
-        return False  # batch-only backend (e.g. local) — never a hard error
-    if state.output_device == "browser":
-        # The tab plays one complete clip per message (v1) — streaming
-        # chunks over the bridge is a later iteration.
+    if not _streaming_available(state, provider):
         return False
     if os.environ.get(TTS_MODE_ENV_VAR, "").lower() == "live":
         return True
     return state.tts_mode == "live"
+
+
+def output_status(state: ListenerState) -> dict:
+    """Describe the same playback decision the speech worker makes."""
+    try:
+        provider = providers.active_tts()
+    except providers.TTSError:
+        return {"speech_live_available": False, "speech_output_mode": "unavailable"}
+    return {
+        "speech_live_available": _streaming_available(state, provider),
+        "speech_output_mode": "live" if _tts_streaming(state, provider) else "batch",
+    }
 
 
 def _next_to_play(seq: int) -> bool:
