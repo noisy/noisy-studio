@@ -106,23 +106,15 @@ def apply(candidate: dict, expected_revision: str, bindings: dict, identities: l
 
 def active_voice_labels() -> dict[str, str]:
     """Keep dashboard portraits stable while naming the voice actually heard."""
-    if config.tts_provider_name() != 'local':
-        name = config.tts_provider_name()
-        adapter = engine_registry.adapters.get(name)
-        if not adapter:
-            return {}
-        candidate = next((c for c in adapter.choices() if c['id'] == adapter.active_choice('tts')), None)
-        if not candidate:
-            return {}
-        labels = {v['id']: v['label'] for v in adapter.voices(candidate)}
-        return {identity: labels.get(voice, voice) for identity, voice in config.provider_options(name).get('voice_bindings', {}).items()}
-    provider = local.LocalTTS()
-    from noisy_coding.listener.state import VOICE_POOL
-    if provider.options.get('tts_engine') == 'say':
-        label = provider.options.get('tts_voice') or 'macOS system voice'
-        return {identity: label for identity in VOICE_POOL}
-    bindings = provider.options.get('voice_bindings', {})
-    fallback = provider.options.get('tts_voice') or local.DEFAULT_KOKORO_VOICE
-    bindings = {identity: bindings.get(identity, fallback) for identity in VOICE_POOL}
-    labels = {v['id']: v['label'] for v in voices(choice('kokoro:1'))}
-    return {identity: labels.get(voice, voice) for identity, voice in bindings.items()}
+    name = config.tts_provider_name()
+    adapter = engine_registry.adapters.get(name)
+    if not adapter:
+        return {}
+    if adapter.active_voice_labels is not None:
+        return adapter.active_voice_labels()
+    candidate = next((c for c in adapter.choices() if c['id'] == adapter.active_choice('tts')), None)
+    if not candidate:
+        return {}
+    labels = {v['id']: v['label'] for v in adapter.voices(candidate)}
+    return {identity: labels.get(voice, voice)
+            for identity, voice in config.provider_options(name).get('voice_bindings', {}).items()}

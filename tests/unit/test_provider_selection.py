@@ -125,10 +125,12 @@ def test_third_provider_uses_the_shared_selection_lifecycle(settings_file, monke
     selection.apply(selected, selection.revision(), {'lux': 'voice-a'}, ['lux'])
 
     assert {
+        'labels': selection.active_voice_labels(),
         'active': selection.active_choices()['tts'],
         'bindings': selection.assignments(selected, ['lux']),
         'options': config.provider_options('example'),
     } == {
+        'labels': {'lux': 'Voice A'},
         'active': 'example:voice',
         'bindings': {'lux': 'voice-a'},
         'options': {'model': 'voice-v2', 'voice_bindings': {'lux': 'voice-a'}, 'voice_bindings_by_engine': {'example:voice': {'lux': 'voice-a'}}},
@@ -170,3 +172,17 @@ def test_catalog_explains_language_mismatch_before_apply(settings_file, monkeypa
     engines = selection.snapshot(['lux'], language='pl')['engines']
     kokoro = next(engine for engine in engines if engine['id']=='kokoro:1')
     assert (kokoro['state'], 'English' in kokoro['detail']) == ('unsupported', True)
+
+
+@pytest.mark.parametrize('engine, voice, expected', [
+    ('kokoro', 'bf_emma', 'Emma · UK'),
+    ('say', 'Samantha', 'Samantha'),
+])
+def test_local_voice_labels_preserve_legacy_voice_without_loading_models(settings_file, monkeypatch, engine, voice, expected):
+    from noisy_coding.providers import local
+    config.save(tts='local', tts_engine=engine, tts_voice=voice)
+    monkeypatch.setattr(local._KokoroEngine, 'model', lambda: pytest.fail('Labels must not load model weights'))
+
+    labels = selection.active_voice_labels()
+
+    assert labels['lux'] == expected

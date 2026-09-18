@@ -19,6 +19,7 @@ class EngineAdapter:
     prepare: Callable[[dict], None]
     active_choice: Callable[[str], str]
     validate_language: Callable[[dict, str], None]
+    active_voice_labels: Callable[[], dict[str, str]] | None = None
 
 
 def _builtin(name: str) -> EngineAdapter:
@@ -30,6 +31,7 @@ def _builtin(name: str) -> EngineAdapter:
         prepare=builtin_selection.prepare,
         active_choice=lambda direction: builtin_selection.active_choices()[direction],
         validate_language=builtin_selection.validate_language,
+        active_voice_labels=builtin_selection.local_voice_labels if name == "local" else None,
     )
 
 

@@ -99,3 +99,18 @@ def prepare(candidate: dict) -> None:
 def validate_language(candidate: dict, language: str) -> None:
     if candidate['id'] == 'kokoro:1' and language not in ('', 'auto', 'en', 'en-US', 'en-GB'):
         raise ValueError('Kokoro currently supports English in this app. Keep your current engine for this language.')
+
+
+def local_voice_labels() -> dict[str, str]:
+    """Include legacy defaults and newly assigned identities without loading weights."""
+    from noisy_coding.listener.state import VOICE_POOL
+
+    provider = local.LocalTTS()
+    if provider.options.get('tts_engine') == 'say':
+        label = provider.options.get('tts_voice') or 'macOS system voice'
+        return {identity: label for identity in VOICE_POOL}
+    bindings = provider.options.get('voice_bindings', {})
+    fallback = provider.options.get('tts_voice') or local.DEFAULT_KOKORO_VOICE
+    labels = {voice['id']: voice['label'] for voice in voices({'direction': 'tts', 'provider': 'local', 'model': 'kokoro'})}
+    return {identity: labels.get(bindings.get(identity, fallback), bindings.get(identity, fallback))
+            for identity in VOICE_POOL}
