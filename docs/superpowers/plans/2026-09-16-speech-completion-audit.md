@@ -18,19 +18,21 @@ Updated 2026-09-18. The feature is implemented in `codex/voice-provider-redesign
 | Live capability versus actual behavior | Status uses the playback decision, including browser batch output and live override; settings shows effective mode |
 | Late transcript updates cannot reopen finished turns | Finalized/cancelled turn tests at the state boundary |
 | Setup and unsupported-language guidance | Missing-runtime guidance no longer points to unrelated credential settings; language mismatch blocks Apply |
+| Saved-settings recovery | Validated snapshot, stale/missing/malformed backup tests, preserved damaged file; full App setup-overlay recovery story restores access to dashboard |
 | Responsive UI and onboarding | Rendered narrow/laptop Storybook inspection; new Preparing Before Apply story; earlier independent design review |
 
-Independent follow-up review found and confirmed closure of microphone cancellation, current voice labels, live-mode wording, and onboarding preparation issues. It also identified the old API-key capture gate, now replaced. Capture/finalize snapshot paths were reviewed separately.
+Independent follow-up review found and confirmed closure of microphone cancellation, current voice labels, live-mode wording, and onboarding preparation issues. It also identified the old API-key capture gate, now replaced. Capture/finalize snapshot paths were reviewed separately. A final independent recovery review found that the setup overlay blocked settings access; commit `678b536` exposes recovery inside that dialog. Follow-up source review confirmed closure, and browser verification exercised entry, restore and dashboard unlock.
 
 ## Verification on 2026-09-18
 
-- Full Python suite: **394 passed, 1 skipped**. After adding the changed-backup stale-request case, the affected provider-selection suite passed **22 tests**.
+- Full Python suite: **398 passed, 1 skipped**.
 - Full dashboard suite: **291 passed, 44 files**.
 - Dashboard production build and Storybook build passed. Storybook retains its existing large-chunk warning.
 - Isolated HTTP test: real Kokoro WAV preview and Whisper recognition preview, no queued agent messages, keyless local readiness and unchanged selection confirmed.
 - Cached Whisper offline test and earlier Kokoro synthesis experiments retained in `tools/voice-evaluation`.
 - Deterministic synthetic-noise probe: 45 offline transcriptions across tiny/base/small and clean/20 dB/10 dB conditions; results and limitations retained in `tools/voice-evaluation/noise-results.json`.
 - New isolated-process measurements record model snapshot sizes, peak process RSS, first inference and 20 warm repetitions per model.
+- Keyboard activation of recognition choices and Cancel verified in Storybook: active selection retained and focus returned to Change. Recovery dialog inspected at a narrow viewport.
 - Storybook available on port 6013; no live daemon configuration changed.
 
 ## Validation still outstanding
