@@ -82,3 +82,11 @@ Run either script with `PYTHONPATH=src` in the project's Python environment. Res
 These are decimal MB and batch inference times after recording, not the full conversational delay. Peak RSS includes Python and runtime overhead. A fresh process does not imply cold disk caches: model load times were 3107 / 368 / 759 ms respectively, so do not rank cold startup from this single sequential run. Machine load also explains variation from the earlier timing pass. No default changes are justified by these results alone.
 
 Reproduce with `PYTHONPATH=src python tools/voice-evaluation/measure_local_resources.py`. Missing models are skipped; `HF_HUB_OFFLINE=1` is set before provider imports. Polish-language recognition, code identifiers, background noise, endpointing, cloud comparison and listening quality remain unmeasured.
+
+## Deterministic noise probe (2026-09-18)
+
+`compare_noise.py` ran all five preserved hero utterances through cached Whisper tiny, base and small: clean audio, plus Gaussian white noise at whole-clip 20 dB and 10 dB SNR. All 45 transcriptions are retained in `noise-results.json`. The seed and noise definition are recorded; generated clips are temporary, and original recordings remain untouched. Run with `PYTHONPATH=src python tools/voice-evaluation/compare_noise.py`.
+
+The most consequential observed change was tiny turning “capital letters” into “couple of letters” at 10 dB in u2. Base retained “capital letters” at both levels, with an extra article. Small kept the same u2 wording across all three conditions. Tiny/base rendered u3 as “other tests” even without added noise; small rendered “add a test.” These examples favor testing base/small over tiny for this particular speaker and wording, not a general quality ranking.
+
+The script references are intended prompts, not independently verified verbatim transcripts, so no word-error-rate score is claimed. Noise is synthetic white noise rather than a real café, keyboard or competing speaker, and RMS includes pauses. Single inference timings are diagnostic only. This closes a reproducible synthetic-noise experiment, not the broader multilingual or real-world noise evaluation. No application default was changed.

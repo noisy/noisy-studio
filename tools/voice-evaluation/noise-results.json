@@ -1,0 +1,338 @@
+{
+  "kind": "Offline synthetic white-noise stress probe; not real-world noise or live latency",
+  "seed": 20260918,
+  "snr_definition": "Whole-clip RMS including pauses; Gaussian white noise",
+  "reference_limit": "Prompts describe intended speech, not verified verbatim ground truth",
+  "runs": [
+    {
+      "model": "tiny",
+      "clips": [
+        {
+          "clip": "u1",
+          "script_reference": "The search stopped working after the last change. It finds exact names, but part of a name gives me nothing.",
+          "snr_db": null,
+          "transcript": "The search stopped working after the last change. It finds exact names, but part of a name gives me nothing.",
+          "inference_ms": 490
+        },
+        {
+          "clip": "u1",
+          "script_reference": "The search stopped working after the last change. It finds exact names, but part of a name gives me nothing.",
+          "snr_db": 20,
+          "transcript": "The search stopped working after the last change. It finds exact names, but part of a name gives me nothing.",
+          "inference_ms": 235
+        },
+        {
+          "clip": "u1",
+          "script_reference": "The search stopped working after the last change. It finds exact names, but part of a name gives me nothing.",
+          "snr_db": 10,
+          "transcript": "The search stopped working after the last change. It finds exact names but part of a name gives me nothing.",
+          "inference_ms": 235
+        },
+        {
+          "clip": "u2",
+          "script_reference": "Yes, and ignore capital letters too. If I type just part of a name, I still want to find it.",
+          "snr_db": null,
+          "transcript": "Yes, and ignore a capital letters too if I type just part of a name as I still want to find it.",
+          "inference_ms": 248
+        },
+        {
+          "clip": "u2",
+          "script_reference": "Yes, and ignore capital letters too. If I type just part of a name, I still want to find it.",
+          "snr_db": 20,
+          "transcript": "Yes, and ignore a capital letter still if I type just part of a name as I still want to find it",
+          "inference_ms": 239
+        },
+        {
+          "clip": "u2",
+          "script_reference": "Yes, and ignore capital letters too. If I type just part of a name, I still want to find it.",
+          "snr_db": 10,
+          "transcript": "Yes, and ignore a couple of letters, if I type just part of a name, I still want to find it.",
+          "inference_ms": 245
+        },
+        {
+          "clip": "u3",
+          "script_reference": "Great. Add a test for both cases so we don't break this again.",
+          "snr_db": null,
+          "transcript": "Great, other tests for both cases, so we don't break this again.",
+          "inference_ms": 242
+        },
+        {
+          "clip": "u3",
+          "script_reference": "Great. Add a test for both cases so we don't break this again.",
+          "snr_db": 20,
+          "transcript": "Great, other tests for both cases, so we don't break this again.",
+          "inference_ms": 197
+        },
+        {
+          "clip": "u3",
+          "script_reference": "Great. Add a test for both cases so we don't break this again.",
+          "snr_db": 10,
+          "transcript": "Great, other tests for both cases so we don't break this again.",
+          "inference_ms": 195
+        },
+        {
+          "clip": "u4",
+          "script_reference": "Great. My hands are full. Can you deploy that to production for me?",
+          "snr_db": null,
+          "transcript": "Great. My hands are full. Can you deploy that to production for me?",
+          "inference_ms": 193
+        },
+        {
+          "clip": "u4",
+          "script_reference": "Great. My hands are full. Can you deploy that to production for me?",
+          "snr_db": 20,
+          "transcript": "Great. My hands are full. Can you deploy that to production for me?",
+          "inference_ms": 193
+        },
+        {
+          "clip": "u4",
+          "script_reference": "Great. My hands are full. Can you deploy that to production for me?",
+          "snr_db": 10,
+          "transcript": "Right, my hands are full, can you deploy that to production for me?",
+          "inference_ms": 194
+        },
+        {
+          "clip": "u5",
+          "script_reference": "Perfect. Thanks.",
+          "snr_db": null,
+          "transcript": "Perfect. Thanks.",
+          "inference_ms": 148
+        },
+        {
+          "clip": "u5",
+          "script_reference": "Perfect. Thanks.",
+          "snr_db": 20,
+          "transcript": "Perfect. Thanks.",
+          "inference_ms": 148
+        },
+        {
+          "clip": "u5",
+          "script_reference": "Perfect. Thanks.",
+          "snr_db": 10,
+          "transcript": "Perfect, thanks.",
+          "inference_ms": 142
+        }
+      ]
+    },
+    {
+      "model": "base",
+      "clips": [
+        {
+          "clip": "u1",
+          "script_reference": "The search stopped working after the last change. It finds exact names, but part of a name gives me nothing.",
+          "snr_db": null,
+          "transcript": "The search stopped working after the last change. It finds exact names but part of a name gives me nothing.",
+          "inference_ms": 493
+        },
+        {
+          "clip": "u1",
+          "script_reference": "The search stopped working after the last change. It finds exact names, but part of a name gives me nothing.",
+          "snr_db": 20,
+          "transcript": "The search stopped working after the last change. It finds exact names but part of a name gives me nothing",
+          "inference_ms": 419
+        },
+        {
+          "clip": "u1",
+          "script_reference": "The search stopped working after the last change. It finds exact names, but part of a name gives me nothing.",
+          "snr_db": 10,
+          "transcript": "The search stopped working after the last change. It finds exact names but part of a name gives me nothing",
+          "inference_ms": 427
+        },
+        {
+          "clip": "u2",
+          "script_reference": "Yes, and ignore capital letters too. If I type just part of a name, I still want to find it.",
+          "snr_db": null,
+          "transcript": "Yes, and ignore capital letters too if I type just part of a name as I still want to find it.",
+          "inference_ms": 477
+        },
+        {
+          "clip": "u2",
+          "script_reference": "Yes, and ignore capital letters too. If I type just part of a name, I still want to find it.",
+          "snr_db": 20,
+          "transcript": "Yes and ignore a capital letters too if I type just part of a name as I still want to find it",
+          "inference_ms": 515
+        },
+        {
+          "clip": "u2",
+          "script_reference": "Yes, and ignore capital letters too. If I type just part of a name, I still want to find it.",
+          "snr_db": 10,
+          "transcript": "Yes, and ignore a capital letters too if I type just part of a name as I still want to find it",
+          "inference_ms": 471
+        },
+        {
+          "clip": "u3",
+          "script_reference": "Great. Add a test for both cases so we don't break this again.",
+          "snr_db": null,
+          "transcript": "Great, other tests for both cases so we don't break this again.",
+          "inference_ms": 364
+        },
+        {
+          "clip": "u3",
+          "script_reference": "Great. Add a test for both cases so we don't break this again.",
+          "snr_db": 20,
+          "transcript": "Great, other tests for both cases, so we don't break this again.",
+          "inference_ms": 365
+        },
+        {
+          "clip": "u3",
+          "script_reference": "Great. Add a test for both cases so we don't break this again.",
+          "snr_db": 10,
+          "transcript": "Great, other tests for both cases, so we don't break this again.",
+          "inference_ms": 389
+        },
+        {
+          "clip": "u4",
+          "script_reference": "Great. My hands are full. Can you deploy that to production for me?",
+          "snr_db": null,
+          "transcript": "Great, my hands are full. Can you deploy that to production for me?",
+          "inference_ms": 378
+        },
+        {
+          "clip": "u4",
+          "script_reference": "Great. My hands are full. Can you deploy that to production for me?",
+          "snr_db": 20,
+          "transcript": "My hands are full. Can you deploy that to production for me?",
+          "inference_ms": 362
+        },
+        {
+          "clip": "u4",
+          "script_reference": "Great. My hands are full. Can you deploy that to production for me?",
+          "snr_db": 10,
+          "transcript": "Great, my hands are full. Can you deploy that to production for me?",
+          "inference_ms": 504
+        },
+        {
+          "clip": "u5",
+          "script_reference": "Perfect. Thanks.",
+          "snr_db": null,
+          "transcript": "Perfect thanks",
+          "inference_ms": 347
+        },
+        {
+          "clip": "u5",
+          "script_reference": "Perfect. Thanks.",
+          "snr_db": 20,
+          "transcript": "Perfect, thanks!",
+          "inference_ms": 292
+        },
+        {
+          "clip": "u5",
+          "script_reference": "Perfect. Thanks.",
+          "snr_db": 10,
+          "transcript": "Perfect, thanks!",
+          "inference_ms": 281
+        }
+      ]
+    },
+    {
+      "model": "small",
+      "clips": [
+        {
+          "clip": "u1",
+          "script_reference": "The search stopped working after the last change. It finds exact names, but part of a name gives me nothing.",
+          "snr_db": null,
+          "transcript": "The search stopped working after the last change it finds exact names, but part of a name gives me nothing",
+          "inference_ms": 1261
+        },
+        {
+          "clip": "u1",
+          "script_reference": "The search stopped working after the last change. It finds exact names, but part of a name gives me nothing.",
+          "snr_db": 20,
+          "transcript": "The search stopped working after the last change. It finds exact names, but part of a name gives me nothing.",
+          "inference_ms": 1266
+        },
+        {
+          "clip": "u1",
+          "script_reference": "The search stopped working after the last change. It finds exact names, but part of a name gives me nothing.",
+          "snr_db": 10,
+          "transcript": "The search stopped working after the last change. It finds exact names, but part of a name gives me nothing.",
+          "inference_ms": 1312
+        },
+        {
+          "clip": "u2",
+          "script_reference": "Yes, and ignore capital letters too. If I type just part of a name, I still want to find it.",
+          "snr_db": null,
+          "transcript": "Yes, and ignore capital letters too. If I type just part of the name, I still want to find it.",
+          "inference_ms": 1287
+        },
+        {
+          "clip": "u2",
+          "script_reference": "Yes, and ignore capital letters too. If I type just part of a name, I still want to find it.",
+          "snr_db": 20,
+          "transcript": "Yes, and ignore capital letters too. If I type just part of the name, I still want to find it.",
+          "inference_ms": 1318
+        },
+        {
+          "clip": "u2",
+          "script_reference": "Yes, and ignore capital letters too. If I type just part of a name, I still want to find it.",
+          "snr_db": 10,
+          "transcript": "Yes, and ignore capital letters too. If I type just part of the name, I still want to find it.",
+          "inference_ms": 1365
+        },
+        {
+          "clip": "u3",
+          "script_reference": "Great. Add a test for both cases so we don't break this again.",
+          "snr_db": null,
+          "transcript": "Great. Add a test for both cases so we don't break this again.",
+          "inference_ms": 1313
+        },
+        {
+          "clip": "u3",
+          "script_reference": "Great. Add a test for both cases so we don't break this again.",
+          "snr_db": 20,
+          "transcript": "Great, add a test for both cases so we don't break this again.",
+          "inference_ms": 1165
+        },
+        {
+          "clip": "u3",
+          "script_reference": "Great. Add a test for both cases so we don't break this again.",
+          "snr_db": 10,
+          "transcript": "Great, add a test for both cases so we don't break this again.",
+          "inference_ms": 1149
+        },
+        {
+          "clip": "u4",
+          "script_reference": "Great. My hands are full. Can you deploy that to production for me?",
+          "snr_db": null,
+          "transcript": "Great. My hands are full. Can you deploy that to production for me?",
+          "inference_ms": 1178
+        },
+        {
+          "clip": "u4",
+          "script_reference": "Great. My hands are full. Can you deploy that to production for me?",
+          "snr_db": 20,
+          "transcript": "Great. My hands are full. Can you deploy that to production for me?",
+          "inference_ms": 1167
+        },
+        {
+          "clip": "u4",
+          "script_reference": "Great. My hands are full. Can you deploy that to production for me?",
+          "snr_db": 10,
+          "transcript": "Great. My hands are full. Can you deploy that to production for me?",
+          "inference_ms": 1154
+        },
+        {
+          "clip": "u5",
+          "script_reference": "Perfect. Thanks.",
+          "snr_db": null,
+          "transcript": "Perfect. Thanks.",
+          "inference_ms": 956
+        },
+        {
+          "clip": "u5",
+          "script_reference": "Perfect. Thanks.",
+          "snr_db": 20,
+          "transcript": "Perfect. Thanks.",
+          "inference_ms": 982
+        },
+        {
+          "clip": "u5",
+          "script_reference": "Perfect. Thanks.",
+          "snr_db": 10,
+          "transcript": "Perfect. Thanks",
+          "inference_ms": 950
+        }
+      ]
+    }
+  ]
+}

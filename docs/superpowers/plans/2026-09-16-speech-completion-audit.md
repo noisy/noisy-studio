@@ -29,13 +29,14 @@ Independent follow-up review found and confirmed closure of microphone cancellat
 - Dashboard production build and Storybook build passed. Storybook retains its existing large-chunk warning.
 - Isolated HTTP test: real Kokoro WAV preview, no queued agent messages, keyless local readiness and selection confirmed.
 - Cached Whisper offline test and earlier Kokoro synthesis experiments retained in `tools/voice-evaluation`.
+- Deterministic synthetic-noise probe: 45 offline transcriptions across tiny/base/small and clean/20 dB/10 dB conditions; results and limitations retained in `tools/voice-evaluation/noise-results.json`.
 - New isolated-process measurements record model snapshot sizes, peak process RSS, first inference and 20 warm repetitions per model.
 - Storybook available on port 6013; no live daemon configuration changed.
 
 ## Validation still outstanding
 
 - Real browser microphone permission/recording interaction and live cloud streaming/recovery have not been exercised end to end in this pass. Automated lifecycle and playback-boundary tests do not substitute for those hardware/network checks.
-- The broad research matrix is incomplete: Polish-language speech, coding identifiers, noise, end-of-turn latency, concurrent coding workload, cloud comparisons and blind listening quality still need a suitable corpus/runs. Current human recordings are English with a Polish accent. Do not claim a general model-quality winner or change defaults from these results.
+- The broad research matrix is incomplete: Polish-language speech, coding identifiers, real-world background noise, end-of-turn latency, concurrent coding workload, cloud comparisons and blind listening quality still need a suitable corpus/runs. Current human recordings are English with a Polish accent. Do not claim a general model-quality winner or change defaults from these results.
 - Saved-settings corruption now fails closed without selecting an online fallback. The dashboard offers an explicit restore when a valid backup exists, preserves the damaged file, and rejects stale actions when either file changes. API/filesystem tests and the rendered Storybook recovery action verify this path. Without a valid backup, manual repair remains necessary; no defaults are silently written.
 - Adding OpenAI still requires its runtime adapter, credentials integration and provider-specific streaming event handling. The redesign supplies extension boundaries; it does not implement OpenAI.
 
