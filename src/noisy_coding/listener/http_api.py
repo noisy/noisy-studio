@@ -14,7 +14,7 @@ from urllib.parse import parse_qs, urlparse
 
 from noisy_coding import credentials, diagnostics, harness, playback
 from noisy_coding.config_dir import CONFIG_DIR
-from noisy_coding.providers.config import ConfigurationError
+from noisy_coding.providers.config import ConfigurationError, recovery_info
 from noisy_coding.listener import stt_lab
 from noisy_coding.listener import pricing, speech, tab_audio
 from noisy_coding.listener.dashboard import DASHBOARD_HTML
@@ -634,7 +634,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
             try:
                 self._handle_GET()
             except ConfigurationError as error:
-                self._respond({"error": str(error), "code": "invalid_speech_settings"}, status=409)
+                self._respond({"error": str(error), "code": "invalid_speech_settings", "recovery": recovery_info()}, status=409)
 
         def _handle_GET(self) -> None:
             url = urlparse(self.path)
@@ -774,7 +774,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
             try:
                 self._handle_POST()
             except ConfigurationError as error:
-                self._respond({"error": str(error), "code": "invalid_speech_settings"}, status=409)
+                self._respond({"error": str(error), "code": "invalid_speech_settings", "recovery": recovery_info()}, status=409)
 
         def _handle_POST(self) -> None:
             if self.path == "/harness/event":
@@ -1072,8 +1072,12 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 identities = sorted({c['voice'] for c in state.all_characters().values()} |
                                     set(state.voice_claims().values()) | {state.character()['voice']})
                 try:
-                    candidate = selection.choice(str(body.get('choice', '')))
                     operation = body.get('operation')
+                    if operation == 'restore-backup':
+                        selection.config.restore_backup(str(body.get('revision', '')))
+                        self._respond(selection.snapshot(identities, state.language))
+                        return
+                    candidate = selection.choice(str(body.get('choice', '')))
                     if operation == 'prepare':
                         selection.prepare(candidate)
                     elif operation == 'apply':

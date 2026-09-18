@@ -200,7 +200,7 @@ def test_capture_readiness_depends_only_on_the_selected_recognizer(settings_file
     }
 
 
-def test_invalid_configuration_keeps_status_alive_and_settings_recovers_after_repair(settings_file, monkeypatch):
+def test_invalid_configuration_keeps_status_alive_and_backup_restore_preserves_the_damaged_file(settings_file, monkeypatch):
     import http.client
     import json
     from noisy_coding.listener import http_api
@@ -209,6 +209,7 @@ def test_invalid_configuration_keeps_status_alive_and_settings_recovers_after_re
     monkeypatch.setattr(http_api.credentials, 'api_key', lambda: '')
     monkeypatch.setattr(http_api.credentials, 'api_key_hint', lambda: '')
     settings_file.write_text('{invalid')
+    settings_file.with_suffix('.json.bak').write_text('{"stt":"grok","tts":"grok"}')
     server = http_api.start_http_api(ListenerState(), 0)
     connection = http.client.HTTPConnection('127.0.0.1', server.server_address[1])
     try:
@@ -221,12 +222,27 @@ def test_invalid_configuration_keeps_status_alive_and_settings_recovers_after_re
         error = json.loads(response.read())
         assert (response.status, error['code'], settings_file.read_text()) == (409, 'invalid_speech_settings', '{invalid')
 
-        settings_file.write_text('{"stt":"grok","tts":"grok"}')
-        connection.request('GET', '/speech-settings')
+        connection.request('POST', '/speech-settings', json.dumps({'operation':'restore-backup','revision':error['recovery']['revision']}))
         response = connection.getresponse()
         recovered = json.loads(response.read())
-        assert (response.status, recovered['active']) == (200, {'stt':'grok:stt', 'tts':'grok:tts'})
+        assert (response.status, recovered['active'], [p.read_text() for p in settings_file.parent.glob('providers.invalid-*.json')]) == (200, {'stt':'grok:stt', 'tts':'grok:tts'}, ['{invalid'])
     finally:
         connection.close()
         server.shutdown()
         server.server_close()
+
+
+@pytest.mark.parametrize('changed_file', ['settings', 'backup'])
+def test_stale_recovery_cannot_overwrite_new_settings(settings_file, changed_file):
+    settings_file.write_text('{invalid')
+    settings_file.with_suffix('.json.bak').write_text('{"stt":"local"}')
+    revision = config.recovery_info()['revision']
+    repaired = '{"stt":"grok"}'
+    target = settings_file if changed_file == 'settings' else settings_file.with_suffix('.json.bak')
+    target.write_text(repaired)
+    original = settings_file.read_text()
+
+    with pytest.raises(ValueError, match='changed'):
+        config.restore_backup(revision)
+
+    assert settings_file.read_text() == original

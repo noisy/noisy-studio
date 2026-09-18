@@ -34,7 +34,7 @@ export const SharedSystemVoice: Story = {render: () => ({
     info.active.tts = 'macos:say';
     setSpeechSettingsFixture(info);
   },
-  template: '<div style="max-width:940px;padding:24px"><SpeechSettings /></div>',
+  template: '<div style="width:min(940px,100%);box-sizing:border-box;padding:24px"><SpeechSettings /></div>',
 })};
 
 
@@ -47,5 +47,14 @@ export const UnsupportedLanguage: Story = {render: () => ({
     engine.detail='Kokoro currently supports English in this app. Keep your current engine for Polish.';
     setSpeechSettingsFixture(info);
   },
-  template:'<div style="max-width:940px;padding:24px"><SpeechSettings /></div>',
+  template:'<div style="width:min(940px,100%);box-sizing:border-box;padding:24px"><SpeechSettings /></div>',
+})};
+
+
+export const RecoverSavedSettings: Story = {render: () => ({
+  components:{SpeechSettings},
+  setup() {
+    setSpeechSettingsFixture(speechFixture(), Object.assign(new Error('Saved speech settings are unreadable or invalid. No fallback engine was selected.'), {recovery:{revision:'damaged-fixture',can_restore:true}}));
+  },
+  template:'<div style="width:min(940px,100%);box-sizing:border-box;padding:24px"><SpeechSettings /></div>',
 })};

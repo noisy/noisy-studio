@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue';
-import { getSpeechSettings, updateSpeechSettings, previewSpeechVoice, previewRecognition, getStatus, setMuted, type SpeechSettingsInfo, type SpeechEngine } from '../api/client';
+import { getSpeechSettings, restoreSpeechSettings, updateSpeechSettings, previewSpeechVoice, previewRecognition, getStatus, setMuted, type SpeechSettingsInfo, type SpeechEngine } from '../api/client';
 
 import ModelDownloadProgress from './ModelDownloadProgress.vue';
 import { useSpeechSample } from '../composables/useSpeechSample';
@@ -14,6 +14,7 @@ const draftRevision = ref('');
 const bindings = ref<Record<string, string>>({});
 const busy = ref(false);
 const error = ref('');
+const recovery = ref<{revision:string;can_restore:boolean}>();
 const notice = ref('');
 const transcript = ref('');
 const needsMicPause = ref(false);
@@ -61,10 +62,25 @@ async function reload() {
   try {
     const [settings, status] = await Promise.all([getSpeechSettings(), getStatus().catch(() => undefined)]);
     info.value = settings;
+    recovery.value = undefined;
     if (!editing.value) error.value = '';
     runtimeModes.value = {stt:status?.recognition_mode, tts:status?.speech_output_mode};
   }
-  catch (cause) { error.value = cause instanceof Error ? cause.message : 'Could not load speech settings. Check the connection and retry.'; }
+  catch (cause) {
+    error.value = cause instanceof Error ? cause.message : 'Could not load speech settings. Check the connection and retry.';
+    recovery.value = (cause as {recovery?:{revision:string;can_restore:boolean}})?.recovery;
+    if (recovery.value) { sample.cancel(); stop(); info.value=undefined; editing.value=null; }
+  }
+}
+async function restore() {
+  if (!recovery.value?.can_restore) return;
+  busy.value=true;
+  try {
+    info.value=await restoreSpeechSettings(recovery.value.revision);
+    error.value=''; recovery.value=undefined;
+    notice.value='Saved speech settings restored. The damaged file was preserved separately.';
+  } catch (cause) { error.value=cause instanceof Error ? cause.message : 'Could not restore speech settings.'; }
+  finally { busy.value=false; }
 }
 async function save(operation: 'prepare' | 'apply') {
   if (!info.value || !candidate.value) return;
@@ -95,6 +111,10 @@ onUnmounted(() => { clearInterval(poll); stop(); });
   <div ref="root" class="speech-settings">
     <header><h2>Speech</h2><p>Choose how you speak to your agents and how they reply.</p></header>
     <p v-if="error && !editing" class="feedback error" role="alert">{{ error }} <button v-if="!info" @click="reload">Retry</button></p>
+    <div v-if="recovery?.can_restore" class="feedback">
+      <p>A valid saved backup is available. Restoring it preserves the damaged file separately and reinstates your previous speech choices.</p>
+      <button :disabled="busy" @click="restore">{{ busy ? 'Restoring…' : 'Restore saved backup' }}</button>
+    </div>
     <p v-if="notice" class="feedback" role="status">{{ notice }}</p>
     <p v-if="!info && !error">Loading speech engines…</p>
     <ModelDownloadProgress :downloads="info?.downloads.filter(d => d.state !== 'missing') ?? []" />

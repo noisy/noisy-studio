@@ -273,7 +273,7 @@ export interface SpeechSettingsPatch {
 async function speechRequest<T>(path: string, body?: object): Promise<T> {
   const response = await fetch(path, body === undefined ? undefined : {method:'POST', body:JSON.stringify(body)});
   const payload = await response.json().catch(() => null);
-  if (!response.ok) throw new Error(typeof payload?.error === 'string' ? payload.error : 'Could not reach speech settings. Check the connection and retry.');
+  if (!response.ok) throw Object.assign(new Error(typeof payload?.error === 'string' ? payload.error : 'Could not reach speech settings. Check the connection and retry.'), {recovery:payload?.recovery});
   return payload as T;
 }
 export function getSpeechSettings(): Promise<SpeechSettingsInfo> { return speechRequest('/speech-settings'); }
@@ -283,4 +283,8 @@ export function previewSpeechVoice(choice: string, voice: string): Promise<{audi
 }
 export function previewRecognition(choice: string, audio: string): Promise<{text: string; elapsed_ms: number}> {
   return speechRequest('/speech-settings/transcribe', {choice, audio});
+}
+
+export function restoreSpeechSettings(revision: string): Promise<SpeechSettingsInfo> {
+  return speechRequest('/speech-settings', {operation:'restore-backup', revision});
 }

@@ -7,7 +7,7 @@ vi.mock('../composables/useSpeechSample', async () => {
   return { useSpeechSample: () => ({start:sampleStart, cancel:vi.fn(), finish:vi.fn(), recording:ref(false), error:ref('')}) };
 });
 import { speechFixture } from './speechSettings.fixture';
-const api = vi.hoisted(() => ({getSpeechSettings:vi.fn(),updateSpeechSettings:vi.fn(),previewSpeechVoice:vi.fn(),getStatus:vi.fn().mockResolvedValue({muted:true}),setMuted:vi.fn()}));
+const api = vi.hoisted(() => ({getSpeechSettings:vi.fn(),restoreSpeechSettings:vi.fn(),updateSpeechSettings:vi.fn(),previewSpeechVoice:vi.fn(),getStatus:vi.fn().mockResolvedValue({muted:true}),setMuted:vi.fn()}));
 vi.mock('../api/client',()=>api);
 beforeEach(()=>{vi.clearAllMocks();api.getSpeechSettings.mockResolvedValue(speechFixture());});
 async function openVoices() {const wrapper=mount(SpeechSettings);await flushPromises();await wrapper.findAll('button').filter(b=>b.text()==='Change')[1]!.trigger('click');await wrapper.findAll('button').find(b=>b.text().includes('Kokoro'))!.trigger('click');return wrapper;}
@@ -58,6 +58,18 @@ describe('speech selection',()=>{
     expect(wrapper.text()).toContain('Text appears after you finish speaking.');
     expect(wrapper.text()).toContain('The full reply is generated before playback.');
     expect(wrapper.text()).not.toContain('Text appears while you speak.');
+    wrapper.unmount();
+  });
+
+  it('restores a valid backup only after an explicit recovery action',async()=>{
+    api.getSpeechSettings.mockRejectedValueOnce(Object.assign(new Error('Saved settings are invalid.'),{recovery:{revision:'damaged1',can_restore:true}}));
+    api.restoreSpeechSettings.mockResolvedValue(speechFixture());
+    const wrapper=mount(SpeechSettings);await flushPromises();
+    expect(api.restoreSpeechSettings).not.toHaveBeenCalled();
+    await wrapper.findAll('button').find(b=>b.text()==='Restore saved backup')!.trigger('click');await flushPromises();
+    expect(api.restoreSpeechSettings).toHaveBeenCalledWith('damaged1');
+    expect(wrapper.text()).toContain('damaged file was preserved');
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
     wrapper.unmount();
   });
 

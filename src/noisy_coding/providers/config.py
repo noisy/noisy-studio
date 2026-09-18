@@ -15,6 +15,8 @@ providers.json shape:
 """
 
 import json
+import hashlib
+from pathlib import Path
 import os
 import tempfile
 import shutil
@@ -46,9 +48,9 @@ def _settings_error() -> ConfigurationError:
     )
 
 
-def _read() -> dict[str, Any]:
+def _read(path: Path | None = None) -> dict[str, Any]:
     try:
-        data = json.loads(PROVIDERS_FILE.read_text())
+        data = json.loads((PROVIDERS_FILE if path is None else path).read_text())
     except FileNotFoundError:
         return {}
     except (OSError, ValueError):
@@ -146,3 +148,28 @@ def _write(data):
     finally:
         if os.path.exists(path):
             os.unlink(path)
+
+
+def recovery_info() -> dict:
+    try:
+        current = PROVIDERS_FILE.read_bytes()
+        backup = PROVIDERS_FILE.with_suffix('.json.bak')
+        if not backup.is_file():
+            return {'revision': '', 'can_restore': False}
+        _read(backup)
+        revision = hashlib.sha256(current + b'\x00' + backup.read_bytes()).hexdigest()
+        return {'revision': revision, 'can_restore': True}
+    except (OSError, ConfigurationError):
+        return {'revision': '', 'can_restore': False}
+
+
+def restore_backup(expected_revision: str) -> None:
+    """Explicit recovery; preserve the damaged file and reject stale browser actions."""
+    with _lock:
+        recovery = recovery_info()
+        if not recovery['can_restore'] or not expected_revision or recovery['revision'] != expected_revision:
+            raise ValueError('The saved settings or backup changed. Refresh settings before restoring.')
+        restored = _read(PROVIDERS_FILE.with_suffix('.json.bak'))
+        with tempfile.NamedTemporaryFile(dir=PROVIDERS_FILE.parent, prefix='providers.invalid-', suffix='.json', delete=False) as damaged:
+            damaged.write(PROVIDERS_FILE.read_bytes())
+        _write(restored)
