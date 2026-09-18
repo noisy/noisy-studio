@@ -186,3 +186,15 @@ def test_local_voice_labels_preserve_legacy_voice_without_loading_models(setting
     labels = selection.active_voice_labels()
 
     assert labels['lux'] == expected
+
+
+@pytest.mark.parametrize('recognition_state, expected', [('ready', True), ('download', False), ('setup', False)])
+def test_capture_readiness_depends_only_on_the_selected_recognizer(settings_file, monkeypatch, recognition_state, expected):
+    from noisy_coding import providers
+    config.save(stt='local', tts='grok', stt_model='base')
+    monkeypatch.setattr(selection, 'readiness', lambda candidate:
+                        (recognition_state, '') if candidate['id']=='whisper:base' else ('setup', 'No cloud key'))
+
+    assert {'capture':providers.direction_ready('stt'), 'complete_setup':providers.voice_ready()} == {
+        'capture':expected, 'complete_setup':False,
+    }

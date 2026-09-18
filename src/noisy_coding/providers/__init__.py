@@ -65,19 +65,22 @@ def catalog() -> list[dict]:
     return _catalog()
 
 
-def voice_ready() -> bool:
-    """Can the daemon hear AND speak right now? True when the selected
-    provider for each direction is ready (key present / installs in
-    place). This — not "is an xAI key set" — is what the first-contact
-    gate must ask, or a local-only user can never get past it."""
+def direction_ready(direction: str) -> bool:
+    """Check only the selected engine for this direction, without loading weights."""
     from noisy_coding.providers import selection
 
+    if direction not in ('stt', 'tts'):
+        raise ValueError('Unknown speech direction')
     try:
-        active = selection.active_choices()
-        return all(selection.readiness(selection.choice(active[direction]))[0] == 'ready'
-                   for direction in ('stt', 'tts'))
+        candidate = selection.choice(selection.active_choices()[direction])
+        return selection.readiness(candidate)[0] == 'ready'
     except ValueError:
         return False
+
+
+def voice_ready() -> bool:
+    """Can the daemon hear AND speak with its selected engines?"""
+    return direction_ready('stt') and direction_ready('tts')
 
 
 def available() -> dict[str, list[str]]:
