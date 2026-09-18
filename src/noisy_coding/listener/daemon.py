@@ -275,7 +275,7 @@ def _start_stream(
         if len(text) < longest_shown:
             return
         longest_shown = len(text)
-        state.update_utterance(utterance_id, text=text, status="transcribing (live)…")
+        state.update_transcription_partial(utterance_id, text)
 
     smart_turn = state.smart_turn
 
