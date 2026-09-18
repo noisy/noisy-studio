@@ -246,3 +246,20 @@ def test_stale_recovery_cannot_overwrite_new_settings(settings_file, changed_fil
         config.restore_backup(revision)
 
     assert settings_file.read_text() == original
+
+
+@pytest.mark.parametrize('backup_content', [None, '{invalid', '[]'])
+def test_unavailable_backup_never_restores_defaults(settings_file, backup_content):
+    settings_file.write_text('{invalid')
+    backup = settings_file.with_suffix('.json.bak')
+    backup.write_text('{"stt":"local"}')
+    revision = config.recovery_info()['revision']
+    if backup_content is None:
+        backup.unlink()
+    else:
+        backup.write_text(backup_content)
+
+    with pytest.raises(ValueError, match='changed'):
+        config.restore_backup(revision)
+
+    assert settings_file.read_text() == '{invalid'

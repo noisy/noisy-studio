@@ -50,10 +50,20 @@ def _settings_error() -> ConfigurationError:
 
 def _read(path: Path | None = None) -> dict[str, Any]:
     try:
-        data = json.loads((PROVIDERS_FILE if path is None else path).read_text())
+        content = (PROVIDERS_FILE if path is None else path).read_bytes()
     except FileNotFoundError:
+        if path is not None:
+            raise _settings_error() from None
         return {}
     except (OSError, ValueError):
+        raise _settings_error() from None
+    return _parse(content)
+
+
+def _parse(content: bytes) -> dict[str, Any]:
+    try:
+        data = json.loads(content)
+    except (ValueError, UnicodeError):
         raise _settings_error() from None
     if not isinstance(data, dict):
         raise _settings_error()
@@ -150,26 +160,31 @@ def _write(data):
             os.unlink(path)
 
 
+def _recovery_snapshot() -> tuple[bytes, dict[str, Any], str]:
+    current = PROVIDERS_FILE.read_bytes()
+    backup = PROVIDERS_FILE.with_suffix('.json.bak').read_bytes()
+    restored = _parse(backup)
+    revision = hashlib.sha256(current + b'\x00' + backup).hexdigest()
+    return current, restored, revision
+
+
 def recovery_info() -> dict:
     try:
-        current = PROVIDERS_FILE.read_bytes()
-        backup = PROVIDERS_FILE.with_suffix('.json.bak')
-        if not backup.is_file():
-            return {'revision': '', 'can_restore': False}
-        _read(backup)
-        revision = hashlib.sha256(current + b'\x00' + backup.read_bytes()).hexdigest()
+        _, _, revision = _recovery_snapshot()
         return {'revision': revision, 'can_restore': True}
     except (OSError, ConfigurationError):
         return {'revision': '', 'can_restore': False}
 
 
 def restore_backup(expected_revision: str) -> None:
-    """Explicit recovery; preserve the damaged file and reject stale browser actions."""
+    """Restore exactly the validated snapshot; never reread a disappearing backup."""
     with _lock:
-        recovery = recovery_info()
-        if not recovery['can_restore'] or not expected_revision or recovery['revision'] != expected_revision:
+        try:
+            current, restored, revision = _recovery_snapshot()
+        except (OSError, ConfigurationError):
+            raise ValueError('The saved settings or backup changed. Refresh settings before restoring.') from None
+        if not expected_revision or revision != expected_revision:
             raise ValueError('The saved settings or backup changed. Refresh settings before restoring.')
-        restored = _read(PROVIDERS_FILE.with_suffix('.json.bak'))
         with tempfile.NamedTemporaryFile(dir=PROVIDERS_FILE.parent, prefix='providers.invalid-', suffix='.json', delete=False) as damaged:
-            damaged.write(PROVIDERS_FILE.read_bytes())
+            damaged.write(current)
         _write(restored)
