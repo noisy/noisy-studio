@@ -70,7 +70,8 @@ def snapshot(identities: list[str], language: str = "auto") -> dict:
         engines.append({**candidate, 'state': state, 'detail': detail,
                         'voices': voices(candidate),
                         'bindings': assignments(candidate, identities) if candidate['direction'] == 'tts' else {}})
-    return dict(revision=revision(), active=active_choices(), engines=engines, downloads=local.download_status())
+    return dict(revision=revision(), active=active_choices(), current_voice_labels=active_voice_labels(),
+                engines=engines, downloads=local.download_status())
 
 
 def prepare(candidate: dict) -> None:

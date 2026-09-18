@@ -265,7 +265,7 @@ export interface SpeechEngine {
   voices: {id: string; label: string}[]; bindings: Record<string, string>;
 }
 export interface SpeechSettingsInfo {
-  revision: string; active: {stt: string; tts: string}; engines: SpeechEngine[]; downloads: ModelDownload[];
+  revision: string; active: {stt: string; tts: string}; current_voice_labels?: Record<string, string>; engines: SpeechEngine[]; downloads: ModelDownload[];
 }
 export interface SpeechSettingsPatch {
   operation: 'prepare' | 'apply'; choice: string; revision: string; bindings: Record<string, string>;

@@ -18,8 +18,8 @@ def choices() -> list[dict]:
     for direction in ('stt', 'tts'):
         result.append(dict(id=f'grok:{direction}', provider='grok', direction=direction,
                            label='Grok', location='Online', model='', live=True, setup_action='system-settings',
-                           description='Text appears while you speak.' if direction == 'stt'
-                           else 'Replies begin playing as audio arrives.', languages='Multilingual'))
+                           description='Supports live transcription.' if direction == 'stt'
+                           else 'Supports streamed replies.', languages='Multilingual'))
     for model, description in WHISPER_MODELS.items():
         result.append(dict(id=f'whisper:{model}', provider='local', direction='stt',
                            label=f'Whisper {model}', location='On this Mac', model=model,

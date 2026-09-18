@@ -1,6 +1,11 @@
 import { mount, flushPromises } from '@vue/test-utils';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import SpeechSettings from './SpeechSettings.vue';
+const sampleStart = vi.hoisted(() => vi.fn());
+vi.mock('../composables/useSpeechSample', async () => {
+  const { ref } = await import('vue');
+  return { useSpeechSample: () => ({start:sampleStart, cancel:vi.fn(), finish:vi.fn(), recording:ref(false), error:ref('')}) };
+});
 import { speechFixture } from './speechSettings.fixture';
 const api = vi.hoisted(() => ({getSpeechSettings:vi.fn(),updateSpeechSettings:vi.fn(),previewSpeechVoice:vi.fn(),getStatus:vi.fn().mockResolvedValue({muted:true}),setMuted:vi.fn()}));
 vi.mock('../api/client',()=>api);
@@ -27,4 +32,33 @@ describe('speech selection',()=>{
     expect(wrapper.findAll('button').find(b=>b.text()==='Use for agent voices')!.attributes('disabled')).toBeDefined();
     wrapper.unmount();
   });
+  it.each(['cancel', 'unmount'])('does not start a microphone sample after %s during its status check',async(action)=>{
+    let resolveStatus!: (value:{muted:boolean})=>void;
+    const wrapper=mount(SpeechSettings);await flushPromises();
+    api.getStatus.mockReturnValueOnce(new Promise(resolve=>{resolveStatus=resolve;}));
+    await wrapper.findAll('button').filter(b=>b.text()==='Change')[0]!.trigger('click');
+    await wrapper.findAll('button').find(b=>b.text()==='Try my microphone')!.trigger('click');
+    if(action==='cancel') await wrapper.findAll('button').find(b=>b.text()==='Cancel')!.trigger('click');
+    else wrapper.unmount();
+    resolveStatus({muted:true});await flushPromises();
+    expect(sampleStart).not.toHaveBeenCalled();
+    if(action==='cancel')wrapper.unmount();
+  });
+  it('shows actual current voices instead of proposed assignments',async()=>{
+    const fixture=speechFixture();fixture.current_voice_labels={lux:'Emma · UK'};
+    api.getSpeechSettings.mockResolvedValue(fixture);
+    const wrapper=await openVoices();
+    expect(wrapper.get('label[for="speech-voice-lux"]').text()).toContain('Emma · UK →');
+    wrapper.unmount();
+  });
+
+  it('describes the active batch mode even when the provider supports streaming',async()=>{
+    api.getStatus.mockResolvedValueOnce({muted:true,recognition_mode:'batch',speech_output_mode:'batch'});
+    const wrapper=mount(SpeechSettings);await flushPromises();
+    expect(wrapper.text()).toContain('Text appears after you finish speaking.');
+    expect(wrapper.text()).toContain('The full reply is generated before playback.');
+    expect(wrapper.text()).not.toContain('Text appears while you speak.');
+    wrapper.unmount();
+  });
+
 });

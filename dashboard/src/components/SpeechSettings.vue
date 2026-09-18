@@ -17,15 +17,20 @@ const error = ref('');
 const notice = ref('');
 const transcript = ref('');
 const needsMicPause = ref(false);
+const runtimeModes = ref<{stt?: string; tts?: string}>({});
 async function pauseMainMic() { try { await setMuted(true); needsMicPause.value=false; notice.value='Main microphone paused. Resume it from the dashboard when you finish testing.'; } catch { error.value='Could not pause the main microphone. Check the connection.'; } }
-async function sampleAllowed() { const status=await getStatus(); needsMicPause.value=!status.muted; return status.muted; }
+async function sampleAllowed(request: number) { const status=await getStatus(); if (request !== previewRequest) return false; needsMicPause.value=!status.muted; return status.muted; }
 const sample = useSpeechSample(async wav => {
   const choice = selected.value; busy.value = true;
   try { const result = await previewRecognition(choice, wav); if(selected.value===choice) transcript.value = result.text || 'No speech recognized. Try again.'; }
   catch { error.value = 'Recognition test failed. Check the microphone and provider connection.'; }
   finally { busy.value=false; }
 });
-async function recordSample() { stop(); transcript.value=''; try { if(await sampleAllowed()) await sample.start(); } catch { error.value='Microphone access is unavailable. Check browser permissions.'; } }
+async function recordSample() {
+  stop(); const request = previewRequest; transcript.value='';
+  try { if(await sampleAllowed(request)) await sample.start(); }
+  catch { if(request === previewRequest) error.value='Microphone access is unavailable. Check browser permissions.'; }
+}
 const playing = ref('');
 const loadingSample = ref(false);
 let audio: HTMLAudioElement | undefined;
@@ -35,6 +40,14 @@ const sections = [{id: 'stt', title: 'Your speech', intro: 'How your words becom
 const candidate = computed(() => info.value?.engines.find(e => e.id === selected.value));
 const shared = computed(() => Object.values(bindings.value).length > new Set(Object.values(bindings.value)).size);
 function active(direction: 'tts' | 'stt') { return info.value?.engines.find(e => e.id === info.value?.active[direction]); }
+function currentBehavior(direction: 'stt' | 'tts') {
+  const mode = runtimeModes.value[direction];
+  if (mode === 'unavailable' || !active(direction)) return 'This engine is unavailable. Choose another engine to continue.';
+  if (mode === 'live') return direction === 'stt' ? 'Text appears while you speak.' : 'Replies begin playing as audio arrives.';
+  if (mode === 'batch' || !active(direction)?.live) return direction === 'stt' ? 'Text appears after you finish speaking.' : 'The full reply is generated before playback.';
+  return direction === 'stt' ? 'Supports live transcription when Live is enabled.' : 'Supports streamed replies when Live is enabled.';
+}
+
 function stop() { previewRequest++; audio?.pause(); audio = undefined; playing.value = ''; loadingSample.value = false; }
 function choose(engine: SpeechEngine) { sample.cancel(); transcript.value=''; stop(); selected.value = engine.id; bindings.value = {...engine.bindings}; error.value = ''; }
 async function edit(direction: 'stt' | 'tts') {
@@ -45,7 +58,11 @@ async function edit(direction: 'stt' | 'tts') {
 }
 async function cancel() { const previous = editing.value; sample.cancel(); stop(); editing.value = null; error.value = ''; await nextTick(); root.value?.querySelector<HTMLButtonElement>(`[data-change="${previous}"]`)?.focus(); }
 async function reload() {
-  try { info.value = await getSpeechSettings(); }
+  try {
+    const [settings, status] = await Promise.all([getSpeechSettings(), getStatus().catch(() => undefined)]);
+    info.value = settings;
+    runtimeModes.value = {stt:status?.recognition_mode, tts:status?.speech_output_mode};
+  }
   catch { error.value = 'Could not load speech settings. Check the connection and retry.'; }
 }
 async function save(operation: 'prepare' | 'apply') {
@@ -60,7 +77,7 @@ async function save(operation: 'prepare' | 'apply') {
 async function preview(engine: SpeechEngine, voice: string, identity: string) {
   stop(); const request = previewRequest; playing.value = identity; loadingSample.value = true; error.value = '';
   try {
-    if (!(await sampleAllowed())) { playing.value=''; loadingSample.value=false; return; }
+    if (!(await sampleAllowed(request))) { playing.value=''; loadingSample.value=false; return; }
     if (request !== previewRequest) return;
     const clip = await previewSpeechVoice(engine.id, voice);
     if (request !== previewRequest) return;
@@ -84,7 +101,7 @@ onUnmounted(() => { clearInterval(poll); stop(); });
       <div class="summary">
         <div><span class="eyebrow">{{ section.title }}</span><p>{{ section.intro }}</p>
           <h3>{{ active(section.id)?.label ?? 'Current engine' }} <span class="location">{{ active(section.id)?.location }}</span></h3>
-          <p>{{ active(section.id)?.live ? (section.id === 'stt' ? 'Text appears while you speak.' : 'Replies begin playing as audio arrives.') : (section.id === 'stt' ? 'Text appears after you finish speaking.' : 'The full reply is generated before playback.') }}</p>
+          <p>{{ currentBehavior(section.id) }}</p>
         </div>
         <button v-if="editing !== section.id" :data-change="section.id" class="change" :disabled="busy" @click="edit(section.id)">Change</button>
       </div>
@@ -97,14 +114,14 @@ onUnmounted(() => { clearInterval(poll); stop(); });
         </div>
         <div v-if="candidate" class="details">
           <span class="eyebrow">{{ candidate.label }}</span>
-          <h3 tabindex="-1">{{ candidate.live ? (section.id === 'stt' ? 'Follow your words live' : 'Hear replies sooner') : (section.id === 'stt' ? 'Speak, then see your text' : 'Generate, then play') }}</h3>
+          <h3 tabindex="-1">{{ candidate.live ? (section.id === 'stt' ? 'Live transcription available' : 'Streaming speech available') : (section.id === 'stt' ? 'Speak, then see your text' : 'Generate, then play') }}</h3>
           <p>{{ candidate.languages }}</p>
           <p>{{ candidate.detail }}</p>
           <p v-if="candidate.state === 'downloading'" role="status">Downloading model files… Your current engine stays active.</p>
           <template v-if="section.id === 'tts'">
             <h4>Review your voices</h4><p>Review current → new voices. Switching back restores your saved voices.</p>
             <div class="voice-rows">
-              <div v-for="(_voice, identity) in bindings" :key="identity" class="voice-row"><label :for="`speech-voice-${identity}`">{{ identity }}<small>{{ active('tts')?.voices.find(v => v.id === active('tts')?.bindings[identity])?.label ?? identity }} →</small></label>
+              <div v-for="(_voice, identity) in bindings" :key="identity" class="voice-row"><label :for="`speech-voice-${identity}`">{{ identity }}<small>{{ info?.current_voice_labels?.[identity] ?? identity }} →</small></label>
                 <select :id="`speech-voice-${identity}`" v-model="bindings[identity]" @change="stop" :aria-label="'Voice for ' + identity" :disabled="busy"><option v-for="voice in candidate.voices" :key="voice.id" :value="voice.id">{{ voice.label }}</option></select>
                 <button :disabled="candidate.state !== 'ready' || busy" :aria-label="'Listen to voice for ' + identity" @click.prevent="playing === identity ? stop() : preview(candidate, bindings[identity]!, identity)">{{ playing === identity ? (loadingSample ? 'Loading…' : 'Stop') : 'Listen' }}</button>
               </div>
@@ -112,7 +129,7 @@ onUnmounted(() => { clearInterval(poll); stop(); });
             <p v-if="shared" class="warning">Some speakers share a voice. Choose different voices where available.</p>
             <small>Samples use this engine, in English, at normal speed. Online samples use your provider account.</small>
           </template>
-          <p v-else class="behavior-note">{{ candidate.live ? 'You can watch the transcript develop while speaking.' : 'Live transcription is unavailable with this engine. Your words are processed when you finish.' }} Changing recognition does not change agent voices.</p>
+          <p v-else class="behavior-note">{{ candidate.live ? 'With Live enabled in audio controls, text can appear while you speak.' : 'Live transcription is unavailable with this engine. Your words are processed when you finish.' }} Changing recognition does not change agent voices.</p>
           <div v-if="section.id === 'stt'" class="sample-test">
             <button :disabled="busy || candidate.state !== 'ready'" @click="sample.recording.value ? sample.finish() : recordSample()">{{ sample.recording.value ? 'Stop and transcribe' : busy ? 'Transcribing…' : 'Try my microphone' }}</button>
             <p>Up to 15 seconds. This comparison test returns text after recording; it does not send a message to your agent.</p>
