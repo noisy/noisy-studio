@@ -200,7 +200,8 @@ def test_mixed_setup_does_not_require_unused_recognition_dependency(providers_fi
     ('unknown', 'live', 'unavailable'),
 ])
 @pytest.mark.parametrize('direction', ['stt', 'tts'])
-def test_effective_mode_reflects_engine_capabilities(providers_file, direction, provider, preferred, expected):
+def test_effective_mode_reflects_engine_capabilities(providers_file, monkeypatch, direction, provider, preferred, expected):
+    monkeypatch.setattr("noisy_coding.tts_stream.streaming_available", lambda: True)
     providers_file.write_text(json.dumps({direction: provider}))
     assert providers.effective_mode(direction, preferred) == expected
 

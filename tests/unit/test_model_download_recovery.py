@@ -1,4 +1,6 @@
 from contextlib import contextmanager
+import sys
+from types import ModuleType
 
 import pytest
 
@@ -34,7 +36,9 @@ def test_incomplete_model_is_never_published_and_retry_recovers(tmp_path, monkey
 
 
 def test_recognition_cache_requires_configuration_and_tokenizer_for_offline_use(tmp_path, monkeypatch):
-    monkeypatch.setattr('huggingface_hub.try_to_load_from_cache', lambda *args, **kwargs: str(tmp_path / 'model.bin'))
+    hub = ModuleType('huggingface_hub')
+    hub.try_to_load_from_cache = lambda *args, **kwargs: str(tmp_path / 'model.bin')
+    monkeypatch.setitem(sys.modules, 'huggingface_hub', hub)
     (tmp_path / 'model.bin').write_bytes(b'weights')
     assert local._whisper_cached('base') is False
     (tmp_path / 'config.json').write_text('{}')
