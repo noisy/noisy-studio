@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/vue3';
 import App from './App.vue';
-import { resetScenario, type Scenario } from './storybook/daemon.fixture';
+import { speechFixture } from './components/speechSettings.fixture';
+import { resetScenario, setSpeechSettingsFixture, type Scenario } from './storybook/daemon.fixture';
 const meta:Meta = {
   title:'Product/Dashboard', component:App, parameters:{layout:'fullscreen'},
 };
@@ -9,6 +10,7 @@ function story(scenario:Scenario):StoryObj {
   return {render:()=>{ resetScenario(scenario); return {components:{App},template:'<App />'}; }};
 }
 export const Conversation=story('conversation');
+export const LocalSpeech=story('local-speech');
 export const Recording=story('recording');
 export const Speaking=story('speaking');
 export const Queued=story('queued');
@@ -32,5 +34,13 @@ export const Laptop:StoryObj = {
         laptop: { name: 'Laptop 1280 × 800', styles: { width: '1280px', height: '800px' }, type: 'desktop' },
       },
     },
+  },
+};
+
+export const RecoverSpeechSettings:StoryObj = {
+  render: () => {
+    resetScenario('setup');
+    setSpeechSettingsFixture(speechFixture(), Object.assign(new globalThis.Error('Saved speech settings are unreadable or invalid. No fallback engine was selected.'), {recovery:{revision:'damaged-fixture',can_restore:true}}));
+    return {components:{App},template:'<App />'};
   },
 };

@@ -853,6 +853,15 @@ class ListenerState:
             )
             return self._utterance_seq
 
+    def update_transcription_partial(self, utterance_id: int, text: str) -> None:
+        """A late provider callback must not reopen a completed or cancelled turn."""
+        with self._lock:
+            for utterance in self._utterances:
+                if utterance["id"] == utterance_id:
+                    if str(utterance.get("status", "")).startswith(("recording", "transcribing")):
+                        self._update_utterance_locked(utterance_id, text=text, status="transcribing (live)…")
+                    return
+
     def update_utterance(self, utterance_id: int, **fields: str) -> None:
         with self._lock:
             self._update_utterance_locked(utterance_id, **fields)

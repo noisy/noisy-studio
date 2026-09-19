@@ -10,12 +10,12 @@ import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 
 import httpx
 import numpy as np
 import sounddevice as sd
 
-from noisy_coding import credentials
 from noisy_coding.config_dir import CONFIG_DIR, migrate_legacy_config_dir
 from noisy_coding import providers
 from noisy_coding.listener import speech, stt
@@ -65,9 +65,9 @@ MIC_LEVEL_GAIN = 12.0
 # While the push-to-talk lease is held, silence must never close the
 # utterance — the button release is the only end-of-turn signal.
 PTT_NEVER_CLOSE_MS = 10**9
-# How often the audio loop re-reads whether an API key exists (a file
-# check 30×/s would be waste; a freshly pasted key goes live within this).
-API_KEY_CHECK_SECONDS = 2.0
+# Check selected recognition readiness periodically instead of on every frame.
+# A completed download or newly configured key becomes usable within this time.
+RECOGNITION_READY_CHECK_SECONDS = 2.0
 # A healthy mic feeds the callback ~30 frames/s; a multi-second starvation
 # means the machine slept or the device vanished — after either, a
 # long-lived PortAudio stream can come back degraded (wrong device /
@@ -192,13 +192,24 @@ def _log(message: str) -> None:
     print(message, flush=True)
 
 
+@dataclass(frozen=True)
+class RecognitionRequest:
+    provider: providers.STTProvider
+    language: str
+
+    @classmethod
+    def capture(cls, state: ListenerState) -> "RecognitionRequest":
+        return cls(providers.active_stt(), state.language)
+
+
 def _transcribe_and_enqueue(
     samples: np.ndarray,
     sample_rate: int,
     state: ListenerState,
     utterance_id: int,
+    request: RecognitionRequest,
 ) -> None:
-    provider = providers.active_stt()
+    provider = request.provider
     seconds = len(samples) / sample_rate
     cost = provider.cost_usd(seconds)
     state.add_cost("user", cost)
@@ -215,7 +226,7 @@ def _transcribe_and_enqueue(
     stt_started = time.monotonic()
     wav_bytes = stt.encode_wav(samples, sample_rate)
     try:
-        text = provider.transcribe(wav_bytes, state.language)
+        text = provider.transcribe(wav_bytes, request.language)
         state.set_latency("stt", (time.monotonic() - stt_started) * 1000)
     except providers.STTError as error:
         _log(f"[stt-error] {error}")
@@ -249,13 +260,14 @@ def _archive_utterance_audio(utterance_id: int, wav_bytes: bytes) -> None:
 
 
 def _start_stream(
-    segmenter, config: VadConfig, state: ListenerState, utterance_id: int
+    segmenter, config: VadConfig, state: ListenerState, utterance_id: int,
+    request: RecognitionRequest,
 ) -> providers.STTStreamSession | None:
-    provider = providers.active_stt()
+    provider = request.provider
     if not provider.supports_streaming:
         return None  # batch-only backend (e.g. local) — the caller batches
     longest_shown = 0
-    language = state.language
+    language = request.language
 
     def on_partial(text: str) -> None:
         # Server-side revisions can briefly shrink the text; never show that.
@@ -263,7 +275,7 @@ def _start_stream(
         if len(text) < longest_shown:
             return
         longest_shown = len(text)
-        state.update_utterance(utterance_id, text=text, status="transcribing (live)…")
+        state.update_transcription_partial(utterance_id, text)
 
     smart_turn = state.smart_turn
 
@@ -295,8 +307,9 @@ def _finalize_stream(
     seconds: float,
     state: ListenerState,
     utterance_id: int,
+    request: RecognitionRequest,
 ) -> None:
-    cost = providers.active_stt().streaming_cost_usd(seconds)
+    cost = request.provider.streaming_cost_usd(seconds)
     state.add_cost("user", cost)
     state.add_usage("stt_seconds", seconds)
     state.update_utterance(
@@ -539,9 +552,10 @@ def run(config: VadConfig | None = None) -> None:
     try:
         try:
             current_utterance_id = 0
+            recognition_request: RecognitionRequest | None = None
             stream: providers.STTStreamSession | None = None
-            api_key_present = False
-            key_check_at = 0.0
+            recognition_ready = False
+            recognition_check_at = 0.0
             last_frame_at = time.monotonic()
 
             def reopen_input(reason: str, kind: str = "mic") -> None:
@@ -599,7 +613,7 @@ def run(config: VadConfig | None = None) -> None:
                         else config.min_utterance_ms / 1000
                     )
                     stt_executor.submit(
-                        _finalize_stream, stream, seconds, state, current_utterance_id
+                        _finalize_stream, stream, seconds, state, current_utterance_id, recognition_request
                     )
                     stream = None
                 elif utterance is not None:
@@ -609,6 +623,7 @@ def run(config: VadConfig | None = None) -> None:
                         config.sample_rate,
                         state,
                         current_utterance_id,
+                        recognition_request,
                     )
                 else:
                     state.update_utterance(
@@ -651,9 +666,9 @@ def run(config: VadConfig | None = None) -> None:
                 if active_device != "browser" and frame_gap > AUDIO_GAP_REOPEN_SECONDS:
                     reopen_input(f"{frame_gap:.0f}s audio gap (sleep/device change?)")
                     continue
-                if now >= key_check_at:
-                    api_key_present = bool(credentials.api_key())
-                    key_check_at = now + API_KEY_CHECK_SECONDS
+                if now >= recognition_check_at:
+                    recognition_ready = providers.direction_ready('stt')
+                    recognition_check_at = now + RECOGNITION_READY_CHECK_SECONDS
                 if (
                     state.paused
                     and not state.user_muted
@@ -689,10 +704,9 @@ def run(config: VadConfig | None = None) -> None:
                 # 0..1, scaled so normal speech lands around 0.2-0.8.
                 rms = float(np.sqrt(np.mean((frame / 32768.0) ** 2)))
                 state.set_mic_level(min(1.0, rms * MIC_LEVEL_GAIN))
-                # No API key = no capture: the scopes stay alive (local mic
-                # level), but nothing gets segmented — no doomed bubbles
-                # stuck in "transcribing" during first contact.
-                if not api_key_present:
+                # Unprepared recognition stays idle, but local speech needs no
+                # cloud key. An in-progress turn retains its captured engine.
+                if not recognition_ready and not segmenter.is_recording:
                     state.set_recording(False)
                     continue
                 # Scratch-my-words: the cancel hotkey (or /abort-recording)
@@ -732,9 +746,17 @@ def run(config: VadConfig | None = None) -> None:
                     _log("[recording] user started speaking")
                     state.add_event("recording")
                     current_utterance_id = state.create_utterance("user", "recording…")
+                    try:
+                        recognition_request = RecognitionRequest.capture(state)
+                    except providers.STTError as error:
+                        segmenter.discard()
+                        state.set_recording(False)
+                        state.update_utterance(current_utterance_id, status="recognition unavailable")
+                        state.add_event("stt_error", str(error)[:200])
+                        continue
                     if state.mode == "live":
                         stream = _start_stream(
-                            segmenter, config, state, current_utterance_id
+                            segmenter, config, state, current_utterance_id, recognition_request
                         )
                 elif segmenter.is_recording and stream is not None:
                     stream.send(frame.tobytes())
@@ -754,6 +776,7 @@ def run(config: VadConfig | None = None) -> None:
                                 config.min_utterance_ms / 1000,
                                 state,
                                 current_utterance_id,
+                                recognition_request,
                             )
                             stream = None
                         else:
@@ -772,7 +795,7 @@ def run(config: VadConfig | None = None) -> None:
                     )
                     if stream is not None:
                         stt_executor.submit(
-                            _finalize_stream, stream, seconds, state, current_utterance_id
+                            _finalize_stream, stream, seconds, state, current_utterance_id, recognition_request
                         )
                         stream = None
                     else:
@@ -782,6 +805,7 @@ def run(config: VadConfig | None = None) -> None:
                             config.sample_rate,
                             state,
                             current_utterance_id,
+                            recognition_request,
                         )
         except KeyboardInterrupt:
             _log("\nnoisy-coding-listener: stopping")

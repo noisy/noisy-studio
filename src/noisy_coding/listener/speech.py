@@ -346,17 +346,30 @@ def _hold_for_user_turn(state: ListenerState, utterance_id: int) -> None:
         _log(f"[speak] user finished — held playback {time.monotonic() - held_since:.1f}s")
 
 
+def _streaming_available(state: ListenerState, provider: providers.TTSProvider) -> bool:
+    # Browser playback currently consumes complete clips, not streamed chunks.
+    return provider.supports_streaming and state.output_device != "browser"
+
+
 def _tts_streaming(state: ListenerState, provider: providers.TTSProvider) -> bool:
     """Whether to stream TTS: env override wins, else the daemon's tts_mode."""
-    if not provider.supports_streaming:
-        return False  # batch-only backend (e.g. local) — never a hard error
-    if state.output_device == "browser":
-        # The tab plays one complete clip per message (v1) — streaming
-        # chunks over the bridge is a later iteration.
+    if not _streaming_available(state, provider):
         return False
     if os.environ.get(TTS_MODE_ENV_VAR, "").lower() == "live":
         return True
     return state.tts_mode == "live"
+
+
+def output_status(state: ListenerState) -> dict:
+    """Describe the same playback decision the speech worker makes."""
+    try:
+        provider = providers.active_tts()
+    except providers.TTSError:
+        return {"speech_live_available": False, "speech_output_mode": "unavailable"}
+    return {
+        "speech_live_available": _streaming_available(state, provider),
+        "speech_output_mode": "live" if _tts_streaming(state, provider) else "batch",
+    }
 
 
 def _next_to_play(seq: int) -> bool:
@@ -364,9 +377,10 @@ def _next_to_play(seq: int) -> bool:
 
 
 def _cache_key(
-    source_id: int, text: str, voice: str, language: str, speed: float
+    source_id: int, text: str, voice: str, language: str, speed: float, provider=None
 ) -> str | None:
-    return audio_cache.key(source_id, text, voice, language, speed)
+    return audio_cache.key(source_id, text, voice, language, speed,
+                           getattr(provider, "cache_identity", getattr(provider, "name", "grok")))
 
 
 def _prepare_audio(
@@ -394,9 +408,9 @@ def _prepare_audio(
         # speaker is muted. _play_prepared parks the card (or renders at
         # its turn, should the user unmute in the meantime).
         return _PreparedSpeech(voice, language, speed, provider=provider)
-    cached = _audio_cache.get(_cache_key(source_id, text, voice, language, speed))
+    cached = _audio_cache.get_audio(_cache_key(source_id, text, voice, language, speed, provider))
     if cached is not None:
-        audio = tts.SynthesizedAudio(cached, audio_cache.CONTENT_TYPE, 0.0)
+        audio = cached
         _mark_ready(state, utterance_id)
         return _PreparedSpeech(
             voice, language, speed, audio=audio, cached=True, provider=provider
@@ -449,11 +463,11 @@ def _synthesize_now(
     synth_started = time.monotonic()
     audio = asyncio.run(
         _synthesize_with_retry(
-            state, provider, _emphasis_to_speech_tags(text), voice, language, speed
+            state, provider, text, voice, language, speed
         )
     )
     state.set_latency("tts", (time.monotonic() - synth_started) * 1000)
-    _audio_cache.put(_cache_key(source_id, text, voice, language, speed), audio.audio)
+    _audio_cache.put_audio(_cache_key(source_id, text, voice, language, speed, provider), audio)
     return audio
 
 
@@ -589,7 +603,7 @@ async def _stream_and_play(
     for attempt, delay in enumerate((*SYNTH_RETRY_DELAYS_SECONDS, None)):
         try:
             await provider.speak_streaming(
-                _emphasis_to_speech_tags(text),
+                text,
                 prepared.voice,
                 prepared.language,
                 prepared.speed,
@@ -606,9 +620,9 @@ async def _stream_and_play(
             state.add_event("speak_retry", str(error)[:160])
             if delay:
                 await asyncio.sleep(delay)
-    _audio_cache.put(
-        _cache_key(source_id, text, prepared.voice, prepared.language, prepared.speed),
-        bytes(chunks),
+    _audio_cache.put_audio(
+        _cache_key(source_id, text, prepared.voice, prepared.language, prepared.speed, provider),
+        tts.SynthesizedAudio(bytes(chunks), getattr(provider, "stream_content_type", "audio/mpeg"), 0.0),
     )
 
 

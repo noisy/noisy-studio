@@ -12,6 +12,9 @@ first.
 """
 
 import hashlib
+import json
+
+from noisy_coding.providers.base import SynthesizedAudio
 import threading
 from collections import OrderedDict
 from pathlib import Path
@@ -26,13 +29,13 @@ DISK_MAX_CLIPS = 100
 DISK_MAX_BYTES = 100 * 1024 * 1024
 
 
-def key(source_id: int, text: str, voice: str, language: str, speed: float) -> str | None:
+def key(source_id: int, text: str, voice: str, language: str, speed: float, provider: str = "grok") -> str | None:
     """Cache key for a clip, or None when the utterance has no stable card
     identity to key on (cardless one-off plays must never collide)."""
     if source_id <= 0:
         return None
     fingerprint = hashlib.sha256(
-        f"{voice}|{language}|{speed}|{text}".encode()
+        f"v2|{provider}|{voice}|{language}|{speed}|{text}".encode()
     ).hexdigest()[:16]
     return f"{source_id}-{fingerprint}"
 
@@ -42,6 +45,24 @@ class AudioCache:
         self._lock = threading.Lock()
         self._clips: OrderedDict[str, bytes] = OrderedDict()
         self._directory = directory
+
+    def get_audio(self, clip_key: str | None) -> SynthesizedAudio | None:
+        payload = self.get(clip_key)
+        if payload is None:
+            return None
+        try:
+            metadata, audio = payload.split(b"\n", 1)
+            info = json.loads(metadata)
+            return SynthesizedAudio(audio, info["content_type"], info["duration_seconds"])
+        except (ValueError, KeyError, TypeError):
+            return None  # legacy/raw clips have no trustworthy format metadata
+
+    def put_audio(self, clip_key: str | None, audio: SynthesizedAudio) -> None:
+        if not audio.audio:
+            return
+        metadata = json.dumps({"content_type": audio.content_type,
+                               "duration_seconds": audio.duration_seconds}).encode()
+        self.put(clip_key, metadata + b"\n" + audio.audio)
 
     def get(self, clip_key: str | None) -> bytes | None:
         if clip_key is None:

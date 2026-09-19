@@ -13,6 +13,7 @@ import ConversationLog from "./components/ConversationLog.vue";
 import ConversationTelemetry from "./components/ConversationTelemetry.vue";
 import DiagnosticChecklist from "./components/DiagnosticChecklist.vue";
 import EngineChoice from "./components/EngineChoice.vue";
+import SpeechSettings from "./components/SpeechSettings.vue";
 import HudPanel from "./components/HudPanel.vue";
 import Oscilloscope from "./components/Oscilloscope.vue";
 import TurnHistory from "./components/TurnHistory.vue";
@@ -207,6 +208,7 @@ const firstContactVerifying = ref(false);
 const firstContactFailed = ref(false);
 // Which path the engine cards picked; the key form belongs to "cloud".
 const gateMode = ref<"cloud" | "local">("cloud");
+const setupSpeechSettings = ref(false);
 // "Unconfigured" asks about a READY engine, not about a key: a local-only
 // setup has no key at all. voice_ready is additive — an older daemon
 // without it falls back to the key check.
@@ -452,10 +454,15 @@ const LANGUAGES: Record<string, string> = {
   <!-- First contact: the HUD itself is the demo — live scopes prove the
        mic works, API-dependent sections sit dimmed behind the key prompt. -->
   <div v-if="unconfigured" class="setup-overlay" role="dialog" aria-modal="true" aria-labelledby="setup-title">
-    <div class="setup-box">
+    <div class="setup-box" :class="{ 'speech-recovery-box': setupSpeechSettings }">
       <div id="setup-title" class="setup-title">Welcome to Noisy Studio</div>
       <!-- Engine first, key second (#36/#37): the cards decide whether the
            key form below applies at all. -->
+      <button class="ctl" @click="setupSpeechSettings = !setupSpeechSettings">
+        {{ setupSpeechSettings ? 'Back to setup' : 'Speech settings and recovery' }}
+      </button>
+      <SpeechSettings v-if="setupSpeechSettings" @configure="setupSpeechSettings = false" />
+      <template v-else>
       <EngineChoice @mode="gateMode = $event" />
       <!-- The welcome pitch has done its job the moment a key is submitted:
            from then on the box is a verification panel, and every saved
@@ -508,6 +515,7 @@ const LANGUAGES: Record<string, string> = {
         moment (<a href="https://status.x.ai" target="_blank" rel="noreferrer">status.x.ai</a>)
         — in that case the very same key might pass if you retry in a while.
       </p>
+      </template>
     </div>
   </div>
 
@@ -607,13 +615,13 @@ const LANGUAGES: Record<string, string> = {
                  directions (Claude's voice out vs your voice in). -->
             <div class="ctlrow" title="Agent speech: batch renders the whole clip first, live streams as it synthesizes">
               <span class="lbl">Agent speech</span>
-              <button class="ctl small" :class="{ on: status?.tts_mode === 'batch' }" @click="setTtsMode('batch')">Batch</button>
-              <button class="ctl small" :class="{ on: status?.tts_mode === 'live' }" @click="setTtsMode('live')">Live</button>
+              <button class="ctl small" :class="{ on: (status?.speech_output_mode ?? status?.tts_mode) === 'batch' }" @click="setTtsMode('batch')">Batch</button>
+              <button class="ctl small" :class="{ on: (status?.speech_output_mode ?? status?.tts_mode) === 'live' }" :disabled="status?.speech_live_available === false" :title="status?.speech_live_available === false ? 'This voice engine generates complete replies before playback.' : undefined" @click="setTtsMode('live')">Live</button>
             </div>
-            <div class="ctlrow" title="Your speech: batch transcribes after silence ($0.10/h), live streams while you talk ($0.20/h)">
+            <div class="ctlrow" title="Your speech: batch transcribes after you finish, live transcribes while you talk when supported by your engine">
               <span class="lbl">Your speech</span>
-              <button class="ctl small" :class="{ on: status?.mode === 'batch' }" @click="setSttMode('batch')">Batch</button>
-              <button class="ctl small" :class="{ on: status?.mode === 'live' }" @click="setSttMode('live')">Live</button>
+              <button class="ctl small" :class="{ on: (status?.recognition_mode ?? status?.mode) === 'batch' }" @click="setSttMode('batch')">Batch</button>
+              <button class="ctl small" :class="{ on: (status?.recognition_mode ?? status?.mode) === 'live' }" :disabled="status?.recognition_live_available === false" :title="status?.recognition_live_available === false ? 'This recognition engine transcribes after you finish speaking.' : undefined" @click="setSttMode('live')">Live</button>
             </div>
             <div class="ctlrow" title="Subtle blips on conversation events; pick which in Settings">
               <span class="lbl">Sound cues</span>
@@ -749,6 +757,7 @@ const LANGUAGES: Record<string, string> = {
               <section class="railbox">
                 <VoicePersona
                   :voice="character?.voice ?? ''"
+                  :voice-labels="status?.voice_labels"
                   :speaking="!!viewedAgent && (status?.speaking_agents ?? []).includes(viewedAgent)"
                   :muted="!!viewedAgent && (status?.muted_agents ?? []).includes(viewedAgent)"
                   @change="(v) => changeCharacter({ voice: v })"
@@ -776,7 +785,7 @@ const LANGUAGES: Record<string, string> = {
       <span v-if="status?.input_device === 'browser'">
         TAB MIC <b :class="status?.tab_audio ? 'ok' : 'bad'">{{ status?.tab_audio ? "Live" : "NO TAB" }}</b>
       </span>
-      <span>Recognition <b>{{ status?.mode?.toUpperCase() ?? "—" }}</b></span>
+      <span>Recognition <b>{{ (status?.recognition_mode ?? status?.mode)?.toUpperCase() ?? "—" }}</b></span>
       <span>Language <b>{{ status?.language || "Auto" }}</b></span>
       <span>Queue <b>{{ status?.queued ?? "—" }}</b></span>
       <span v-if="lastError" class="lasterr" :title="`${lastError.detail} (${errors.length} error(s) this session)`">

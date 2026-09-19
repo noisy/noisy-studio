@@ -1,0 +1,6 @@
+{
+  "model": "Whisper base",
+  "hub_offline": true,
+  "clip": "u1",
+  "transcript": "The search stopped working after the last change. It finds exact names but part of a name gives me nothing."
+}

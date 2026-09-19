@@ -256,3 +256,35 @@ export function setProviders(patch: {
 export function requestHotkeyPermission(): Promise<HotkeyState> {
   return postJson<HotkeyState>("/hotkeys/permission", {});
 }
+
+export interface SpeechEngine {
+  id: string; provider: string; direction: 'stt' | 'tts'; label: string;
+  location: string; model: string; live: boolean; description: string; languages: string;
+  state: 'ready' | 'setup' | 'download' | 'downloading' | 'error' | 'unsupported'; detail: string;
+  setup_action?: 'system-settings';
+  voices: {id: string; label: string}[]; bindings: Record<string, string>;
+}
+export interface SpeechSettingsInfo {
+  revision: string; active: {stt: string; tts: string}; current_voice_labels?: Record<string, string>; engines: SpeechEngine[]; downloads: ModelDownload[];
+}
+export interface SpeechSettingsPatch {
+  operation: 'prepare' | 'apply'; choice: string; revision: string; bindings: Record<string, string>;
+}
+async function speechRequest<T>(path: string, body?: object): Promise<T> {
+  const response = await fetch(path, body === undefined ? undefined : {method:'POST', body:JSON.stringify(body)});
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) throw Object.assign(new Error(typeof payload?.error === 'string' ? payload.error : 'Could not reach speech settings. Check the connection and retry.'), {recovery:payload?.recovery});
+  return payload as T;
+}
+export function getSpeechSettings(): Promise<SpeechSettingsInfo> { return speechRequest('/speech-settings'); }
+export function updateSpeechSettings(patch: SpeechSettingsPatch): Promise<SpeechSettingsInfo> { return speechRequest('/speech-settings', patch); }
+export function previewSpeechVoice(choice: string, voice: string): Promise<{audio: string; content_type: string}> {
+  return speechRequest('/speech-settings/preview', {choice, voice});
+}
+export function previewRecognition(choice: string, audio: string): Promise<{text: string; elapsed_ms: number}> {
+  return speechRequest('/speech-settings/transcribe', {choice, audio});
+}
+
+export function restoreSpeechSettings(revision: string): Promise<SpeechSettingsInfo> {
+  return speechRequest('/speech-settings', {operation:'restore-backup', revision});
+}

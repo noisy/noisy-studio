@@ -110,14 +110,16 @@ def _local_tts_engine() -> str:
     return str(config.local_options().get("tts_engine") or "kokoro")
 
 
-def _local_missing() -> str:
+def _local_missing(*, tts: bool = True, stt: bool = True) -> str:
     """Empty string when local can work; otherwise what's missing and the fix.
 
     Checks match what actually runs: kokoro-onnx only while Kokoro is the
     chosen engine (say needs no package), so `ready` never lies about a
     dependency the first utterance would then trip over."""
-    if find_spec("faster_whisper") is None:
+    if stt and find_spec("faster_whisper") is None:
         return "faster-whisper is not installed — run: uv sync --extra local"
+    if not tts:
+        return ""
     if _local_tts_engine() == "say":
         if not shutil.which("say"):
             return "the macOS `say` command is missing on this system"

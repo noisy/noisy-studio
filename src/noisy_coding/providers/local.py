@@ -23,6 +23,8 @@ later by transcribing the growing buffer.
 
 import asyncio
 import io
+import json
+import re
 import tempfile
 import threading
 import wave
@@ -55,10 +57,11 @@ class LocalSTT:
     _model_name = ""
     _lock = threading.Lock()
 
+    def __init__(self, options: dict | None = None):
+        self.options = dict(config.local_options() if options is None else options)
+
     def _load_model(self):
-        model_name = str(
-            config.local_options().get("stt_model") or config.DEFAULT_LOCAL_STT_MODEL
-        )
+        model_name = str(self.options.get("stt_model") or config.DEFAULT_LOCAL_STT_MODEL)
         with LocalSTT._lock:
             if LocalSTT._model is None or LocalSTT._model_name != model_name:
                 try:
@@ -72,7 +75,8 @@ class LocalSTT:
                 downloads.report(key, label, "downloading")
                 try:
                     LocalSTT._model = WhisperModel(
-                        model_name, device="auto", compute_type="auto"
+                        model_name, device="auto", compute_type="auto",
+                        local_files_only=_whisper_cached(model_name)
                     )
                 except Exception as error:
                     downloads.report(key, label, "error", detail=str(error)[:200])
@@ -164,7 +168,16 @@ class _KokoroEngine:
             return cls._model
 
 
+_download_lock = threading.Lock()
+
+
 def _ensure_downloaded(url: str, filename: str) -> Path:
+    # Preparation and synthesis can request the same file concurrently.
+    with _download_lock:
+        return _download_file(url, filename)
+
+
+def _download_file(url: str, filename: str) -> Path:
     """The model files land in the config dir once; every later run is
     offline. Progress goes to the downloads registry so the dashboard can
     draw a bar instead of the user staring at dead air."""
@@ -189,6 +202,8 @@ def _ensure_downloaded(url: str, filename: str) -> Path:
                     out.write(chunk)
                     done += len(chunk)
                     downloads.report(filename, label, "downloading", done, total)
+        if done == 0 or (total > 0 and done != total):
+            raise OSError("The model download was incomplete. Retry the download.")
         partial.replace(target)
         downloads.report(filename, label, "done", done, total or done)
     except (httpx.HTTPError, OSError) as error:
@@ -209,16 +224,22 @@ def _whisper_cached(model_name: str) -> bool:
     result = try_to_load_from_cache(
         f"Systran/faster-whisper-{model_name}", "model.bin"
     )
-    return isinstance(result, str)
+    if not isinstance(result, str):
+        return False
+    directory = Path(result).parent
+    # Missing tokenizer data triggers a network fallback inside faster-whisper.
+    return all((directory / filename).is_file() and (directory / filename).stat().st_size > 0
+               for filename in ("model.bin", "config.json", "tokenizer.json"))
 
 
-def models_present(tts: bool = True, stt: bool = True) -> bool:
+def models_present(tts: bool = True, stt: bool = True, options: dict | None = None) -> bool:
     """Every weight the CURRENT local configuration needs is on disk —
     the first utterance will not block on a download. Direction-aware:
     a mixed setup (say local TTS + cloud STT) needs only its own half."""
     from noisy_coding.config_dir import CONFIG_DIR
 
-    engine = str(config.local_options().get("tts_engine") or "kokoro")
+    options = config.local_options() if options is None else options
+    engine = str(options.get("tts_engine") or "kokoro")
     if tts and engine != "say":
         kokoro_dir = CONFIG_DIR / "models" / "kokoro"
         for filename in ("kokoro-v1.0.onnx", "voices-v1.0.bin"):
@@ -227,7 +248,7 @@ def models_present(tts: bool = True, stt: bool = True) -> bool:
                 return False
     if stt:
         model_name = str(
-            config.local_options().get("stt_model") or config.DEFAULT_LOCAL_STT_MODEL
+            options.get("stt_model") or config.DEFAULT_LOCAL_STT_MODEL
         )
         return _whisper_cached(model_name)
     return True
@@ -261,20 +282,22 @@ def download_status() -> list[dict]:
     return downloads.status()
 
 
-def prefetch_models() -> bool:
+def prefetch_models(*, tts: bool = True, stt: bool = True, options: dict | None = None) -> bool:
     """Start fetching every local weight in the background — called when
     the user switches an engine to local, so the first utterance finds
     the models already on disk."""
-    engine = str(config.local_options().get("tts_engine") or "kokoro")
+    options = dict(config.local_options() if options is None else options)
+    engine = str(options.get("tts_engine") or "kokoro")
     targets = []
-    if engine != "say":
+    if tts and engine != "say":
         targets.append(
             lambda: _ensure_downloaded(_KOKORO_MODEL_URL, "kokoro-v1.0.onnx")
         )
         targets.append(
             lambda: _ensure_downloaded(_KOKORO_VOICES_URL, "voices-v1.0.bin")
         )
-    targets.append(lambda: LocalSTT()._load_model())
+    if stt:
+        targets.append(lambda: LocalSTT(options)._load_model())
     return downloads.prefetch(targets)
 
 
@@ -283,10 +306,25 @@ class LocalTTS:
     label = "local TTS (kokoro)"
     supports_streaming = False
 
+    def __init__(self, options: dict | None = None):
+        self.options = dict(config.local_options() if options is None else options)
+        if self.options.get("voice_bindings") and self.options.get("tts_engine", "kokoro") == "kokoro":
+            from noisy_coding.listener.state import VOICE_POOL
+            from noisy_coding.providers.manifest import KOKORO_VOICES
+            bindings = dict(self.options["voice_bindings"])
+            for identity in VOICE_POOL:
+                if bindings.get(identity) not in KOKORO_VOICES:
+                    bindings[identity] = next((v for v in KOKORO_VOICES if v not in bindings.values()), KOKORO_VOICES[len(bindings) % len(KOKORO_VOICES)])
+            self.options["voice_bindings"] = bindings
+        self.cache_identity = "local:" + json.dumps(self.options, sort_keys=True)
+
     async def synthesize(
         self, text: str, voice_id: str, language: str, speed: float
     ) -> SynthesizedAudio:
-        engine = str(config.local_options().get("tts_engine") or "kokoro")
+        if language not in ("", "auto", "en", "en-US", "en-GB") and self.options.get("tts_engine", "kokoro") == "kokoro":
+            raise TTSError("Kokoro currently supports English in this app. Choose another engine for this language.")
+        text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)
+        engine = str(self.options.get("tts_engine") or "kokoro")
         if engine == "say":
             return await self._synthesize_say(text, speed)
         return await asyncio.to_thread(self._synthesize_kokoro, text, voice_id, speed)
@@ -317,13 +355,16 @@ class LocalTTS:
         known = set(model.get_voices())
         if voice_id in known:
             return voice_id
-        configured = str(config.local_options().get("tts_voice") or "")
+        mapped = self.options.get("voice_bindings", {}).get(voice_id)
+        if mapped in known:
+            return mapped
+        configured = str(self.options.get("tts_voice") or "")
         if configured in known:
             return configured
         return DEFAULT_KOKORO_VOICE
 
     async def _synthesize_say(self, text: str, speed: float) -> SynthesizedAudio:
-        voice = str(config.local_options().get("tts_voice") or "")
+        voice = str(self.options.get("tts_voice") or "")
         # `say` rate is words per minute; ~180 wpm reads as speed 1.0.
         rate = max(90, min(360, int(180 * speed)))
         with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as out:
@@ -355,11 +396,11 @@ class LocalTTS:
         raise TTSError("Local TTS does not stream — use the batch path.")
 
     async def list_voices(self) -> list[dict]:
-        engine = str(config.local_options().get("tts_engine") or "kokoro")
+        engine = str(self.options.get("tts_engine") or "kokoro")
         if engine != "say":
-            names = await asyncio.to_thread(
-                lambda: list(_KokoroEngine.model().get_voices())
-            )
+            from noisy_coding.providers.manifest import KOKORO_VOICES
+
+            names = KOKORO_VOICES
             # Kokoro voice ids lead with a locale+gender prefix ("af_" =
             # American female); surface that as the language column.
             return [{"voice_id": name, "language": name.split("_")[0]} for name in names]

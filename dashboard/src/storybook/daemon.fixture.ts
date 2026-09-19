@@ -1,7 +1,7 @@
 /** Storybook-only daemon. Never sends network requests or plays real audio. */
 import type { Character, DaemonStatus, SettingsPatch, Utterance } from '../types';
 import type { DiagnosticChecks, ProvidersInfo } from '../api/client';
-export type Scenario = 'conversation' | 'recording' | 'speaking' | 'queued' | 'muted' | 'offline' | 'error' | 'empty' | 'setup' | 'shutdown' | 'long' | 'no-tabs';
+export type Scenario = 'conversation' | 'recording' | 'speaking' | 'queued' | 'muted' | 'offline' | 'error' | 'empty' | 'setup' | 'shutdown' | 'long' | 'no-tabs' | 'local-speech';
 let scenario: Scenario = 'conversation';
 let status: DaemonStatus;
 let messages: Utterance[] = [];
@@ -18,7 +18,7 @@ export function resetScenario(next: Scenario) {
     stt_latency_ms:410, tts_latency_ms:820, recording:next === 'recording', claude_speaking:next === 'speaking', playing_utterance_id:next === 'speaking' ? 4 : 0,
     speaking_agents:next === 'speaking' ? ['codex'] : [], queued:next === 'queued' ? 2 : 0,
     session_cost_usd:{user:.0214,claude:.1187}, usage:{stt_seconds:764,tts_chars:18432}, credits_usd:4.21,
-    mode:'batch',tts_mode:'live',end_silence_ms:1500,mic_sensitivity:50,smart_turn:.7,smart_turn_mode:'soft',detection_mode:'ptt',ptt_held:false,
+    mode:'batch',tts_mode:'live',recognition_live_available:next !== 'local-speech',speech_live_available:next !== 'local-speech',recognition_mode:next === 'local-speech' ? 'batch' : undefined,speech_output_mode:next === 'local-speech' ? 'batch' : undefined,end_silence_ms:1500,mic_sensitivity:50,smart_turn:.7,smart_turn_mode:'soft',detection_mode:'ptt',ptt_held:false,
     input_device:'',output_device:'system',browser_audio:false,tab_audio:false,hotkeys:{configured:true,permission:'granted',armed:true,bindings:{hold:'F8',toggle:'F15',scratch:'escape',tab1:'F1',tab2:'F2'},stored:{hold:'F8',toggle:'F15',scratch:'escape',tab1:'F1',tab2:'F2'},problems:{}},activity:{},language:'en',
     agents:next === 'no-tabs' ? {} : {codex:1,claude:2,docs:3}, agent_labels:next === 'no-tabs' ? {} : {codex:next === 'long' ? 'codex / investigate-checkout-performance-and-retry-handling' : 'Codex',claude:'Code review',docs:'Documentation'},
     agent_voices:{codex:'lux',claude:'eve',docs:'rex'},active_agent:next === 'no-tabs' ? null : 'codex',muted_agents:[], queued_by_agent:{claude:2},
@@ -73,9 +73,27 @@ export async function saveApiKey() { status.api_key_set=true;status.voice_ready=
 export async function getProviders():Promise<ProvidersInfo> { if(!providers) throw new Error('Simulated unavailable providers endpoint'); return clone(providers); }
 export async function setProviders(patch:{tts?:string;stt?:string;prefetch?:boolean}) {
   if(!providers) throw new Error('Simulated unavailable providers endpoint');
+  if ((patch.tts === 'local' || patch.stt === 'local') && providers.downloads?.some(d => d.state !== 'done')) throw new Error('{"error":"Preparing local models. Your current engines remain active; apply again after the download finishes."}');
   if(patch.tts) providers.active.tts=patch.tts;
   if(patch.stt) providers.active.stt=patch.stt;
   if(providers.active.tts==='local') status.voice_ready=true;
   return clone(providers.active);
 }
 resetScenario('conversation');
+
+import type { SpeechSettingsInfo, SpeechSettingsPatch } from '../api/client';
+import { speechFixture } from '../components/speechSettings.fixture';
+let speechSettings = speechFixture();
+let speechSettingsError: Error | undefined;
+export function setSpeechSettingsFixture(value: SpeechSettingsInfo, error?: Error) { speechSettings = clone(value); speechSettingsError=error; }
+export async function getSpeechSettings() { if(speechSettingsError) throw speechSettingsError; return clone(speechSettings); }
+export async function updateSpeechSettings(patch: SpeechSettingsPatch) {
+  const engine = speechSettings.engines.find(e => e.id === patch.choice)!;
+  if (patch.operation === 'prepare') { engine.state = 'ready'; engine.detail = 'Model files are on this Mac.'; }
+  else { speechSettings.active[engine.direction] = engine.id; engine.bindings = {...patch.bindings}; }
+  return clone(speechSettings);
+}
+export async function previewSpeechVoice() { throw new Error('Storybook has no live provider account. Voice preview errors are shown inline.'); }
+export async function previewRecognition() {return {text:'The search should ignore capital letters.',elapsed_ms:640};}
+
+export async function restoreSpeechSettings(_revision:string) { speechSettingsError=undefined; status.voice_ready=true; return getSpeechSettings(); }

@@ -1,0 +1,137 @@
+{
+  "kind": "exploratory batch recognition; not end-to-end live latency",
+  "runs": [
+    {
+      "model": "tiny",
+      "load_ms": 3799,
+      "sample_count": 20,
+      "warm_median_ms": 351,
+      "warm_p95_ms": 609,
+      "clips": [
+        {
+          "clip": "u1",
+          "script_reference": "The search stopped working after the last change. It finds exact names, but part of a name gives me nothing.",
+          "duration_s": 12.63609999999404,
+          "transcript": "The search stopped working after the last change. It finds exact names, but part of a name gives me nothing.",
+          "inference_ms": 662
+        },
+        {
+          "clip": "u2",
+          "script_reference": "Yes, and ignore capital letters too. If I type just part of a name, I still want to find it.",
+          "duration_s": 14.28319999999553,
+          "transcript": "Yes, and ignore a capital letters too if I type just part of a name as I still want to find it.",
+          "inference_ms": 340
+        },
+        {
+          "clip": "u3",
+          "script_reference": "Great. Add a test for both cases so we don't break this again.",
+          "duration_s": 9.624099999994039,
+          "transcript": "Great, other tests for both cases, so we don't break this again.",
+          "inference_ms": 294
+        },
+        {
+          "clip": "u4",
+          "script_reference": "Great. My hands are full. Can you deploy that to production for me?",
+          "duration_s": 9.26740000000596,
+          "transcript": "Great. My hands are full. Can you deploy that to production for me?",
+          "inference_ms": 252
+        },
+        {
+          "clip": "u5",
+          "script_reference": "Perfect. Thanks.",
+          "duration_s": 4.74280000000447,
+          "transcript": "Perfect. Thanks.",
+          "inference_ms": 241
+        }
+      ]
+    },
+    {
+      "model": "base",
+      "load_ms": 535,
+      "sample_count": 20,
+      "warm_median_ms": 721,
+      "warm_p95_ms": 904,
+      "clips": [
+        {
+          "clip": "u1",
+          "script_reference": "The search stopped working after the last change. It finds exact names, but part of a name gives me nothing.",
+          "duration_s": 12.63609999999404,
+          "transcript": "The search stopped working after the last change. It finds exact names but part of a name gives me nothing.",
+          "inference_ms": 582
+        },
+        {
+          "clip": "u2",
+          "script_reference": "Yes, and ignore capital letters too. If I type just part of a name, I still want to find it.",
+          "duration_s": 14.28319999999553,
+          "transcript": "Yes, and ignore capital letters too if I type just part of a name as I still want to find it.",
+          "inference_ms": 577
+        },
+        {
+          "clip": "u3",
+          "script_reference": "Great. Add a test for both cases so we don't break this again.",
+          "duration_s": 9.624099999994039,
+          "transcript": "Great, other tests for both cases so we don't break this again.",
+          "inference_ms": 513
+        },
+        {
+          "clip": "u4",
+          "script_reference": "Great. My hands are full. Can you deploy that to production for me?",
+          "duration_s": 9.26740000000596,
+          "transcript": "Great, my hands are full. Can you deploy that to production for me?",
+          "inference_ms": 515
+        },
+        {
+          "clip": "u5",
+          "script_reference": "Perfect. Thanks.",
+          "duration_s": 4.74280000000447,
+          "transcript": "Perfect thanks",
+          "inference_ms": 361
+        }
+      ]
+    },
+    {
+      "model": "small",
+      "load_ms": 1566,
+      "sample_count": 20,
+      "warm_median_ms": 1693,
+      "warm_p95_ms": 2032,
+      "clips": [
+        {
+          "clip": "u1",
+          "script_reference": "The search stopped working after the last change. It finds exact names, but part of a name gives me nothing.",
+          "duration_s": 12.63609999999404,
+          "transcript": "The search stopped working after the last change it finds exact names, but part of a name gives me nothing",
+          "inference_ms": 2256
+        },
+        {
+          "clip": "u2",
+          "script_reference": "Yes, and ignore capital letters too. If I type just part of a name, I still want to find it.",
+          "duration_s": 14.28319999999553,
+          "transcript": "Yes, and ignore capital letters too. If I type just part of the name, I still want to find it.",
+          "inference_ms": 1733
+        },
+        {
+          "clip": "u3",
+          "script_reference": "Great. Add a test for both cases so we don't break this again.",
+          "duration_s": 9.624099999994039,
+          "transcript": "Great. Add a test for both cases so we don't break this again.",
+          "inference_ms": 1964
+        },
+        {
+          "clip": "u4",
+          "script_reference": "Great. My hands are full. Can you deploy that to production for me?",
+          "duration_s": 9.26740000000596,
+          "transcript": "Great. My hands are full. Can you deploy that to production for me?",
+          "inference_ms": 1679
+        },
+        {
+          "clip": "u5",
+          "script_reference": "Perfect. Thanks.",
+          "duration_s": 4.74280000000447,
+          "transcript": "Perfect. Thanks.",
+          "inference_ms": 1596
+        }
+      ]
+    }
+  ]
+}

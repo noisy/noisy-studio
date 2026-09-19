@@ -34,14 +34,26 @@ def test_selection_is_read_per_call(providers_file):
     assert isinstance(providers.active_tts(), LocalTTS)
 
 
-def test_unknown_name_falls_back_to_grok(providers_file):
+def test_unknown_provider_never_silently_sends_speech_to_grok(providers_file):
     providers_file.write_text(json.dumps({"tts": "no-such-engine"}))
-    assert isinstance(providers.active_tts(), GrokTTS)
+    with pytest.raises(providers.TTSError, match="Unknown speech provider"):
+        providers.active_tts()
 
 
-def test_broken_file_falls_back_to_grok(providers_file):
-    providers_file.write_text("{not json")
-    assert isinstance(providers.active_tts(), GrokTTS)
+@pytest.mark.parametrize('contents', [
+    '{not json', '[]', '{"stt":null}', '{"providers":[]}',
+    '{"local":{"tts_engine":[]}}', '{"local":{"voice_bindings":[]}}',
+    '{"providers":{"grok":{"voice_bindings_by_engine":{"grok:tts":[]}}}}',
+])
+def test_invalid_saved_settings_never_fall_back_or_get_overwritten(providers_file, contents):
+    providers_file.write_text(contents)
+    with pytest.raises(providers.TTSError, match="No fallback engine"):
+        providers.active_tts()
+    with pytest.raises(providers.STTError, match="No fallback engine"):
+        providers.active_stt()
+    with pytest.raises(config.ConfigurationError):
+        config.save(tts='grok')
+    assert providers_file.read_text() == contents
 
 
 def test_save_merges_local_options(providers_file):
@@ -128,7 +140,7 @@ def test_voice_ready_requires_local_weights_on_disk(providers_file, monkeypatch)
     installed-but-not-downloaded local setup is NOT ready (PR #47 round 2)."""
     providers_file.write_text(json.dumps({"stt": "local", "tts": "local"}))
     monkeypatch.setattr(
-        "noisy_coding.providers.manifest._local_missing", lambda: ""
+        "noisy_coding.providers.builtin_selection.find_spec", lambda name: object()
     )
     monkeypatch.setattr(
         "noisy_coding.providers.local.models_present", lambda **kw: False
@@ -149,7 +161,7 @@ def test_voice_ready_checks_only_the_local_direction(
         json.dumps({"tts": "local", "stt": "grok", "local": {}})
     )
     monkeypatch.setattr(
-        "noisy_coding.providers.manifest._local_missing", lambda: ""
+        "noisy_coding.providers.builtin_selection.find_spec", lambda name: object()
     )
     monkeypatch.setattr(
         "noisy_coding.credentials.api_key", lambda: "xai-test-key"
@@ -172,3 +184,73 @@ def test_catalog_survives_repeated_calls(providers_file):
     'catalog' — the second HTTP GET /providers then 500'd)."""
     assert providers.catalog() == providers.catalog()
     assert callable(providers.catalog)
+
+
+def test_mixed_setup_does_not_require_unused_recognition_dependency(providers_file, monkeypatch):
+    providers_file.write_text(json.dumps({"tts": "local", "stt": "grok"}))
+    monkeypatch.setattr("noisy_coding.credentials.api_key", lambda: "test-key")
+    monkeypatch.setattr("noisy_coding.providers.builtin_selection.find_spec", lambda name: None if name == "faster_whisper" else object())
+    monkeypatch.setattr("noisy_coding.providers.local.models_present", lambda **kw: True)
+    assert providers.voice_ready() is True
+
+
+@pytest.mark.parametrize('provider,preferred,expected', [
+    ('grok', 'live', 'live'), ('grok', 'batch', 'batch'),
+    ('local', 'live', 'batch'), ('local', 'batch', 'batch'),
+    ('unknown', 'live', 'unavailable'),
+])
+@pytest.mark.parametrize('direction', ['stt', 'tts'])
+def test_effective_mode_reflects_engine_capabilities(providers_file, monkeypatch, direction, provider, preferred, expected):
+    monkeypatch.setattr("noisy_coding.tts_stream.streaming_available", lambda: True)
+    providers_file.write_text(json.dumps({direction: provider}))
+    assert providers.effective_mode(direction, preferred) == expected
+
+
+def test_third_provider_receives_its_own_options_without_overwriting_local_settings(providers_file, monkeypatch):
+    config.save(stt="local", stt_model="small", voice_bindings={"lux": "af_sarah"})
+    config.save_selection("tts", "example", {"model": "voice-v2", "voice_bindings": {"lux": "voice-a"}})
+    received = []
+    monkeypatch.setitem(providers._TTS_FACTORIES, "example", lambda options: received.append(options))
+
+    providers.active_tts()
+
+    assert {
+        "factory_options": received,
+        "local_options": config.local_options(),
+        "recognition": config.stt_provider_name(),
+    } == {
+        "factory_options": [{"model": "voice-v2", "voice_bindings": {"lux": "voice-a"}}],
+        "local_options": {"stt_model": "small", "voice_bindings": {"lux": "af_sarah"}},
+        "recognition": "local",
+    }
+
+
+def test_switching_provider_preserves_its_settings_for_return(providers_file):
+    config.save_selection("tts", "example", {"model": "voice-v2"})
+    config.save_selection("tts", "grok", {})
+    config.save_selection("tts", "example", {})
+
+    assert config.provider_options("example") == {"model": "voice-v2"}
+
+
+@pytest.mark.asyncio
+async def test_grok_voice_bindings_are_frozen_and_used_for_synthesis(providers_file, monkeypatch):
+    from unittest.mock import AsyncMock
+    from noisy_coding.providers.base import SynthesizedAudio
+    synthesize = AsyncMock(return_value=SynthesizedAudio(b'audio', 'audio/mpeg', 1))
+    monkeypatch.setattr('noisy_coding.providers.grok.tts.synthesize', synthesize)
+    config.save_selection('tts', 'grok', {'voice_bindings': {'lux': 'rex'}})
+    prepared = providers.active_tts()
+    config.save_selection('tts', 'grok', {'voice_bindings': {'lux': 'luna'}})
+
+    await prepared.synthesize('Hello', 'lux', 'en', 1)
+
+    synthesize.assert_awaited_once_with('Hello', 'rex', 'en', 1)
+    assert prepared.cache_identity != providers.active_tts().cache_identity
+
+
+def test_kokoro_replaces_bindings_from_another_local_engine():
+    from noisy_coding.providers.manifest import KOKORO_VOICES
+    provider = LocalTTS({'tts_engine':'kokoro', 'voice_bindings':{'lux':'system', 'rex':'am_adam'}})
+    assert provider.options['voice_bindings']['lux'] in KOKORO_VOICES
+    assert provider.options['voice_bindings']['rex'] == 'am_adam'

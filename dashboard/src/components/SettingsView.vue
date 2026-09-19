@@ -4,7 +4,7 @@ import AppearanceSettings from "./AppearanceSettings.vue";
 
 // The panel got crowded - a toolbar splits it into four homes. AUDIO is
 // first: it's what gets touched mid-session.
-const TABS = ["AUDIO", "SOUNDS", "HOTKEYS", "APPEARANCE", "SYSTEM"] as const;
+const TABS = ["AUDIO", "SOUNDS", "HOTKEYS", "APPEARANCE", "SPEECH", "SYSTEM"] as const;
 const tab = ref<(typeof TABS)[number]>("AUDIO");
 
 import type { DiagnosticChecks } from "../api/client";
@@ -16,7 +16,7 @@ import { playCue } from "../composables/cueSounds";
 import DiagnosticChecklist from "./DiagnosticChecklist.vue";
 import HotkeysSettings, { type HotkeyBinding, type HotkeyPane } from "./HotkeysSettings.vue";
 import { useKeyCapture } from "../composables/useKeyCapture";
-import SignalPath from "./SignalPath.vue";
+import SpeechSettings from "./SpeechSettings.vue";
 
 const props = withDefaults(
   defineProps<{
@@ -183,8 +183,9 @@ function submit() {
     </section>
     </template>
 
+    <SpeechSettings v-if="tab === 'SPEECH'" @configure="tab = 'SYSTEM'" />
     <template v-if="tab === 'SYSTEM'">
-    <SignalPath />
+
     <section class="sec">
       <div class="keyrow">
         <span class="lbl">xAI API key</span>

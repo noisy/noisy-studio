@@ -5,6 +5,7 @@ import VoiceAvatar from "./VoiceAvatar.vue";
 // Voice identity, quick mute, and the voice picker for the viewed session.
 const props = defineProps<{
   voice: string;
+  voiceLabels?: Record<string, string>;
   speaking?: boolean;
   muted?: boolean;
 }>();
@@ -29,7 +30,7 @@ defineEmits<{ change: [voice: string]; "toggle-mute": [] }>();
         @click.stop="$emit('toggle-mute')"
       >{{ muted ? "Unmute" : "Mute" }}</button>
     </div>
-    <VoiceSelector :voice="voice" @change="(v) => $emit('change', v)" />
+    <VoiceSelector :voice="voice" :voice-labels="voiceLabels" @change="(v) => $emit('change', v)" />
   </div>
 </template>
 

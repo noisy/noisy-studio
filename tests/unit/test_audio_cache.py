@@ -99,3 +99,19 @@ def test_memory_only_cache_writes_no_files(tmp_path):
     cache.put(audio_cache.key(7, "hello", "carina", "auto", 1.0), b"mp3-bytes")
 
     assert list(tmp_path.iterdir()) == []
+
+
+def test_provider_changes_do_not_reuse_the_previous_voice_audio():
+    keys = {audio_cache.key(1, 'Hello', 'voice1', 'en', 1.0, provider)
+            for provider in ('cloud:model1', 'local:model2', 'local:model3')}
+
+    assert len(keys) == 3
+
+
+def test_wav_replay_keeps_its_format_after_restart(tmp_path):
+    from noisy_coding.providers.base import SynthesizedAudio
+
+    clip = SynthesizedAudio(b'RIFF-audio', 'audio/wav', 2.4)
+    AudioCache(directory=tmp_path).put_audio('clip1', clip)
+
+    assert AudioCache(directory=tmp_path).get_audio('clip1') == clip

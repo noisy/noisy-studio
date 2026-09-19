@@ -24,6 +24,7 @@ export interface DaemonStatus {
   api_key_set: boolean;
   /** A ready engine is selected both ways (local counts — no key needed). */
   voice_ready?: boolean;
+  voice_labels?: Record<string, string>;
   api_key_hint: string;
   stt_latency_ms: number | null;
   tts_latency_ms: number | null;
@@ -35,6 +36,10 @@ export interface DaemonStatus {
   session_cost_usd: { user: number; claude: number };
   usage: { stt_seconds: number; tts_chars: number };
   credits_usd: number | null;
+  recognition_live_available?: boolean;
+  speech_live_available?: boolean;
+  recognition_mode?: "batch" | "live" | "unavailable";
+  speech_output_mode?: "batch" | "live" | "unavailable";
   mode: "batch" | "live";
   tts_mode: "batch" | "live";
   end_silence_ms: number;

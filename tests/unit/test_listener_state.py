@@ -716,3 +716,27 @@ def test_speaker_names_are_matched_case_insensitively_in_the_ledger():
     fresh = ListenerState()
     fresh.load_voice_claims({"wootdragon": "helios", "WootDragon": "rex"})
     assert fresh.voice_claims() == {"wootdragon": "helios"}
+
+
+def test_late_streaming_partial_cannot_replace_a_final_transcript():
+    state = ListenerState()
+    utterance = state.create_utterance('user', 'recording…')
+    state.update_transcription_partial(utterance, 'A partial sentence')
+    assert state.snapshot_utterances()[-1]['text'] == 'A partial sentence'
+    state.add_transcript('The final corrected sentence.', utterance)
+    finalized = state.snapshot_utterances()
+
+    state.update_transcription_partial(utterance, 'An obsolete partial arriving after finalization')
+
+    assert state.snapshot_utterances() == finalized
+
+
+def test_late_streaming_partial_cannot_reopen_a_cancelled_recording():
+    state = ListenerState()
+    utterance = state.create_utterance('user', 'recording…')
+    state.mark_utterance_cancelled(utterance)
+    cancelled = state.snapshot_utterances()
+
+    state.update_transcription_partial(utterance, 'Late words')
+
+    assert state.snapshot_utterances() == cancelled
