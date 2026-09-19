@@ -17,6 +17,12 @@ const DAEMON_PATHS = [
   "/voice", "/active-agent", "/devices", "/speak", "/ptt", "/cancel",
   "/interrupt", "/playback-pause", "/skip-unheard", "/shutdown", "/shutdown-cancel", "/shutdown-postpone", "/voice-mute", "/credentials", "/dismiss-agent",
   "/reorder-agents", "/providers", "/stt-lab", "/tests",
+  // Prefix match, so this covers /speech-settings/preview and /transcribe.
+  // Left out when the endpoint was added, and the failure is silent: Vite
+  // answers an unproxied path with index.html, the client sees HTTP 200,
+  // json() throws, and the caller stores null - so the panel sits on
+  // "Loading speech engines..." forever with no error to explain it.
+  "/speech-settings",
 ];
 
 export default defineConfig({

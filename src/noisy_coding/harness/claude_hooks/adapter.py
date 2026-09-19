@@ -98,8 +98,14 @@ class ClaudeHooks:
         transcript = str(payload.get("transcript_path") or "").strip()
         if not session_id and not transcript:
             raise HarnessError("Claude hook payload names no session")
-        key = transcript or session_id
-        aliases = (session_id,) if session_id and session_id != key else ()
+        # THE SESSION ID IS CANONICAL (#107). It used to be the other way
+        # round, and a session then existed under two names at once - the
+        # hooks register by session_id, this adapter registered by path -
+        # so the voice ledger, the character buckets and the tab list each
+        # held two entries for one human. The path is derived and leaks a
+        # directory layout into user-visible labels, so it is an alias.
+        key = session_id or transcript
+        aliases = (transcript,) if transcript and transcript != key else ()
         participant = str(payload.get("agent_id") or "").strip() or None
         event_name = str(payload.get("hook_event_name") or "")
         title = self._title(payload, transcript)
