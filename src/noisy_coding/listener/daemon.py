@@ -32,6 +32,7 @@ from noisy_coding.listener.http_api import (
     SPEAKER_COLORS_FILE,
     save_characters,
 )
+from noisy_coding.listener.identity import canonical_identity, is_transcript_path
 from noisy_coding.listener.state import ListenerState
 from noisy_coding.listener.tab_audio import start_bridge
 from noisy_coding.listener.vad import UtteranceSegmenter, VadConfig
@@ -405,7 +406,21 @@ def run(config: VadConfig | None = None) -> None:
         saved_chars = json.loads(CHARACTER_FILE.read_text())
         # New format: {agent: character}. Old format: a single character dict.
         if saved_chars and all(isinstance(v, dict) for v in saved_chars.values()):
+            # Fold path-keyed buckets onto their session id (#107). A
+            # session used to be saved under both spellings, so restoring
+            # the file as-is handed the same tab two characters - and the
+            # one that won decided which voice you heard after a restart.
+            by_identity: dict[str, dict] = {}
             for agent_key, char in saved_chars.items():
+                key = canonical_identity(agent_key)
+                # The id-keyed bucket is the one the hooks keep writing, so
+                # it wins; a path-only bucket is simply renamed.
+                if key in by_identity and is_transcript_path(agent_key):
+                    continue
+                by_identity[key] = char
+            if len(by_identity) != len(saved_chars):
+                _log(f"[character] folded {len(saved_chars) - len(by_identity)} duplicate identity bucket(s) (#107)")
+            for agent_key, char in by_identity.items():
                 state.set_character(char, agent_key)
         else:
             state.set_character(saved_chars)

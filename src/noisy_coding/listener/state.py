@@ -32,6 +32,9 @@ VOICE_POOL = (
 )
 
 
+from noisy_coding.listener.identity import canonical_identity, fold_by_identity
+
+
 def speaker_key(name: str) -> str:
     """Ledger key for a speaker or agent name: case-insensitive, trimmed.
 
@@ -420,11 +423,20 @@ class ListenerState:
         duplicate keep its (shared) voice. The check is case-insensitive.
         """
         with self._lock:
+            # Fold first (#107): a session that appears under both its id
+            # and its transcript path is ONE speaker, and leaving the twin
+            # in place is what made a duplicate - and therefore a re-home -
+            # inevitable on every single load.
+            claims, collapsed = fold_by_identity(
+                {k: v for k, v in claims.items() if isinstance(v, str)}
+            )
+            if collapsed:
+                self._voice_claims_dirty = True
             seen: set[str] = set()
             for raw_name, voice in claims.items():
                 if not (isinstance(voice, str) and voice.isalpha()):
                     continue
-                name = speaker_key(raw_name)
+                name = speaker_key(canonical_identity(raw_name))
                 if name in self._voice_claims:
                     continue  # a case variant of a name already restored: first one wins
                 voice = voice.lower()

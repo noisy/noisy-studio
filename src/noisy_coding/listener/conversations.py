@@ -22,6 +22,7 @@ from pathlib import Path
 from typing import Literal
 
 from noisy_coding.harness.base import Capabilities, Interpretation
+from noisy_coding.listener.identity import canonical_identity
 
 __all__ = ["Conversation", "ConversationRegistry", "Listener", "Status"]
 
@@ -345,6 +346,26 @@ class ConversationRegistry:
             # tab starts deaf until its session's next hook says otherwise.
             conversation.deaf_reason = "daemon restarted"
             conversation.turn_open = False
+            # Fold a path-keyed tab onto its session id (#107). Saved before
+            # the adapter was fixed, such a tab has no title of its own, so
+            # its key IS its label - which put an absolute path on screen
+            # during a stream. The path stays as an alias so hooks that
+            # still send it keep finding the same tab.
+            identity = canonical_identity(conversation.key)
+            if identity != conversation.key:
+                if conversation.key not in conversation.aliases:
+                    conversation.aliases.append(conversation.key)
+                conversation.key = identity
+            existing = self._by_key.get(conversation.key)
+            if existing is not None:
+                # Same session under both spellings: keep the one already
+                # restored and inherit the twin's aliases rather than
+                # letting one silently replace the other.
+                for alias in conversation.aliases:
+                    if alias not in existing.aliases:
+                        existing.aliases.append(alias)
+                    self._alias[alias] = existing.key
+                continue
             self._by_key[conversation.key] = conversation
             for alias in conversation.aliases:
                 self._alias[alias] = conversation.key
