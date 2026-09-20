@@ -20,7 +20,7 @@ from post_tool_use import _activity_line, _post_activity  # noqa: E402
 import re  # noqa: E402
 
 IDENTITY_TOOLS = re.compile(
-    r"^mcp__[^\s]*noisy[_-]coding[^\s]*__(speak|announce|change_voice|set_speaker_style)$"
+    r"^mcp__[^\s]*noisy[_-](coding|studio)[^\s]*__(speak|announce|change_voice|set_speaker_style)$"
 )
 
 

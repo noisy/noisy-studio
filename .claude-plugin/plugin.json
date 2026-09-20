@@ -1,9 +1,9 @@
 {
-  "name": "noisy-coding",
+  "name": "noisy-studio",
   "description": "Voice support for Claude Code through the Noisy Studio native app.",
   "version": "3.0.0-alpha.9",
   "mcpServers": {
-    "noisy-coding": {
+    "noisy-studio": {
       "type": "stdio",
       "command": "sh",
       "args": [
@@ -16,5 +16,5 @@
     "name": "Krzysztof Szumny",
     "email": "noisy.pl@gmail.com"
   },
-  "homepage": "https://github.com/noisy/noisy-coding"
+  "homepage": "https://github.com/noisy/noisy-studio"
 }

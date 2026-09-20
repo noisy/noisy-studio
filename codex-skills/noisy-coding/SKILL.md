@@ -90,7 +90,7 @@ plugin.
 
 ```sh
 uv run --frozen python scripts/install_codex.py --uninstall
-codex plugin remove noisy-coding@noisy-coding
+codex plugin remove noisy-studio@noisy-studio
 ```
 
 Removal preserves unrelated Codex configuration and the daemon's voices,

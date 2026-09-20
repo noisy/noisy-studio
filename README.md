@@ -15,7 +15,7 @@ For Claude Code, install the companion plugin:
 
 ```sh
 claude plugin marketplace add noisy/noisy-studio
-claude plugin install noisy-coding@noisy
+claude plugin install noisy-studio@noisy
 ```
 
 Restart Claude Code and ask it to set up Noisy Studio voice. Keep the app and

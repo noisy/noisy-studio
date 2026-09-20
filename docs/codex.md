@@ -16,7 +16,7 @@ After this branch is released:
 
 ```sh
 codex plugin marketplace add noisy/noisy-studio
-codex plugin add noisy-coding@noisy-coding
+codex plugin add noisy-studio@noisy-studio
 ```
 
 For a clean checkout before release, register the checkout instead. Use a
@@ -25,7 +25,7 @@ copies the plugin directory, including local dependency caches.
 
 ```sh
 codex plugin marketplace add /absolute/path/to/noisy-coding
-codex plugin add noisy-coding@noisy-coding
+codex plugin add noisy-studio@noisy-studio
 ```
 
 Start a new Codex session and ask: **“Use Noisy Studio to set up voice.”**
@@ -119,7 +119,7 @@ Before removing the plugin, remove its integration settings from its root:
 
 ```sh
 uv run --frozen python scripts/install_codex.py --uninstall
-codex plugin remove noisy-coding@noisy-coding
+codex plugin remove noisy-studio@noisy-studio
 ```
 
 Removal preserves unrelated Codex configuration and the daemon's voices,

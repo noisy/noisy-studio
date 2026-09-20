@@ -12,7 +12,7 @@ from pathlib import Path
 from _codex_config import configure
 
 HOOKS = Path(__file__).resolve().parent
-IDENTITY_TOOLS = re.compile(r"^mcp__[^\s]*noisy[_-]coding[^\s]*__(speak|announce|change_voice)$")
+IDENTITY_TOOLS = re.compile(r"^mcp__[^\s]*noisy[_-](coding|studio)[^\s]*__(speak|announce|change_voice)$")
 SCRIPTS = {
     "SessionStart": "user_prompt_submit.py",
     "UserPromptSubmit": "user_prompt_submit.py",

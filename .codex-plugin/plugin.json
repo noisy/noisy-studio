@@ -1,9 +1,11 @@
 {
-  "name": "noisy-coding",
+  "name": "noisy-studio",
   "version": "3.0.0-alpha.9",
   "description": "Talk to Codex while it works, with per-session voice and incoming speech.",
-  "author": { "name": "Krzysztof Szumny" },
-  "homepage": "https://github.com/noisy/noisy-coding",
+  "author": {
+    "name": "Krzysztof Szumny"
+  },
+  "homepage": "https://github.com/noisy/noisy-studio",
   "license": "MIT",
   "skills": "./codex-skills/",
   "hooks": "./hooks/codex.json",
