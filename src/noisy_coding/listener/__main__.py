@@ -5,7 +5,18 @@ start from. `python -m noisy_coding.listener` works the same way, so this
 serves both the frozen binary and anyone who prefers it to the script.
 """
 
-from noisy_coding.listener.daemon import main
+import sys
+
+
+def main() -> None:
+    if len(sys.argv) == 3 and sys.argv[1] == "--integration":
+        from noisy_coding.integration import run
+
+        run(sys.argv[2])
+        return
+    from noisy_coding.listener.daemon import main as run_daemon
+
+    run_daemon()
 
 if __name__ == "__main__":
     main()

@@ -18,7 +18,8 @@ APP_VERSION = json.loads((ROOT / "desktop" / "package.json").read_text())["versi
 
 a = Analysis(
     [str(ROOT / "src" / "noisy_coding" / "listener" / "__main__.py")],
-    pathex=[str(ROOT / "src")],
+    # Claude hook modules are frozen into the same runtime as the engine.
+    pathex=[str(ROOT / "src"), str(ROOT / "hooks")],
     binaries=[],
     datas=[
         # The built dashboard travels with the daemon - it serves these
