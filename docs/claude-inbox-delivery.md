@@ -32,13 +32,18 @@ Claude presents this as peer input; our wording does not override host permissio
 - **Queued:** waiting for the continuation window or a usable registration.
 - **Sent, unconfirmed:** the socket write completed. This does not establish that
   Claude admitted, read or acted on it; host policy may hold or refuse it.
+- **Delivery unknown:** 60 seconds after a completed write, the status settles
+  here. Claude's raw inbox supplies no correlated receipt. This is not a failure
+  verdict: check the receiving session before deciding to resend. The deadline
+  survives daemon restart. Older journal entries without a write timestamp settle
+  immediately. Neither timeout nor restart triggers a resend or permits recall.
 - **Uncertain, not retried:** a write failed after connection, or the daemon stopped
   during an attempt. The message may already have arrived.
 - **Unavailable:** no endpoint, a closed endpoint, or a known connection failure
   before writing. Explicit re-registration can retry that known pre-write failure.
 - **Rejected:** local target validation failed, or the message was no longer
   eligible before writing. A wrong target rejected by the host cannot be inferred
-  from a successful raw write; it remains unconfirmed on our side.
+  from a successful raw write; it becomes unknown on our side.
 - **Confirmed:** reserved for an actual correlated application receipt. The native
   socket currently supplies no such receipt; normal production delivery never
   claims this state or asks Claude to echo every message.

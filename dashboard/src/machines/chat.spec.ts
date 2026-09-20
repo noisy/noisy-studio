@@ -240,6 +240,13 @@ describe("reachable", () => {
 
 
 describe("inbox delivery receipts", () => {
+  it("ends the unconfirmed window without allowing recall or resend", () => {
+    expect(validStatusChange("user", "sent — unconfirmed", "delivery unknown")).toBe(true);
+    expect(statusToState("user", "delivery unknown")).toBe("unknown");
+    expect(statusAllows("user", "delivery unknown", "CANCEL")).toBe(false);
+    expect(statusAllows("user", "delivery unknown", "SEND")).toBe(false);
+    expect(statusAllows("user", "delivery unknown", "CONFIRM")).toBe(true);
+  });
   it("keeps unconfirmed writes distinct from delivery and prevents recall", () => {
     expect(statusToState("user", "sent — unconfirmed")).toBe("sent");
     expect(statusAllows("user", "sent — unconfirmed", "CANCEL")).toBe(false);

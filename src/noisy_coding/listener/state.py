@@ -933,6 +933,7 @@ class ListenerState:
                 for utterance in self._utterances:
                     if utterance.get("id") == transcript.utterance_id and utterance.get("role") == "user":
                         utterance["status"] = (
+                            "delivery unknown" if transcript.delivery_state == "unknown" else
                             "delivery uncertain — not retried" if transcript.delivery_state in ("sent", "accepted", "uncertain")
                             else "ready — awaiting pickup"
                         )
@@ -1059,7 +1060,7 @@ class ListenerState:
             self._update_utterance_locked(
                 speech.utterance_id, delivery_state=receipt.state,
                 delivery_detail=receipt.detail,
-                status={"sent": "sent — unconfirmed", "uncertain": "delivery uncertain — not retried",
+                status={"unknown": "delivery unknown", "sent": "sent — unconfirmed", "uncertain": "delivery uncertain — not retried",
                         "unavailable": "unavailable — registration required", "rejected": "delivery rejected",
                         "accepted": "accepted — awaiting confirmation", "confirmed": "delivery confirmed", "cancelled": "cancelled by you"}[receipt.state],
             )
@@ -1114,7 +1115,7 @@ class ListenerState:
         """
         with self._lock:
             candidates = [t for t in self._transcripts if t.utterance_id == utterance_id
-                          and t.delivery_state not in ("sent", "accepted", "uncertain")]
+                          and t.delivery_state not in ("sent", "accepted", "uncertain", "unknown")]
         cancelled_items = []
         for transcript in candidates:
             provider = self.conversations.providers.for_conversation(transcript.addressee)
@@ -1150,7 +1151,7 @@ class ListenerState:
                     t
                     for t in self._transcripts
                     if (t.addressee == agent or (not t.addressee and agent == self._active_agent))
-                    and t.delivery_state not in ("sent", "accepted", "uncertain")
+                    and t.delivery_state not in ("sent", "accepted", "uncertain", "unknown")
                 ]
                 if not transcripts:
                     return []
@@ -1159,8 +1160,8 @@ class ListenerState:
                     t for t in self._transcripts if id(t) not in delivered_ids
                 ]
             else:
-                transcripts = [t for t in self._transcripts if t.delivery_state not in ("sent", "accepted", "uncertain")]
-                self._transcripts = [t for t in self._transcripts if t.delivery_state in ("sent", "accepted", "uncertain")]
+                transcripts = [t for t in self._transcripts if t.delivery_state not in ("sent", "accepted", "uncertain", "unknown")]
+                self._transcripts = [t for t in self._transcripts if t.delivery_state in ("sent", "accepted", "uncertain", "unknown")]
             if transcripts:
                 self._add_event_locked(
                     "delivered", " ".join(t.text for t in transcripts)

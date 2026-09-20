@@ -18,6 +18,7 @@ const USER_CHIPS: Record<UserState, StatusChip> = {
   ready: { kind: "work", label: "◌ AWAITING AGENT" },
   delivered: { kind: "done", label: "✓ DELIVERED" },
   sent: { kind: "off", label: "◌ SENT · UNCONFIRMED" },
+  unknown: { kind: "off", label: "? DELIVERY UNKNOWN" },
   uncertain: { kind: "fail", label: "! UNCERTAIN · NOT RETRIED" },
   unavailable: { kind: "fail", label: "! REGISTRATION REQUIRED" },
   rejected: { kind: "fail", label: "✕ REJECTED" },

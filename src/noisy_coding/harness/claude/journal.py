@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import sqlite3
 import threading
+import time
 
 from noisy_coding.harness.provider import Receipt, Speech
 
@@ -23,6 +24,9 @@ class Journal:
             self._connection = sqlite3.connect(str(self._path) if self._path else ':memory:', check_same_thread=False)
             self._connection.execute('PRAGMA synchronous=FULL')
             self._connection.execute('CREATE TABLE IF NOT EXISTS deliveries (id TEXT PRIMARY KEY, speech TEXT NOT NULL, state TEXT NOT NULL, detail TEXT NOT NULL)')
+            columns = {row[1] for row in self._connection.execute('PRAGMA table_info(deliveries)')}
+            if 'written_at' not in columns:
+                self._connection.execute('ALTER TABLE deliveries ADD COLUMN written_at REAL')
             self._connection.commit()
         return self._connection
 
@@ -34,18 +38,28 @@ class Journal:
     def add(self, speech: Speech) -> Receipt:
         with self._lock:
             db = self._db()
-            db.execute('INSERT OR IGNORE INTO deliveries VALUES (?, ?, ?, ?)',
+            db.execute('INSERT OR IGNORE INTO deliveries (id, speech, state, detail) VALUES (?, ?, ?, ?)',
                        (self.key(speech), json.dumps(asdict(speech)), 'queued', ''))
             db.commit()
             state, detail = db.execute('SELECT state, detail FROM deliveries WHERE id=?', (self.key(speech),)).fetchone()
             return Receipt(speech.utterance_id, speech.conversation, state, detail)
 
-    def record(self, speeches: list[Speech], state: str, detail: str) -> None:
+    def record(self, speeches: list[Speech], state: str, detail: str, *, written_at: float | None = None) -> None:
         with self._lock:
             db = self._db()
-            db.executemany('UPDATE deliveries SET state=?, detail=? WHERE id=?',
-                           [(state, detail, self.key(s)) for s in speeches])
+            timestamp = (time.time() if written_at is None else written_at) if state == 'sent' else None
+            db.executemany('UPDATE deliveries SET state=?, detail=?, written_at=COALESCE(?, written_at) WHERE id=?',
+                           [(state, detail, timestamp, self.key(s)) for s in speeches])
             db.commit()
+
+    def expire_sent(self, cutoff: float, detail: str) -> list[tuple[Speech, Receipt]]:
+        """Bound unconfirmed status without turning missing evidence into failure."""
+        with self._lock:
+            db = self._db()
+            rows = db.execute("UPDATE deliveries SET state='unknown', detail=? WHERE state='sent' AND (written_at IS NULL OR written_at<=?) RETURNING speech", (detail, cutoff)).fetchall()
+            db.commit()
+            speeches = [Speech(**json.loads(row[0])) for row in rows]
+            return [(speech, Receipt(speech.utterance_id, speech.conversation, 'unknown', detail)) for speech in speeches]
 
     def entries(self, state: str | None = None) -> list[tuple[Speech, Receipt]]:
         with self._lock:
@@ -73,7 +87,7 @@ class Journal:
     def cancel(self, speech: Speech) -> bool:
         with self._lock:
             db = self._db()
-            inserted = db.execute('INSERT OR IGNORE INTO deliveries VALUES (?, ?, ?, ?)',
+            inserted = db.execute('INSERT OR IGNORE INTO deliveries (id, speech, state, detail) VALUES (?, ?, ?, ?)',
                                   (self.key(speech), json.dumps(asdict(speech)), 'cancelled', 'cancelled by user'))
             result = db.execute("UPDATE deliveries SET state='cancelled', detail='cancelled by user' WHERE id=? AND state IN ('queued','unavailable','rejected','cancelled')", (self.key(speech),))
             db.commit()

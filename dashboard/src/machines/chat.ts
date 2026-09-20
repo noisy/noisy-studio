@@ -26,7 +26,7 @@ export const USER_EVENTS = [
   "EMPTY", // transcription came back without speech
   "DROP", // too short / mic changed / daemon restarted mid-flight
   "STT_ERROR",
-  "SEND", "UNCERTAIN", "UNAVAILABLE", "REJECT", "ACCEPT", "CONFIRM",
+  "SEND", "UNKNOWN", "UNCERTAIN", "UNAVAILABLE", "REJECT", "ACCEPT", "CONFIRM",
   "NO_LISTENER", // addressee session offline - queued with nobody draining
 ] as const;
 
@@ -54,7 +54,7 @@ export type UserState =
   | "error"
   | "cancelled"
   | "undelivered"
-  | "sent" | "uncertain" | "unavailable" | "rejected" | "accepted" | "confirmed";
+  | "sent" | "unknown" | "uncertain" | "unavailable" | "rejected" | "accepted" | "confirmed";
 
 export type ClaudeState =
   | "queued"
@@ -68,7 +68,7 @@ export type ClaudeState =
   | "error";
 
 const incomingDeliveryTransitions = {
-  SEND: "sent", UNCERTAIN: "uncertain", UNAVAILABLE: "unavailable",
+  SEND: "sent", UNKNOWN: "unknown", UNCERTAIN: "uncertain", UNAVAILABLE: "unavailable",
   REJECT: "rejected", ACCEPT: "accepted", CONFIRM: "confirmed",
 };
 
@@ -110,7 +110,8 @@ export const userUtteranceMachine = createMachine({
         CANCEL: "cancelled",
       },
     },
-    sent: { on: { UNCERTAIN: "uncertain", ACCEPT: "accepted", CONFIRM: "confirmed" } },
+    unknown: { on: { CONFIRM: "confirmed" } },
+    sent: { on: { UNKNOWN: "unknown", UNCERTAIN: "uncertain", ACCEPT: "accepted", CONFIRM: "confirmed" } },
     uncertain: { on: { ...incomingDeliveryTransitions } },
     unavailable: { on: { ...incomingDeliveryTransitions, READY: "ready", CANCEL: "cancelled" } },
     rejected: { on: { READY: "ready", CANCEL: "cancelled" } },
@@ -188,7 +189,7 @@ const USER_STATUS_PREFIXES: Array<[string, UserState]> = [
   ["undelivered", "undelivered"],
   ["transcription error", "error"],
   ["cancelled", "cancelled"],
-  ["sent", "sent"], ["delivery uncertain", "uncertain"],
+  ["delivery unknown", "unknown"], ["sent", "sent"], ["delivery uncertain", "uncertain"],
   ["unavailable", "unavailable"], ["delivery rejected", "rejected"],
   ["accepted", "accepted"], ["delivery confirmed", "confirmed"],
 ];
@@ -219,7 +220,7 @@ const USER_CANONICAL_STATUS: Record<UserState, string> = {
   transcribing: "transcribing (live)…",
   ready: "ready — awaiting pickup",
   delivered: "delivered to Claude",
-  sent: "sent — unconfirmed", uncertain: "delivery uncertain — not retried",
+  unknown: "delivery unknown", sent: "sent — unconfirmed", uncertain: "delivery uncertain — not retried",
   unavailable: "unavailable — registration required", rejected: "delivery rejected",
   accepted: "accepted — awaiting confirmation", confirmed: "delivery confirmed",
   empty: "empty — no speech",

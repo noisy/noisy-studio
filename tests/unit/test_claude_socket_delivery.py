@@ -64,7 +64,7 @@ def test_ambiguous_attempt_is_not_replayed_after_restart_or_registration(deliver
     delivery.submit(speech)
     now[0] = 103
     delivery.flush(record)
-    restored = SocketDelivery(Journal(journal._path), sender=sender, clock=lambda: 200)
+    restored = SocketDelivery(Journal(journal._path), sender=sender, clock=lambda: 120)
     restored.attach(Registration(SESSION_1, SESSION_1, {'socket': 'new-endpoint'}))
     restored.submit(speech)
 
@@ -156,3 +156,45 @@ def test_app_notifications_are_not_presented_as_microphone_speech(delivery_world
     delivery.flush(record)
 
     assert sender.call_args.args[1] == '[NOISY STUDIO] App notification:\n[CHARACTER] Values changed.'
+
+
+def test_sent_deadline_uses_write_time_and_survives_restart_without_resending(delivery_world):
+    delivery, journal, sender, now, record, receipts = delivery_world
+    speech = Speech(1, SESSION_1, 'delayed before send', 1)
+    delivery.submit(speech)
+    delivery.flush(record)
+    restored = SocketDelivery(Journal(journal._path), sender=sender, clock=lambda: now[0])
+    now[0] = 159
+    restored.flush(record)
+    assert receipts[-1].state == 'sent'
+
+    now[0] = 160
+    restored.flush(record)
+    restored.attach(Registration(SESSION_1, SESSION_1, {'socket': 'replacement'}))
+    restored.submit(speech)
+    restored.flush(record)
+
+    assert (sender.call_count, [r.state for r in receipts], restored.cancel(speech)) == (
+        1, ['uncertain', 'sent', 'unknown'], False,
+    )
+    assert [r.state for _, r in Journal(journal._path).entries()] == ['unknown']
+
+
+def test_expiry_migrates_old_sent_entries_without_rewriting_other_outcomes(tmp_path):
+    import json
+    import sqlite3
+    from dataclasses import asdict
+
+    path = tmp_path / 'legacy.sqlite3'
+    with sqlite3.connect(path) as db:
+        db.execute('CREATE TABLE deliveries (id TEXT PRIMARY KEY, speech TEXT NOT NULL, state TEXT NOT NULL, detail TEXT NOT NULL)')
+        for number, state in enumerate(['sent', 'queued', 'confirmed', 'uncertain', 'unavailable'], 1):
+            speech = Speech(number, SESSION_1, 'legacy message', 1)
+            db.execute('INSERT INTO deliveries VALUES (?, ?, ?, ?)', (Journal.key(speech), json.dumps(asdict(speech)), state, ''))
+    journal = Journal(path)
+
+    expired = journal.expire_sent(100, 'No receipt available')
+
+    assert [(speech.utterance_id, receipt.state) for speech, receipt in expired] == [(1, 'unknown')]
+    assert [receipt.state for _, receipt in journal.entries()] == ['unknown', 'queued', 'confirmed', 'uncertain', 'unavailable']
+    assert journal.expire_sent(200, 'No receipt available') == []

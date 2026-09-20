@@ -1,5 +1,7 @@
 from unittest.mock import Mock
 
+import pytest
+
 from noisy_coding.harness import agent_provider
 from noisy_coding.harness.claude.socket_transport import WriteResult
 from noisy_coding.harness.hook_gateway import _apply_harness_event, drain
@@ -65,7 +67,8 @@ def test_daemon_restart_requires_registration_and_never_replays_written_speech(t
     assert (len(restored.snapshot_transcripts()), restored.cancel_transcript(utterance)) == (1, False)
 
 
-def test_deliberate_hook_rollback_preserves_identity_and_holds_unconfirmed_speech(tmp_path, monkeypatch):
+@pytest.mark.parametrize('expire', [False, True], ids=['sent', 'unknown'])
+def test_deliberate_hook_rollback_preserves_identity_and_holds_unconfirmed_speech(tmp_path, monkeypatch, expire):
     state = ListenerState()
     state.conversations = ConversationRegistry(path=tmp_path / 'conversations.json')
     register(state, tmp_path / 'inbox')
@@ -75,6 +78,9 @@ def test_deliberate_hook_rollback_preserves_identity_and_holds_unconfirmed_speec
     utterance = state.create_utterance('user', 'transcribing', agent=SESSION)
     state.add_transcript('do not resend', utterance)
     implementation.flush(state.record_delivery, state.reserve_speech)
+    implementation._clock = lambda: 10**12 + (60 if expire else 0)
+    implementation.flush(state.record_delivery, state.reserve_speech)
+    assert state.cancel_transcript(utterance) is False
     monkeypatch.setattr(agent_provider, 'CLAUDE_DELIVERY', 'hooks')
     restored = ListenerState()
     restored.load_utterances(state.snapshot_utterances())

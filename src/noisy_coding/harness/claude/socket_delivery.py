@@ -10,6 +10,9 @@ from noisy_coding.harness.provider import Availability, Receipt, Registration, S
 
 GRACE_SECONDS = 2.0
 GRACE_CAP_SECONDS = 20.0
+UNCONFIRMED_SECONDS = 60.0
+UNKNOWN_DETAIL = ('Claude provides no receipt for this inbox message. It may have arrived; '
+                  'check the session before resending. No automatic resend.')
 
 
 class SocketDelivery:
@@ -80,6 +83,8 @@ class SocketDelivery:
         return receipt
 
     def flush(self, record_receipt, reserve=lambda speeches: speeches, recording=lambda: False):
+        for speech, receipt in self.journal.expire_sent(self._clock() - UNCONFIRMED_SECONDS, UNKNOWN_DETAIL):
+            record_receipt(speech, receipt)
         groups = defaultdict(list)
         for speech, receipt in self.journal.entries('queued'):
             groups[speech.conversation].append(speech)
@@ -129,7 +134,7 @@ class SocketDelivery:
                 state, detail = result.state, result.detail
             except Exception:
                 state, detail = 'uncertain', 'delivery attempt failed unexpectedly; not retried'
-            self.journal.record(reserved, state, detail)
+            self.journal.record(reserved, state, detail, written_at=self._clock())
             for speech in reserved:
                 record_receipt(speech, Receipt(speech.utterance_id, conversation, state, detail))
                 with self._lock:
