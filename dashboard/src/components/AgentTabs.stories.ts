@@ -6,7 +6,7 @@ import "../styles/dashboard.css";
 
 const meta: Meta<typeof AgentTabs> = {
   component: AgentTabs,
-  title: "HUD/AgentTabs",
+  title: "Dashboard/AgentTabs",
 };
 export default meta;
 

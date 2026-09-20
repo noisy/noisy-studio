@@ -5,7 +5,7 @@ import { resetScenario } from "../storybook/daemon.fixture";
 // Capture the actual application layout with isolated demonstration data.
 // A parallel marketing layout drifts whenever the product changes.
 const meta: Meta = {
-  title: "Synthetic Screenshots/App",
+  title: "Website/DashboardMarketing",
   component: App,
   parameters: { layout: "fullscreen" },
 };

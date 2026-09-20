@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/vue3';
 import PlatformDownload from '../../../website/src/PlatformDownload.vue';
 
 const meta: Meta<typeof PlatformDownload> = {
-  title: 'Website/Platform download',
+  title: 'Website/PlatformDownload',
   component: PlatformDownload,
   parameters: { layout: 'fullscreen', docs: { description: { component: 'Design preview: release URL is unset. Notification submissions are Storybook actions only; no email is sent or stored.' } } },
   argTypes: { platform: { control: 'select', options: ['mac', 'windows', 'linux'] }, onNotify: { action: 'notification preview' } },

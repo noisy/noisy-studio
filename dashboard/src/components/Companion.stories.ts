@@ -4,7 +4,7 @@ import Companion, { type CompanionAgent, type CompanionMessage } from "./Compani
 
 /* Compact conversation, status, and session controls across window sizes. */
 const meta: Meta<typeof Companion> = {
-  title: "Companion/Widget",
+  title: "Widget/Companion",
   component: Companion,
   // The widget is small; Storybook's padded canvas made it float in a sea
   // of empty space. Centered crops the frame to the content.

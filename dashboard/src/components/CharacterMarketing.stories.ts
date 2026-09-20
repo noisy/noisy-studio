@@ -7,7 +7,7 @@ import CharacterMock from "./marketing/CharacterMock.vue";
  * 420x900 for scripts/marketing-shots.sh.
  */
 const meta: Meta = {
-  title: "Synthetic Screenshots/Character",
+  title: "Website/CharacterMarketing",
   parameters: { layout: "fullscreen" },
 };
 export default meta;

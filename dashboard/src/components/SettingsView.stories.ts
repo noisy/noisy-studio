@@ -3,7 +3,7 @@ import SettingsView from "./SettingsView.vue";
 
 const meta: Meta<typeof SettingsView> = {
   component: SettingsView,
-  title: "HUD/SettingsView",
+  title: "Dashboard/SettingsView",
 };
 export default meta;
 

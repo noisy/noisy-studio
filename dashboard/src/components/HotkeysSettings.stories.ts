@@ -4,7 +4,7 @@ import HotkeysSettings, { type HotkeyBinding } from "./HotkeysSettings.vue";
 /* Settings > Hotkeys (#104), the layout as picked: one card, push to talk
  * left and per-tab keys right, companion keys below. States that matter:
  * locked behind Input Monitoring, capturing, a collision, a macOS warning. */
-const meta: Meta<typeof HotkeysSettings> = { component: HotkeysSettings, title: "HUD/Hotkeys tab" };
+const meta: Meta<typeof HotkeysSettings> = { component: HotkeysSettings, title: "Dashboard/HotkeysSettings" };
 export default meta;
 
 type Over = Partial<Record<string, Partial<HotkeyBinding>>>;

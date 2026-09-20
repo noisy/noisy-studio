@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from "@storybook/vue3";
 import ShutdownBanner from "./ShutdownBanner.vue";
 
-const meta: Meta = { title: "HUD/ShutdownBanner" };
+const meta: Meta = { title: "Dashboard/ShutdownBanner" };
 export default meta;
 
 const wrap = (variant: string) => ({

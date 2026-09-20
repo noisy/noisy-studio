@@ -3,7 +3,7 @@ import TurnHistory from "./TurnHistory.vue";
 import type { Utterance } from "../types";
 
 const meta: Meta<typeof TurnHistory> = {
-  title: "HUD/Turn history", component: TurnHistory, parameters: { layout: "centered" },
+  title: "Dashboard/TurnHistory", component: TurnHistory, parameters: { layout: "centered" },
   decorators: [() => ({ template: '<div style="width:220px;padding:16px;background:var(--panel);border-radius:12px"><story /></div>' })],
 };
 export default meta;

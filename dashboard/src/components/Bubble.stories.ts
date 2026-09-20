@@ -3,7 +3,7 @@ import type { Utterance } from "../types";
 import AgentBubble from "./AgentBubble.vue";
 import UserBubble from "./UserBubble.vue";
 
-const meta: Meta = { title: "HUD/Bubbles" };
+const meta: Meta = { title: "Dashboard/Bubble" };
 export default meta;
 
 function utterance(overrides: Partial<Utterance>): Utterance {

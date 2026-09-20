@@ -4,7 +4,7 @@ import { onMounted, onBeforeUnmount } from 'vue';
 import websiteStyles from '../../../website/src/style.css?inline';
 
 const meta = {
-  title: 'Website/Full page',
+  title: 'Website/LandingPage',
   component: Website,
   args: { dashboardPreviewUrl: './iframe.html?id=product-dashboard--conversation&viewMode=story' },
   render: args => ({ components: { Website }, setup() {

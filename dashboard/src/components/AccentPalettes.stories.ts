@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/vue3';
 import Bubble from './Bubble.vue';
 import { accentPalettes, resolveAccent } from '../styles/accentPalettes';
 
-const meta: Meta = { title: 'Product/Accent palettes', parameters: { layout: 'fullscreen' } };
+const meta: Meta = { title: 'Dashboard/AccentPalettes', parameters: { layout: 'fullscreen' } };
 export default meta;
 
 export const Comparison: StoryObj = {

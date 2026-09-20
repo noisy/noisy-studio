@@ -5,7 +5,7 @@ import Splash from "./Splash.vue";
  * for comparison. Round 1: A Mark won on idea, lost on balance (B had no
  * logo, C's name sat oddly, D's ring hid behind the name - those three are
  * gone). Round 2 iterated on A; F Row was picked. */
-const meta: Meta<typeof Splash> = { component: Splash, title: "App/Splash/Other variants" };
+const meta: Meta<typeof Splash> = { component: Splash, title: "Lab/SplashVariants" };
 export default meta;
 
 const at = (look: "mark" | "spaced" | "edge" | "icon-only"): StoryObj<typeof Splash> => ({

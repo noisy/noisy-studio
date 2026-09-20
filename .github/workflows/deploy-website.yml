@@ -1,10 +1,14 @@
 # Deploys the marketing site to GitHub Pages.
 #
-# HARD REQUIREMENT: only the BUILT website is ever served. The Pages
-# artifact is exactly website/dist - no source, no dashboard/, no
-# website-backend/, no design-concepts/, no repo files. This is why we use
-# the artifact-based Pages actions and never the legacy publish-a-branch
-# mode (which exposes everything in the folder).
+# HARD REQUIREMENT: only BUILT output is ever served. The Pages artifact is
+# website/dist plus the built Storybook copied into website/dist/storybook -
+# no source, no dashboard/src, no website-backend/, no design-concepts/, no
+# repo files. This is why we use the artifact-based Pages actions and never
+# the legacy publish-a-branch mode (which exposes everything in the folder).
+#
+# ONE Pages deployment, two folders (#121). Storybook is the reference for
+# how the dashboard and widget are meant to look, and it was previously
+# reachable only by cloning the repo and running it on port 6006.
 #
 # One-time setup in the repo: Settings > Pages > Source: "GitHub Actions".
 name: deploy-website
@@ -12,12 +16,15 @@ name: deploy-website
 on:
   push:
     # v3-desktop is where the site lives until the branch merges to main.
-    branches: [main, v3-desktop]
+    # v3-desktop merged into main on 2026-09-20; main is the only source now.
+    # Two branches deploying to one Pages environment raced each other.
+    branches: [main]
     paths:
       - "website/**"
       - "scripts/analytics-config.cjs"
       - "dashboard/src/**" # the site renders the real product components
       - "dashboard/public/**"
+      - "dashboard/.storybook/**"
       - ".github/workflows/deploy-website.yml"
   workflow_dispatch:
 
@@ -53,7 +60,22 @@ jobs:
         run: |
           npm ci
           npm run build
-      - name: Upload ONLY the built site
+      # A broken story is a broken reference, so this failing fails the
+      # deploy rather than publishing a site with a dead /storybook.
+      # Storybook renders real WEBSITE components, so it needs the website's
+      # dependencies too - `posthog-js` is imported by website/src/analytics.
+      # Installing only dashboard's deps fails the build at resolve time.
+      - name: Install and build Storybook
+        working-directory: dashboard
+        env:
+          # Answers "which version is this?" on the page itself.
+          STORYBOOK_BUILD_SHA: ${{ github.sha }}
+          STORYBOOK_BUILD_REF: ${{ github.ref_name }}
+        run: |
+          npm ci
+          npm run build-storybook -- --output-dir ../website/dist/storybook
+
+      - name: Upload ONLY built output (site + storybook)
         uses: actions/upload-pages-artifact@v3
         with:
           path: website/dist

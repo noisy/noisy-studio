@@ -3,7 +3,7 @@ import ConversationTelemetry from "./ConversationTelemetry.vue";
 
 const meta: Meta<typeof ConversationTelemetry> = {
   component: ConversationTelemetry,
-  title: "HUD/ConversationTelemetry",
+  title: "Dashboard/ConversationTelemetry",
 };
 export default meta;
 

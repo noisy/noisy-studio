@@ -12,7 +12,7 @@ import ClaudeCodeMock from "./marketing/ClaudeCodeMock.vue";
  * widget text deliberately differs from the wallpaper variants.
  */
 const meta: Meta = {
-  title: "Synthetic Screenshots/Companion over Claude Code",
+  title: "Website/CompanionOverClaudeCode",
   parameters: { layout: "fullscreen" },
   args: { widgetWidth: 540 },
   argTypes: { widgetWidth: { control: { type: "range", min: 320, max: 800, step: 20 } } },
