@@ -117,7 +117,7 @@ class SocketDelivery:
             previous_origin = None
             for speech in reserved:
                 # Zero-ID entries are app notifications, not microphone transcripts.
-                origin = ('[VOICE] User speech transcribed and delivered by Noisy Studio:'
+                origin = ('[VOICE · Noisy Studio transcript]'
                           if speech.utterance_id else '[NOISY STUDIO] App notification:')
                 if origin != previous_origin:
                     parts.append(origin)

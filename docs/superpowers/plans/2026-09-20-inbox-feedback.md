@@ -27,11 +27,11 @@ not solve application receipt confirmation.
   call expiry from the socket worker and persist the real completion time.
 - [x] Extend core and dashboard states, prohibiting recall and replay of unknown
   entries; add a Storybook example and explain the limitation in message detail.
-- [ ] Cover send-time deadlines, restart/migration, unrelated states, no replay,
+- [x] Cover send-time deadlines, restart/migration, unrelated states, no replay,
   and state-machine controls. Run the required Python and dashboard checks.
-- [ ] Commit the status fix, then shorten the prefix and update delivery docs in
+- [x] Commit the status fix, then shorten the prefix and update delivery docs in
   a separate focused commit.
-- [ ] Rebuild dashboard and gracefully reload the dev instance with the usual
+- [x] Rebuild dashboard and gracefully reload the dev instance with the usual
   postponable 60-second countdown. Verify deployed behavior without launching
   more disposable Claude sessions or sending test messages to user sessions.
 

@@ -38,8 +38,8 @@ def test_continuations_are_grouped_in_order_without_crossing_recipients(delivery
     delivery.flush(record)
 
     assert [(call.args[0].session_id, call.args[1]) for call in sender.call_args_list] == [
-        (SESSION_1, '[VOICE] User speech transcribed and delivered by Noisy Studio:\nfirst part\ncontinuation'),
-        (SESSION_2, '[VOICE] User speech transcribed and delivered by Noisy Studio:\nother conversation'),
+        (SESSION_1, '[VOICE · Noisy Studio transcript]\nfirst part\ncontinuation'),
+        (SESSION_2, '[VOICE · Noisy Studio transcript]\nother conversation'),
     ]
 
 

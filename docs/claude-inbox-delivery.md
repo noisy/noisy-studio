@@ -29,6 +29,23 @@ bounds connect/write operations. The frame includes the exact native session ID
 and describes the text as user speech transcribed and delivered by Noisy Studio.
 Claude presents this as peer input; our wording does not override host permissions.
 
+The compact content prefix is `[VOICE · Noisy Studio transcript]`. This names
+the actual source without repeating a long explanation on every message.
+App-generated character notifications keep a separate `[NOISY STUDIO]` prefix.
+Claude Code adds its own outer "another Claude session" envelope; Noisy Studio
+does not supply or control that text. The currently documented inbox path still
+applies peer-message policy, including to scripts and hooks. No documented
+alternate message shape that changes this envelope was found in the
+[Claude Code messaging reference](https://code.claude.com/docs/en/cross-session-messaging).
+Do not impersonate a keyboard prompt or alter inbound controls to hide the wrapper.
+
+The live feedback on #120 confirms delivery to the receiving session, but a
+general reply or later hook activity cannot identify which utterance was read.
+A true received state needs a correlated receipt bound to that session and
+message. The status timeout below improves presentation; it does not provide
+that missing evidence. Host notices to another Claude sender are not a documented
+receipt API for our independent raw socket sender.
+
 - **Queued:** waiting for the continuation window or a usable registration.
 - **Sent, unconfirmed:** the socket write completed. This does not establish that
   Claude admitted, read or acted on it; host policy may hold or refuse it.
