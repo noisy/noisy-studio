@@ -53,7 +53,7 @@ const WHISPER_DONE = {
   done_bytes: 0, total_bytes: 0, detail: "",
 };
 
-const meta: Meta<typeof SignalPath> = { component: SignalPath, title: "HUD/SignalPath" };
+const meta: Meta<typeof SignalPath> = { component: SignalPath, title: "Dashboard/SignalPath" };
 export default meta;
 
 function story(info: ProvidersInfo | null): StoryObj<typeof SignalPath> {

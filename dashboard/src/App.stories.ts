@@ -3,7 +3,7 @@ import App from './App.vue';
 import { speechFixture } from './components/speechSettings.fixture';
 import { resetScenario, setSpeechSettingsFixture, type Scenario } from './storybook/daemon.fixture';
 const meta:Meta = {
-  title:'Product/Dashboard', component:App, parameters:{layout:'fullscreen'},
+  title: 'Dashboard/App', component:App, parameters:{layout:'fullscreen'},
 };
 export default meta;
 function story(scenario:Scenario):StoryObj {

@@ -10,7 +10,7 @@ import Companion, { type CompanionAgent, type CompanionMessage } from "./Compani
  * captures the shipped combos by passing the same args in the story URL.
  */
 const meta: Meta = {
-  title: "Synthetic Screenshots/Companion",
+  title: "Website/CompanionMarketing",
   parameters: { layout: "fullscreen" },
 };
 export default meta;

@@ -3,7 +3,7 @@ import { ref } from "vue";
 import RecordedCrewScene from "./marketing/RecordedCrewScene.vue";
 
 const meta: Meta<typeof RecordedCrewScene> = {
-  title: "Synthetic Screenshots/Recorded Crew",
+  title: "Website/RecordedCrew",
   component: RecordedCrewScene,
   parameters: { layout: "fullscreen" },
   args: { camera: true, compact: false, cameraZoom: 1.35, cameraOffsetX: 0, cameraOffsetY: 0 },

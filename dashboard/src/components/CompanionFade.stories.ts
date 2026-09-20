@@ -5,7 +5,7 @@ import Companion, { type CompanionMessage } from "./Companion.vue";
 /** GRADIENT LAB (day 4): the thread's top melt-away, on a WHITE backdrop,
  *  four curves side by side, with sliders for the dead zone and the total
  *  length. Pick by eye; the winner's stops go into Companion.vue. */
-const meta: Meta = { title: "Companion/Top Fade Lab" };
+const meta: Meta = { title: "Lab/CompanionFade" };
 export default meta;
 
 const FEED: CompanionMessage[] = Array.from({ length: 9 }, (_, i) => ({

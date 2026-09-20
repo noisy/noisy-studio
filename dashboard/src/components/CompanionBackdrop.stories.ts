@@ -9,7 +9,7 @@ import Companion, { type CompanionAgent, type CompanionMessage } from "./Compani
  * screenshot, a photo. Anything that relies on the HUD's dark chrome to be
  * legible will fail somewhere on this slider.
  */
-const meta: Meta = { title: "Companion/Backdrop" };
+const meta: Meta = { title: "Widget/CompanionBackdrop" };
 export default meta;
 
 const FEED: CompanionMessage[] = [

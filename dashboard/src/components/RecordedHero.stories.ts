@@ -3,7 +3,7 @@ import { ref, onMounted, onBeforeUnmount } from "vue";
 import RecordedHeroScene from "./marketing/RecordedHeroScene.vue";
 
 const meta: Meta<typeof RecordedHeroScene> = {
-  title: "Synthetic Screenshots/Recorded Hero",
+  title: "Website/RecordedHero",
   component: RecordedHeroScene,
   parameters: { layout: "fullscreen" },
   args: { cameraZoom: 1.35, cameraOffsetX: 0, cameraOffsetY: 0 },

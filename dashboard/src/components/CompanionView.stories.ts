@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/vue3';
 import CompanionView from './CompanionView.vue';
 import { resetScenario, type Scenario } from '../storybook/daemon.fixture';
 
-const meta: Meta = { title: 'Product/Companion window', component: CompanionView, parameters: { layout: 'fullscreen' } };
+const meta: Meta = { title: 'Widget/CompanionView', component: CompanionView, parameters: { layout: 'fullscreen' } };
 export default meta;
 function story(scenario: Scenario): StoryObj {
   return { render: () => {

@@ -6,7 +6,7 @@ import CrewSection from '../../../website/src/CrewSection.vue';
 import websiteStyles from '../../../website/src/style.css?inline';
 
 const meta = {
-  title: 'Website/Keyboard shortcuts',
+  title: 'Website/WebsiteHotkeys',
   component: HotkeySection,
   parameters: { layout: 'fullscreen' },
   render: args => ({ components: { HotkeySection }, setup: () => ({ args }), template: '<HotkeySection v-bind="args" />' }),

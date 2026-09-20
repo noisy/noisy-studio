@@ -3,7 +3,7 @@ import VoicePersona from "./VoicePersona.vue";
 
 const meta: Meta<typeof VoicePersona> = {
   component: VoicePersona,
-  title: "HUD/VoicePersona",
+  title: "Dashboard/VoicePersona",
   decorators: [() => ({ template: '<div style="width:300px;background:#04101a;padding:16px;"><story /></div>' })],
 };
 export default meta;

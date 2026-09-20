@@ -3,7 +3,7 @@ import Oscilloscope from "./Oscilloscope.vue";
 import SpectrumBars from "./SpectrumBars.vue";
 
 const meta: Meta = {
-  title: "HUD/Scopes",
+  title: "Dashboard/Oscilloscope",
   argTypes: { level: { control: { type: "range", min: 0, max: 1, step: 0.05 } } },
 };
 export default meta;

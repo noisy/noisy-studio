@@ -3,7 +3,7 @@ import CharacterReadout from "./CharacterReadout.vue";
 import HudPanel from "./HudPanel.vue";
 import StatusStrip from "./StatusStrip.vue";
 
-const meta: Meta = { title: "HUD/Character Settings" };
+const meta: Meta = { title: "Dashboard/CharacterReadout" };
 export default meta;
 
 const character = { humor: 60, honesty: 80, verbosity: 60, talkative: 100, voice: "altair", speed: 1.15 };

@@ -3,7 +3,7 @@ import CompanionPreview from '../storybook/CompanionPreview.vue';
 import { resetScenario } from '../storybook/daemon.fixture';
 
 const meta: Meta<typeof CompanionPreview> = {
-  title: 'Product/Companion transparency',
+  title: 'Lab/CompanionTransparency',
   component: CompanionPreview,
   parameters: { layout: 'fullscreen' },
   args: { backdrop: 'light', width: 420, height: 280 },

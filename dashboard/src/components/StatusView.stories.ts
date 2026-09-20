@@ -5,7 +5,7 @@ import { useSpeechFixture } from "../storybook/speech.fixture";
 /** The status board's speech-to-text section, endpoint mocked - no daemon,
  *  no real transcriptions. Covers list, parallel running, pass and fail. */
 const meta: Meta<typeof StatusView> = {
-  title: "HUD/Status Board",
+  title: "Dashboard/StatusView",
   component: StatusView,
   parameters: { layout: "fullscreen" },
 };

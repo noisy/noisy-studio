@@ -3,7 +3,7 @@ import HudPanel from "./HudPanel.vue";
 
 const meta: Meta<typeof HudPanel> = {
   component: HudPanel,
-  title: "HUD/HudPanel",
+  title: "Dashboard/HudPanel",
 };
 export default meta;
 
