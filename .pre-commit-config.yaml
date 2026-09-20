@@ -1,0 +1,38 @@
+minimum_pre_commit_version: "4.3.0"
+default_install_hook_types: [pre-commit, pre-push]
+default_stages: [pre-commit]
+repos:
+  - repo: local
+    hooks:
+      - id: safe-lint-fixes
+        name: Safe lint fixes (review and restage any changes)
+        entry: uv run --frozen python scripts/quality.py lint --fix --
+        language: system
+        files: '\.(py|js|mjs|cjs|ts|vue)$'
+        require_serial: true
+      - id: format
+        name: Format changed sources (review and restage any changes)
+        entry: uv run --frozen python scripts/quality.py format --fix --
+        language: system
+        files: '\.(py|js|mjs|cjs|ts|vue|css|html|json|yaml|yml)$'
+        exclude: '(^|/)package-lock\.json$'
+        require_serial: true
+      - id: python-tests
+        name: Python unit, harness and local integration tests
+        entry: uv run --frozen python scripts/quality.py test --suite python
+        language: system
+        files: '(\.py$|^pyproject\.toml$|^uv\.lock$|^tests/|^hooks/|^\.pre-commit-config\.yaml$)'
+        pass_filenames: false
+      - id: web-tests
+        name: Dashboard, website and desktop tests
+        entry: uv run --frozen python scripts/quality.py test --suite web
+        language: system
+        files: '(^dashboard/|^website/|^desktop/|^website-backend/|^tools/demo-recorder/|^scripts/|^package(-lock)?\.json$|^eslint\.config\.js$|^\.pre-commit-config\.yaml$)'
+        pass_filenames: false
+      - id: push-quality
+        name: Full committed revision quality checks and builds
+        entry: uv run --frozen python scripts/quality.py push
+        language: system
+        stages: [pre-push]
+        always_run: true
+        pass_filenames: false

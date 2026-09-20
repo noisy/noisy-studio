@@ -14,18 +14,10 @@
 name: deploy-website
 
 on:
-  push:
-    # v3-desktop is where the site lives until the branch merges to main.
-    # v3-desktop merged into main on 2026-09-20; main is the only source now.
-    # Two branches deploying to one Pages environment raced each other.
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
     branches: [main]
-    paths:
-      - "website/**"
-      - "scripts/analytics-config.cjs"
-      - "dashboard/src/**" # the site renders the real product components
-      - "dashboard/public/**"
-      - "dashboard/.storybook/**"
-      - ".github/workflows/deploy-website.yml"
   workflow_dispatch:
 
 permissions:
@@ -39,10 +31,25 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  manual-quality:
+    if: github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/quality.yml
+    permissions:
+      contents: read
+
   build:
+    needs: manual-quality
+    if: >-
+      always() && !cancelled() &&
+      ((github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_repository.full_name == github.repository) ||
+       (github.event_name == 'workflow_dispatch' && needs.manual-quality.result == 'success'))
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
       - uses: actions/configure-pages@v5
         id: pages
       - uses: actions/setup-node@v4
@@ -69,8 +76,8 @@ jobs:
         working-directory: dashboard
         env:
           # Answers "which version is this?" on the page itself.
-          STORYBOOK_BUILD_SHA: ${{ github.sha }}
-          STORYBOOK_BUILD_REF: ${{ github.ref_name }}
+          STORYBOOK_BUILD_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          STORYBOOK_BUILD_REF: ${{ github.event.workflow_run.head_branch || github.ref_name }}
         run: |
           npm ci
           npm run build-storybook -- --output-dir ../website/dist/storybook

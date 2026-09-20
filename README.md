@@ -43,3 +43,5 @@ settings. See [desktop packaging](docs/desktop-app.md) for signed app builds.
 
 API credentials belong in the app's provider settings, never in chat or source.
 Offline providers download their models on first use and then run locally.
+
+Development quality gates: see [local hooks and CI checks](docs/quality-checks.md).

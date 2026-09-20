@@ -53,13 +53,13 @@ def test_session_start_creates_the_tab_before_any_message(daemon):
     start = _rows("session.jsonl")[0]
     response = event(start)
     key = response["conversation"]
-    assert key == start["transcript_path"]
+    assert key == start["session_id"]
     assert response["listener"] == "start" and response["listener_id"]
     _status, body = call("GET", "/status")
     tab = body["conversations"][key]
     assert tab["label"] == "New conversation"  # a name, never an id
     assert tab["status"] == "idle"
-    assert tab["aliases"] == [start["session_id"]]
+    assert tab["aliases"] == [start["transcript_path"]]
     assert key in body["agents"]
 
 
@@ -67,7 +67,7 @@ def test_subagent_never_takes_the_parents_message(daemon):
     state, call, event = daemon
     rows = _rows("participant.jsonl")
     event(rows[0])  # SessionStart
-    key = rows[0]["transcript_path"]
+    key = rows[0]["session_id"]
     state.add_transcript("reset the counter")
     child = next(r for r in rows if r.get("agent_id") and r["hook_event_name"] == "PostToolUse")
     response = event(child)
@@ -88,7 +88,7 @@ def test_a_stale_listener_stands_down_and_the_current_one_wakes(daemon):
     state, call, event = daemon
     rows = _rows("session.jsonl")
     event(rows[0])
-    key = rows[0]["transcript_path"]
+    key = rows[0]["session_id"]
     stop = next(r for r in rows if r["hook_event_name"] == "Stop")
     first = event(stop)["listener_id"]
     second = event(stop)["listener_id"]
@@ -107,7 +107,7 @@ def test_listener_timeout_makes_the_tab_deaf_and_loud(daemon):
     state, call, event = daemon
     rows = _rows("session.jsonl")
     event(rows[0])
-    key = rows[0]["transcript_path"]
+    key = rows[0]["session_id"]
     listener = event(next(r for r in rows if r["hook_event_name"] == "Stop"))["listener_id"]
     status, body = call("POST", "/harness/listener",
                         {"conversation": rows[0]["session_id"], "listener_id": listener, "reason": "timeout"})
@@ -118,11 +118,11 @@ def test_listener_timeout_makes_the_tab_deaf_and_loud(daemon):
     assert any(e["kind"] == "deaf" for e in state.events_since(0))
 
 
-def test_speak_with_a_session_id_lands_on_the_transcript_keyed_tab(daemon, monkeypatch):
+def test_speak_with_a_transcript_alias_lands_on_the_session_keyed_tab(daemon, monkeypatch):
     state, call, event = daemon
     rows = _rows("session.jsonl")
     event(rows[0])
-    key = rows[0]["transcript_path"]
+    key = rows[0]["session_id"]
     submitted = {}
 
     def fake_submit(_state, text, **kwargs):
@@ -130,7 +130,7 @@ def test_speak_with_a_session_id_lands_on_the_transcript_keyed_tab(daemon, monke
         return None  # "dedup raced us" path: responds skipped, no audio
 
     monkeypatch.setattr(http_api.speech, "submit", fake_submit)
-    status, body = call("POST", "/speak", {"text": "hello", "agent": rows[0]["session_id"], "wait": False})
+    status, body = call("POST", "/speak", {"text": "hello", "agent": rows[0]["transcript_path"], "wait": False})
     assert status == 200 and body == {"skipped": True}
     assert submitted["agent"] == key
     assert list(state.agents) == [key]  # no hash tab was conjured
@@ -140,7 +140,7 @@ def test_title_from_the_hook_renames_the_tab(daemon):
     state, call, event = daemon
     rows = _rows("title.jsonl")
     event(rows[0])
-    key = rows[0]["transcript_path"]
+    key = rows[0]["session_id"]
     assert state.agent_labels[key] == "reksio"
     _s, body = call("GET", "/status")
     assert body["conversations"][key]["label"] == "reksio"
@@ -163,18 +163,18 @@ def test_tab_order_is_stable_across_a_daemon_restart(daemon):
     event(first)
     event(second)
     # Simulate the post-restart race: the SECOND tab heartbeats first, then the first.
-    state.register_agent(second["transcript_path"])
-    state.register_agent(first["transcript_path"])
+    state.register_agent(second["session_id"])
+    state.register_agent(first["session_id"])
     _s, body = call("GET", "/status")
     meta = body["agents_meta"]
-    assert meta[first["transcript_path"]]["activated_at"] < meta[second["transcript_path"]]["activated_at"]
+    assert meta[first["session_id"]]["activated_at"] < meta[second["session_id"]]["activated_at"]
 
 
 def test_tab_liveness_comes_from_the_registry_not_heartbeats(daemon):
     state, call, event = daemon
     rows = _rows("session.jsonl")
     event(rows[0])
-    key = rows[0]["transcript_path"]
+    key = rows[0]["session_id"]
     listener = event(next(r for r in rows if r["hook_event_name"] == "Stop"))["listener_id"]
     call("POST", "/harness/listener", {"conversation": key, "listener_id": listener, "reason": "timeout"})
     _s, body = call("GET", "/status")
@@ -195,23 +195,23 @@ def test_close_hides_a_live_background_tab_until_the_user_talks_there_again(daem
               "transcript_path": "/Users/dev/.claude/projects/p/22222222.jsonl"}
     event(first)
     event(second)  # live, background (first is active)
-    status, body = call("POST", "/dismiss-agent", {"name": second["session_id"]})  # alias works
-    assert status == 200 and body["dismissed"] == second["transcript_path"]
-    assert second["transcript_path"] not in state.agents
+    status, body = call("POST", "/dismiss-agent", {"name": second["transcript_path"]})  # alias works
+    assert status == 200 and body["dismissed"] == second["session_id"]
+    assert second["session_id"] not in state.agents
     # A routine hook from the still-running session does NOT bring it back...
     event({**second, "hook_event_name": "PostToolUse", "tool_name": "Bash"})
-    assert second["transcript_path"] not in state.agents
+    assert second["session_id"] not in state.agents
     # ...but the user typing there does.
     event({**second, "hook_event_name": "UserPromptSubmit"})
-    assert second["transcript_path"] in state.agents
+    assert second["session_id"] in state.agents
     # Closing the mic's tab hands the mic to the next visible conversation.
-    assert state.active_agent == first["transcript_path"]
-    status, body = call("POST", "/dismiss-agent", {"name": first["transcript_path"]})
+    assert state.active_agent == first["session_id"]
+    status, body = call("POST", "/dismiss-agent", {"name": first["session_id"]})
     assert status == 200
-    assert body["active_agent"] == second["transcript_path"] == state.active_agent
-    assert first["transcript_path"] not in state.agents
+    assert body["active_agent"] == second["session_id"] == state.active_agent
+    assert first["session_id"] not in state.agents
     # Closing the last one releases the mic entirely.
-    status, body = call("POST", "/dismiss-agent", {"name": second["transcript_path"]})
+    status, body = call("POST", "/dismiss-agent", {"name": second["session_id"]})
     assert status == 200 and body["active_agent"] is None
 
 
@@ -219,31 +219,31 @@ def test_a_closed_tab_that_speaks_comes_back_as_itself_not_as_a_hash(daemon, mon
     state, call, event = daemon
     rows = _rows("title.jsonl")  # a session with a real title ("reksio")
     event(rows[0])
-    key = rows[0]["transcript_path"]
+    key = rows[0]["session_id"]
     other = {**rows[0], "session_id": "33333333-0000-0000-0000-000000000000",
              "transcript_path": "/Users/dev/.claude/projects/p/33333333.jsonl", "session_title": "other"}
     event(other)  # so "reksio" is not the active tab and may be closed
-    status, _ = call("POST", "/active-agent", {"name": other["transcript_path"]})
+    status, _ = call("POST", "/active-agent", {"name": other["session_id"]})
     status, _ = call("POST", "/dismiss-agent", {"name": key})
     assert status == 200 and key not in state.agents
     monkeypatch.setattr(http_api.speech, "submit", lambda *_a, **_k: None)
-    # The closed session speaks, presenting its session id (an alias).
-    status, _ = call("POST", "/speak", {"text": "still here", "agent": rows[0]["session_id"], "wait": False})
+    # The closed session speaks, presenting its transcript path (an alias).
+    status, _ = call("POST", "/speak", {"text": "still here", "agent": rows[0]["transcript_path"], "wait": False})
     assert status == 200
     assert key in state.agents                      # same key, back on the strip
     assert state.agent_labels[key] == "reksio"      # same title - no hash tab
-    assert rows[0]["session_id"] not in state.agents  # and no second tab under the alias
+    assert rows[0]["transcript_path"] not in state.agents  # and no second tab under the alias
 
 
 def test_a_closed_tabs_listener_polling_does_not_resurrect_it(daemon):
     state, call, event = daemon
     rows = _rows("session.jsonl")
     event(rows[0])
-    key = rows[0]["transcript_path"]
+    key = rows[0]["session_id"]
     other = {**rows[0], "session_id": "44444444-0000-0000-0000-000000000000",
              "transcript_path": "/Users/dev/.claude/projects/p/44444444.jsonl"}
     event(other)
-    call("POST", "/active-agent", {"name": other["transcript_path"]})
+    call("POST", "/active-agent", {"name": other["session_id"]})
     listener = event(next(r for r in rows if r["hook_event_name"] == "Stop"))["listener_id"]
     status, _ = call("POST", "/dismiss-agent", {"name": key})
     assert status == 200 and key not in state.agents
@@ -293,10 +293,10 @@ def test_strip_order_is_the_persisted_registry_position(daemon):
     c = {**a, "session_id": "66666666-0000-0000-0000-000000000000", "transcript_path": "/Users/dev/.claude/projects/p/6.jsonl"}
     for r in (a, b, c):
         event(r)
-    call("POST", "/reorder-agents", {"order": [c["transcript_path"], a["transcript_path"], b["transcript_path"]]})
+    call("POST", "/reorder-agents", {"order": [c["session_id"], a["session_id"], b["session_id"]]})
     _s, body = call("GET", "/status")
     by_pos = sorted(body["agents_meta"], key=lambda k: body["agents_meta"][k]["manual_pos"])
-    assert by_pos == [c["transcript_path"], a["transcript_path"], b["transcript_path"]]
+    assert by_pos == [c["session_id"], a["session_id"], b["session_id"]]
 
 
 def test_state_snapshot_is_the_same_data_as_status_plus_utterances(daemon):
@@ -317,12 +317,12 @@ def test_an_agents_interrupt_flag_cuts_only_its_own_speech(daemon, monkeypatch):
     monkeypatch.setattr(http_api.speech, "submit", lambda *_a, **_k: None)
     rows = _rows("session.jsonl")
     event(rows[0])
-    me = rows[0]["transcript_path"]
+    me = rows[0]["session_id"]
     other = {**rows[0], "session_id": "77777777-0000-0000-0000-000000000000",
              "transcript_path": "/Users/dev/.claude/projects/p/7.jsonl"}
     event(other)
     # Another conversation is on the speakers.
-    clip = state.create_utterance("claude", "playing…", text="theirs", agent=other["transcript_path"])
+    clip = state.create_utterance("claude", "playing…", text="theirs", agent=other["session_id"])
     state.set_playing_utterance_id(clip)
     call("POST", "/speak", {"text": "mine, urgent", "agent": me, "interrupt": True, "wait": False})
     assert stops == []                                   # not cut
