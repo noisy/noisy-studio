@@ -2,6 +2,7 @@
 import { orderAgents } from "./agentOrder";
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { interpolateRecipientWeights } from "./recipientTransition";
+import { conversationLabel } from "../conversationLabel";
 
 export interface AgentMeta {
   label: string;
@@ -70,7 +71,7 @@ const tabs = computed<Tab[]>(() => {
   const meta = props.meta ?? {};
   return orderAgents(Object.keys(props.agents), meta).map((name) => ({
     name,
-    label: meta[name]?.label ?? props.agents[name],
+      label: conversationLabel(meta[name]?.label ?? props.agents[name]),
     online: meta[name]?.online ?? true,
     activatedAt: meta[name]?.activated_at ?? 0,
     offlineSince: meta[name]?.offline_since ?? 0,

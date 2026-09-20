@@ -8,6 +8,7 @@
 
 import { watch, type Ref } from "vue";
 import type { DaemonStatus } from "../types";
+import { conversationLabel } from "../conversationLabel";
 
 function drawFavicon(glyph: string): void {
   const canvas = document.createElement("canvas");
@@ -33,12 +34,12 @@ export function useTabStatus(status: Ref<DaemonStatus | null>): void {
       const s = status.value;
       if (!s) return "⏸|Noisy Studio";
       const speaking = (s.speaking_agents ?? [])[0] ?? "";
-      const active =
-        s.agents_meta?.[s.active_agent ?? ""]?.label ||
-        (s.active_agent ?? "").slice(0, 8) ||
-        "Noisy Studio";
+      const labelFor = (key: string) => conversationLabel(
+        s.agents_meta?.[key]?.label || s.agent_labels?.[key],
+      );
+      const active = s.active_agent ? labelFor(s.active_agent) : "Noisy Studio";
       if (s.muted) return `🔇|muted — ${active || "Noisy Studio"}`;
-      if (speaking || s.claude_speaking) return `🗣|▶ ${speaking || active} — Noisy Studio`;
+      if (speaking || s.claude_speaking) return `🗣|▶ ${speaking ? labelFor(speaking) : active} — Noisy Studio`;
       if (s.recording) return `🎙|● recording — ${active}`;
       if (s.listening) return `🎙|${active} — Noisy Studio`;
       return `⏸|${active} — Noisy Studio`;

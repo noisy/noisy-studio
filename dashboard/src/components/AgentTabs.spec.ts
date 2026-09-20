@@ -5,6 +5,23 @@ import AgentTabs from "./AgentTabs.vue";
 const agents = { "id-a": "noisy-coding-stabilization", "id-b": "personal" };
 
 describe("AgentTabs", () => {
+  it.each([undefined, {
+    "session-1": { label: "/private/example/session-1", online: true, activated_at: 1, offline_since: null },
+  }])("hides path labels from legacy and metadata sources, including tooltips", async (meta) => {
+    const wrapper = mount(AgentTabs, {
+      props: {
+        agents: { "session-1": "/private/example/session-1" }, meta,
+        active: "session-1", viewed: "session-1", speaking: [],
+      },
+    });
+
+    const tab = wrapper.get("button");
+    expect(tab.get(".tab-label").text()).toBe("New conversation");
+    expect(tab.attributes("title")).not.toContain("/private/");
+    await tab.trigger("click");
+    expect(wrapper.emitted("select")).toEqual([["session-1"]]);
+  });
+
   it("renders a labeled tab per agent", () => {
     const wrapper = mount(AgentTabs, {
       props: { agents, active: "id-a", viewed: "id-a", speaking: [] },

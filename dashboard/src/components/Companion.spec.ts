@@ -11,6 +11,20 @@ beforeEach(()=> {
 });
 afterEach(()=>vi.unstubAllGlobals());
 describe('Companion state and routing',()=>{
+  it('hides paths in the session header and rail without changing the selected identity',async()=>{
+    const wrapper=mount(Companion,{props:{agents:[
+      {name:'/private/example/session-1',label:'/private/example/session-1',voice:'lux',active:true},
+      {name:'/private/example/session-2',voice:'eve'},
+    ]}});
+    const buttons=wrapper.findAll('button[aria-pressed]');
+    expect(buttons.map(button=>button.attributes('aria-label'))).toEqual(['New conversation','New conversation']);
+    expect(wrapper.text()).not.toContain('/private/');
+    await buttons[1].trigger('mouseenter');
+    expect(wrapper.text()).not.toContain('/private/');
+    await buttons[1].trigger('click');
+    expect(wrapper.emitted('select')).toEqual([['/private/example/session-2']]);
+    wrapper.unmount();
+  });
   it.each([
     [{offline:true},'Offline'],[{muted:true},'Microphone muted'],[{voiceMuted:true},'Playback muted'],[{mode:'user'},'Recording'],[{mode:'claude'},'Speaking'],[{activity:'Checking tests'},'Working'],[{},'Ready'],
   ])('labels state %j', (props,label)=>{
@@ -19,8 +33,8 @@ describe('Companion state and routing',()=>{
     wrapper.unmount();
   });
   it('selects the exact agent identity from an accessible session button',async()=>{
-    const wrapper=mount(Companion,{props:{agents:[{name:'codex-session',voice:'lux',active:true},{name:'claude-session',voice:'eve'}]}});
-    await wrapper.get('button[aria-label="claude-session"]').trigger('click');
+    const wrapper=mount(Companion,{props:{agents:[{name:'codex-session',label:'Code review',voice:'lux',active:true},{name:'claude-session',label:'Release review',voice:'eve'}]}});
+    await wrapper.get('button[aria-label="Release review"]').trigger('click');
     expect(wrapper.emitted('select')).toEqual([['claude-session']]);
     wrapper.unmount();
   });

@@ -10,6 +10,18 @@ const meta: Meta<typeof AgentTabs> = {
 };
 export default meta;
 
+/** Old daemons and saved sessions may still send path-shaped labels (#107). */
+export const UnsafeSavedNames: StoryObj<typeof AgentTabs> = {
+  args: {
+    agents: {
+      "session-1": "/private/example/session-1",
+      "session-2": "Release review",
+      "session-3": "C:\\projects\\session-3",
+    },
+    active: "session-2", viewed: "session-2", speaking: [],
+  },
+};
+
 /** The canonical tab-state matrix, rendered by the REAL component.
  *
  *  Rows: is this the selected tab (your voice goes here — taller, fused

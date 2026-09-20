@@ -4,6 +4,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import Bubble from "./Bubble.vue";
 import VoiceAvatar from "./VoiceAvatar.vue";
 import type { AvatarSetId } from "../avatars/catalog";
+import { conversationLabel } from "../conversationLabel";
 
 export interface CompanionMessage {
   role: "user" | "claude";
@@ -26,9 +27,7 @@ export interface CompanionMessage {
 export interface CompanionAgent {
   /** The agent's ID - a session hash. Identity, never shown to a human. */
   name: string;
-  /** The human title of the conversation, as the dashboard tabs show it.
-   *  Falls back to the id only when the daemon has no label yet, which is
-   *  the brief window right after a session registers. */
+  /** The human title; legacy names are used only when safe to display. */
   label?: string;
   voice: string;
   /** The conversation currently on screen: bigger, lit, never dimmed. */
@@ -165,7 +164,9 @@ async function refit() {
  * the other, in the title bar and on every bubble. */
 const activeAgent = computed(() => props.agents.find(a => a.active));
 const sessionName = computed(
-  () => activeAgent.value?.label || activeAgent.value?.name || 'Companion',
+  () => activeAgent.value
+    ? conversationLabel(activeAgent.value.label || activeAgent.value.name)
+    : 'Companion',
 );
 
 /* Where the pointer is, in the widget's own coordinates, so the tooltip can
@@ -468,9 +469,9 @@ watch(
         :key="a.name"
         class="head"
         :class="{ other: !a.active, current: a.active, unread: a.unread }"
-        :aria-label="a.label || a.name" :aria-pressed="!!a.active"
-        @mouseenter="showTip($event, a.label || a.name)" @mouseleave="tip = null"
-        @focus="showTip($event, a.label || a.name)" @blur="tip = null"
+        :aria-label="conversationLabel(a.label || a.name)" :aria-pressed="!!a.active"
+        @mouseenter="showTip($event, conversationLabel(a.label || a.name))" @mouseleave="tip = null"
+        @focus="showTip($event, conversationLabel(a.label || a.name))" @blur="tip = null"
         @click="$emit('select', a.name)"
       ><VoiceAvatar :voice="a.voice" :size="44" :set="avatarSet" /><span v-if="a.waiting" class="waiting">{{ a.waiting > 9 ? "9+" : a.waiting }}</span></button>
       <!-- No agent list (Storybook, single conversation): just the portrait. -->

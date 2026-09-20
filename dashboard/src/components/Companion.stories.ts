@@ -13,6 +13,16 @@ const meta: Meta<typeof Companion> = {
 export default meta;
 type Story = StoryObj<typeof Companion>;
 
+/** Legacy names stay private in the header and avatar tooltips (#107). */
+export const UnsafeSavedNames: Story = {
+  args: {
+    agents: [
+      { name: "session-1", label: "/private/example/session-1", voice: "lux", active: true },
+      { name: "C:\\projects\\session-2", voice: "eve" },
+    ],
+  },
+};
+
 const SHORT = "On it.";
 const MEDIUM = "The retry logic is ready. I’m checking that queued events survive a redeploy.";
 const LONG = "The event stays in the queue until the consumer confirms delivery. The regression test now covers a redeploy during processing, including recovery of pending messages. I’m checking the final dashboard state before wrapping up.";
