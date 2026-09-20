@@ -389,19 +389,8 @@ def _open_input_stream(
     return input_stream, selected
 
 
-def run(config: VadConfig | None = None) -> None:
-    # Before any config file is read: carry the user's data across the
-    # grok-voice -> noisy-coding rename so the API key/settings/history survive.
-    migrate_legacy_config_dir()
-    config = config or VadConfig()
-    port = int(os.environ.get(PORT_ENV_VAR, str(DEFAULT_PORT)))
-
-    state = ListenerState()
-    state.set_mode(os.environ.get(MODE_ENV_VAR, "live"))
-    state.set_language(os.environ.get(STT_LANGUAGE_ENV_VAR, ""))
-    state.set_browser_audio(os.environ.get(BROWSER_AUDIO_ENV_VAR, "") == "1")
-    state.set_input_device(os.environ.get(INPUT_DEVICE_ENV_VAR, ""))
-    state.set_output_device(os.environ.get(OUTPUT_DEVICE_ENV_VAR, ""))
+def load_saved_characters(state: ListenerState) -> None:
+    """Restore legacy or per-session characters and persist their canonical shape."""
     try:
         saved_chars = json.loads(CHARACTER_FILE.read_text())
         # New format: {agent: character}. Old format: a single character dict.
@@ -427,9 +416,26 @@ def run(config: VadConfig | None = None) -> None:
         moved = state.rehome_default_voice_copies()
         if moved:
             _log(f"[character] {len(moved)} tab(s) moved off the shared default voice (#54)")
+        if moved or state.all_characters() != saved_chars:
             save_characters(state)
     except (OSError, ValueError, AttributeError):
         pass
+
+
+def run(config: VadConfig | None = None) -> None:
+    # Before any config file is read: carry the user's data across the
+    # grok-voice -> noisy-coding rename so the API key/settings/history survive.
+    migrate_legacy_config_dir()
+    config = config or VadConfig()
+    port = int(os.environ.get(PORT_ENV_VAR, str(DEFAULT_PORT)))
+
+    state = ListenerState()
+    state.set_mode(os.environ.get(MODE_ENV_VAR, "live"))
+    state.set_language(os.environ.get(STT_LANGUAGE_ENV_VAR, ""))
+    state.set_browser_audio(os.environ.get(BROWSER_AUDIO_ENV_VAR, "") == "1")
+    state.set_input_device(os.environ.get(INPUT_DEVICE_ENV_VAR, ""))
+    state.set_output_device(os.environ.get(OUTPUT_DEVICE_ENV_VAR, ""))
+    load_saved_characters(state)
     # A voice a speaker earned is theirs across restarts too - the ledger is
     # only meaningful if it outlives the process that wrote it.
     try:

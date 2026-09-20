@@ -44,6 +44,24 @@ def test_trait_change_sends_one_character_instruction(character_server):
     assert "Never comment on the voice" in transcripts[0].text
 
 
+def test_agent_receives_the_same_trait_names_and_values_as_the_dashboard(character_server):
+    state, port = character_server
+
+    _post_character(port, {"verbosity": 80, "talkative": 20})
+
+    transcripts = state.drain()
+    assert len(transcripts) == 1
+    assert transcripts[0].text == (
+        "[CHARACTER] The user moved your character sliders to: "
+        "humor 20/100, honesty 60/100, verbosity 80/100, talkative 20/100, "
+        "voice 'carina', speed 1.0x. "
+        "Adjust the style of your spoken and written replies accordingly "
+        "— the daemon applies the voice and speed to your speech by "
+        "itself — and briefly acknowledge the new setting in character. "
+        "Never comment on the voice or speed."
+    )
+
+
 def test_gender_flip_sends_a_silent_persona_instruction(character_server):
     state, port = character_server
 

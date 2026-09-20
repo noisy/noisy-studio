@@ -7,6 +7,7 @@ from collections import deque
 from dataclasses import asdict, dataclass
 
 from noisy_coding.listener.conversations import ConversationRegistry
+from noisy_coding.listener.character_traits import canonical_character_traits
 from noisy_coding.listener.conversation_labels import UNNAMED_CONVERSATION, conversation_label
 from noisy_coding.listener.vad import (
     DEFAULT_MIC_SENSITIVITY,
@@ -18,8 +19,8 @@ EVENT_LOG_SIZE = 300
 # On the segmented dials values land on 20-point stops, so the defaults sit
 # on a stop too (50 fell between ticks). Sensible starting persona rather than
 # everything mid-scale: a little humour, fairly frank, fairly brief, moderately
-# chatty — nothing maxed out.
-DEFAULT_CHARACTER = {"humor": 20, "honesty": 60, "brevity": 60, "chatty": 40}
+# talkative — nothing maxed out.
+DEFAULT_CHARACTER = {"humor": 20, "honesty": 60, "verbosity": 40, "talkative": 40}
 DEFAULT_VOICE = "carina"
 # Voices handed out exclusively - to agent tabs (#54) and named speakers
 # (#22) alike - through the claim ledger. A name's hash only picks the
@@ -79,11 +80,11 @@ PTT_LEASE_SECONDS = 2.0
 # renews the lease with every audio/heartbeat message, so a closed or
 # crashed tab frees the device by itself — no timer guessing.
 TAB_AUDIO_LEASE_SECONDS = 2.0
-# Chatty-driven narration nudges (#16): how long an agent may work in
+# Talkative-driven narration nudges (#16): how long an agent may work in
 # silence before the daemon reminds it to say a one-liner. Anchor points,
-# linearly interpolated; chatty 0 disables nudging entirely. The model has
+# linearly interpolated; talkative 0 disables nudging entirely. The model has
 # no clock — the daemon does.
-CHATTY_NUDGE_ANCHORS = ((25, 600.0), (50, 300.0), (75, 120.0), (100, 75.0))
+TALKATIVE_NUDGE_ANCHORS = ((25, 600.0), (50, 300.0), (75, 120.0), (100, 75.0))
 # "Actively working" = the live-activity line moved this recently. Nudges
 # never target an idle agent waiting for the user.
 NUDGE_ACTIVITY_FRESH_SECONDS = 30.0
@@ -232,6 +233,7 @@ class ListenerState:
             return dict(self._characters[self._character_bucket(agent)])
 
     def set_character(self, values: dict, agent: str | None = None) -> dict:
+        values = canonical_character_traits(values)
         with self._lock:
             key = self._character_bucket(agent)
             char = self._characters[key]
@@ -1193,16 +1195,16 @@ class ListenerState:
                 self._add_event_locked("nudge", f"clock reset — '{key}' spoke")
 
     @staticmethod
-    def _nudge_threshold_seconds(chatty: int) -> float | None:
-        """Silence budget for a chatty level; None = never nudge."""
-        if chatty <= 0:
+    def _nudge_threshold_seconds(talkative: int) -> float | None:
+        """Silence budget for a talkative level; None = never nudge."""
+        if talkative <= 0:
             return None
-        anchors = CHATTY_NUDGE_ANCHORS
-        if chatty <= anchors[0][0]:
+        anchors = TALKATIVE_NUDGE_ANCHORS
+        if talkative <= anchors[0][0]:
             return anchors[0][1]
         for (lo_c, lo_s), (hi_c, hi_s) in zip(anchors, anchors[1:]):
-            if chatty <= hi_c:
-                fraction = (chatty - lo_c) / (hi_c - lo_c)
+            if talkative <= hi_c:
+                fraction = (talkative - lo_c) / (hi_c - lo_c)
                 return lo_s + (hi_s - lo_s) * fraction
         return anchors[-1][1]
 
@@ -1210,14 +1212,14 @@ class ListenerState:
         """Read-only snapshot of every known agent's silence clock, for the
         dashboard's live counter (#16). Pure: mutates nothing, so it is safe
         to call on every /status poll. Per agent: how long it's been silent,
-        its chatty budget (None = nudging off), and whether its activity line
+        its talkative budget (None = nudging off), and whether its activity line
         is fresh enough to be nudge-eligible right now."""
         now = time.time()
         with self._lock:
             clocks: dict[str, dict] = {}
             for agent in self._agent_activated:
                 character = self._characters.get(agent, self._characters[""])
-                chatty = int(character.get("chatty", 50))
+                talkative = int(character.get("talkative", 50))
                 started = self._agent_last_spoke.get(
                     agent, self._agent_activated.get(agent, now)
                 )
@@ -1225,7 +1227,7 @@ class ListenerState:
                 fresh = bool(activity) and now - activity.get("at", 0) <= NUDGE_ACTIVITY_FRESH_SECONDS
                 clocks[agent] = {
                     "silence": round(now - started, 1),
-                    "threshold": self._nudge_threshold_seconds(chatty),
+                    "threshold": self._nudge_threshold_seconds(talkative),
                     "fresh": fresh,
                 }
             return clocks
@@ -1234,16 +1236,16 @@ class ListenerState:
         """A [SYSTEM] narration reminder, when this agent has earned one.
 
         Fires only while the agent is ACTIVELY working (fresh activity
-        line), after a silence longer than its chatty budget, and at most
+        line), after a silence longer than its talkative budget, and at most
         once per silence stretch. The model has no sense of elapsed time —
         this is the daemon lending it a clock (#16).
         """
         now = time.time()
         with self._lock:
             character = self._characters.get(agent, self._characters[""])
-            chatty = int(character.get("chatty", 50))
-            brevity = int(character.get("brevity", 50))
-            threshold = self._nudge_threshold_seconds(chatty)
+            talkative = int(character.get("talkative", 50))
+            verbosity = int(character.get("verbosity", 50))
+            threshold = self._nudge_threshold_seconds(talkative)
             if threshold is None:
                 return None
             silence_started = self._agent_last_spoke.get(
@@ -1280,16 +1282,16 @@ class ListenerState:
             self._add_event_locked(
                 "nudge",
                 f"SENT — silent {round(silence)}s ≥ {round(threshold)}s "
-                f"budget (chatty {chatty})",
+                f"budget (talkative {talkative})",
             )
-            # chatty decides WHEN to speak up; brevity decides HOW LONG the
+            # talkative decides WHEN to speak up; verbosity decides HOW LONG the
             # update gets to be — a 10-minute stretch may deserve more than
-            # one line when the user runs low brevity.
+            # one line when the user runs high verbosity.
             return (
                 f"[SYSTEM] You have been working silently for ~{minutes} min and the "
-                f"user's chatty setting is {chatty}/100 — give a spoken progress "
-                f"update (announce), sized to the user's brevity setting "
-                f"({brevity}/100), then continue working."
+                f"user's talkative setting is {talkative}/100 — give a spoken progress "
+                f"update (announce), sized to the user's verbosity setting "
+                f"({verbosity}/100), then continue working."
             )
 
     def reorder_agents(self, order: list[str]) -> None:

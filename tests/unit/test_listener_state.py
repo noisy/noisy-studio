@@ -429,9 +429,9 @@ def test_interrupt_with_nothing_playing_is_a_noop():
     assert state.interrupt_playing_as_unheard("voice muted") == 0
 
 
-def _make_working_agent(state, name, chatty=100, brevity=50):
+def _make_working_agent(state, name, talkative=100, verbosity=50):
     state.register_agent(name)
-    state.set_character({"chatty": chatty, "brevity": brevity}, agent=name)
+    state.set_character({"talkative": talkative, "verbosity": verbosity}, agent=name)
     state.set_activity(name, "Bash · building")  # actively working
 
 
@@ -446,13 +446,13 @@ def test_nudge_thresholds_interpolate_and_zero_disables():
 
 def test_nudge_fires_once_per_silence_stretch_and_resets_on_speak(monkeypatch):
     state = ListenerState()
-    _make_working_agent(state, "a", chatty=100, brevity=30)
+    _make_working_agent(state, "a", talkative=100, verbosity=70)
     # Silence started at registration; fast-forward past the 75 s budget.
     state._agent_activated["a"] -= 100
     state._activity["a"]["at"] = __import__("time").time()
 
     nudge = state.pop_due_nudge("a")
-    assert nudge is not None and "brevity setting (30/100)" in nudge
+    assert nudge is not None and "verbosity setting (70/100)" in nudge
     assert state.pop_due_nudge("a") is None  # same stretch — no repeat
 
     state.note_agent_spoke("a")
@@ -464,14 +464,14 @@ def test_nudge_fires_once_per_silence_stretch_and_resets_on_speak(monkeypatch):
     assert state.pop_due_nudge("a") is not None
 
 
-def test_nudge_never_targets_idle_or_quiet_chatty_agents():
+def test_nudge_never_targets_idle_or_quiet_talkative_agents():
     state = ListenerState()
-    _make_working_agent(state, "busy", chatty=0)
+    _make_working_agent(state, "busy", talkative=0)
     state._agent_activated["busy"] -= 10_000
-    assert state.pop_due_nudge("busy") is None  # chatty 0 = never
+    assert state.pop_due_nudge("busy") is None  # talkative 0 = never
 
     state.register_agent("idle")
-    state.set_character({"chatty": 100}, agent="idle")
+    state.set_character({"talkative": 100}, agent="idle")
     state._agent_activated["idle"] -= 10_000
     assert state.pop_due_nudge("idle") is None  # no fresh activity line
 
