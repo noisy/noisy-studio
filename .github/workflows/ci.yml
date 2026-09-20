@@ -5,35 +5,9 @@ on:
     branches: [main]
   pull_request:
 
-jobs:
-  python:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
-      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libportaudio2
-      - run: uv sync
-      - run: uv run pytest tests/unit -q
+permissions:
+  contents: read
 
-  dashboard:
-    runs-on: ubuntu-latest
-    defaults:
-      run: { working-directory: dashboard }
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: 22, cache: npm, cache-dependency-path: dashboard/package-lock.json }
-      - run: npm ci
-      - run: npx vitest run
-      - run: npm ci --prefix ../website
-      - name: Check Demo Studio recording and timing
-        run: npm test --prefix ../website
-      - name: Check website analytics types and build
-        run: |
-          npm run typecheck:analytics --prefix ../website
-          npm run build --prefix ../website
-      - run: npm ci --prefix ../desktop --ignore-scripts
-      - name: Check desktop icon resources and modes
-        run: node --test ../desktop/*.test.js
-      - run: npx vue-tsc --noEmit
-      - run: npx vite build
+jobs:
+  quality:
+    uses: ./.github/workflows/quality.yml

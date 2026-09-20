@@ -1,0 +1,49 @@
+name: quality
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: Exact revision to check (defaults to the caller revision)
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            dashboard/package-lock.json
+            website/package-lock.json
+            desktop/package-lock.json
+      - name: Install locked quality dependencies
+        run: |
+          sudo apt-get update && sudo apt-get install -y --no-install-recommends libportaudio2
+          uv sync --frozen
+          npm ci
+          npm ci --prefix dashboard
+          npm ci --prefix website
+          npm ci --prefix desktop --ignore-scripts
+      - name: Lint without modifying sources
+        run: uv run --frozen python scripts/quality.py lint
+      - name: Check formatting without modifying sources
+        run: uv run --frozen python scripts/quality.py format
+      - name: Python unit, harness and local integration tests
+        run: uv run --frozen python scripts/quality.py test --suite python
+      - name: Dashboard, website and desktop tests
+        run: uv run --frozen python scripts/quality.py test --suite web
+      - name: Type checks and production UI builds
+        run: uv run --frozen python scripts/quality.py build
