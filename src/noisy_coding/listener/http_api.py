@@ -18,6 +18,7 @@ from noisy_coding.providers.config import ConfigurationError, recovery_info
 from noisy_coding.listener import stt_lab
 from noisy_coding.listener import pricing, speech, tab_audio
 from noisy_coding.listener.dashboard import DASHBOARD_HTML
+from noisy_coding.listener.identity import canonical_identity
 from noisy_coding.listener.state import ListenerState
 
 _PRERELEASE_WORDS = {"a": "alpha", "b": "beta", "rc": "rc"}
@@ -88,7 +89,10 @@ def _resolve_speaker(
       to `agent_fallback`; named by its `speaker` if sent, else by the
       voice persona it was dealt.
     """
-    agent = str(body["agent"]) if body.get("agent") else None
+    # A transcript path is never an identity (#107): resolving it here means
+    # a stale producer cannot conjure a second tab for a session that
+    # already has one - it just speaks into the tab it belongs to.
+    agent = canonical_identity(str(body["agent"])) if body.get("agent") else None
     name = str(body.get("speaker") or "").strip() or None
     if agent and agent not in state.agents:
         fallback = str(body.get("agent_fallback") or "").strip() or None

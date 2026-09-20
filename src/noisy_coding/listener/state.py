@@ -1331,6 +1331,13 @@ class ListenerState:
             return self._active_agent
 
     def register_agent(self, name: str, label: str = "") -> None:
+        # THE LAST LINE OF DEFENCE (#107). Whatever a producer sends, a tab
+        # is never keyed by a transcript path: the path is not identity, it
+        # renders as the tab's label when there is no title, and it puts an
+        # absolute filesystem path on screen. Fixing the adapter stopped the
+        # main producer; canonicalising here stops every other one, present
+        # or future, without having to find them first.
+        name = canonical_identity(name)
         with self._lock:
             self._touch_agent_locked(name)
             if label:
