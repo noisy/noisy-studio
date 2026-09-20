@@ -13,10 +13,10 @@ that requested work completed. Missing acknowledgement remains unknown.
   late acknowledgement and the race where acknowledgement beats send completion.
 - [x] Add the MCP tool and daemon endpoint, and include the tool in trusted hook
   identity injection. Keep the ordinary voice prefix short.
-- [ ] Test cross-session rejection, queued-message rejection, grouped messages,
+- [x] Test cross-session rejection, queued-message rejection, grouped messages,
   restart, late receipt, and no replay. Exercise real Claude sessions with isolated
   settings, MCP and temporary daemon; no test tabs on the live instance.
-- [ ] Run required checks, commit, and deploy through the postponable restart.
+- [x] Run required checks, commit, and deploy through the postponable restart.
   Report any required MCP reload explicitly. Do not push or close tickets.
 
 No permission-policy changes, implicit success based on activity, or automatic
