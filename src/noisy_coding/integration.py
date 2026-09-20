@@ -19,4 +19,17 @@ def run(mode: str) -> None:
         from claude_hook import main
     else:
         raise SystemExit("Unknown Noisy Studio integration mode.")
-    main()
+    if mode == "mcp" and getattr(sys, "frozen", False):
+        # The SDK's UTF-8 wrappers close their underlying buffers on exit.
+        # Keep the original streams open for the frozen bootloader's final flush.
+        original_stdin, original_stdout = sys.stdin, sys.stdout
+        with os.fdopen(os.dup(original_stdin.fileno()), "r") as stdin, os.fdopen(
+            os.dup(original_stdout.fileno()), "w"
+        ) as stdout:
+            sys.stdin, sys.stdout = stdin, stdout
+            try:
+                main()
+            finally:
+                sys.stdin, sys.stdout = original_stdin, original_stdout
+    else:
+        main()

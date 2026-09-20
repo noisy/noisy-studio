@@ -1,8 +1,6 @@
 # Release gate for the 3.x line: the version-bearing files must agree with
 # each other and with the tag, and a pre-release draft appears on GitHub.
-# 3.0 ships as a native app; the Docker image job that lived here through
-# 2.x is gone on purpose (#77) - the desktop bundle is built and attached
-# from a Mac, since PyInstaller/electron-builder need the target OS.
+# 3.0 ships a native desktop bundle built and signed on macOS.
 name: release
 
 on:
@@ -128,6 +126,8 @@ jobs:
           expected="${TAG#v}"
           echo "daemon reports '$built', tag is '$expected'"
           test "$built" = "$expected"
+      - name: Smoke-test frozen agent integrations
+        run: uv run python scripts/smoke_integrations.py "desktop/build/daemon/Noisy Studio Engine.app/Contents/MacOS/noisy-coding-daemon"
       - name: Package the macOS app
         working-directory: desktop
         env:
