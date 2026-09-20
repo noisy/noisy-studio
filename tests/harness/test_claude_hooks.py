@@ -76,3 +76,27 @@ def test_claude_auto_summary_title_is_a_name_until_the_user_renames():
     assert title_from_transcript(transcript) == "Fix the tab naming"
     renamed = transcript + "\n" + json.dumps({"type": "custom-title", "customTitle": "reksio"})
     assert title_from_transcript(renamed) == "reksio"  # /rename wins over the auto title
+
+
+def test_identity_tools_accept_both_plugin_prefixes():
+    """The rename must not cost an installed plugin its voice (#122).
+
+    The plugin is noisy-studio now; a user who has not reinstalled still
+    has noisy-coding registered. If identity injection stopped matching
+    the old prefix, their agent would simply stop speaking as itself, with
+    nothing on screen explaining why.
+    """
+    from noisy_coding.harness.hook_common import IDENTITY_TOOLS
+
+    for tool in (
+        "mcp__noisy-studio__speak",
+        "mcp__noisy-coding__speak",
+        "mcp__noisy-studio-dev__announce",
+        "mcp__noisy-coding-dev__announce",
+        "mcp__plugin_noisy-studio_noisy-studio__change_voice",
+        "mcp__plugin_noisy-coding_noisy-coding__change_voice",
+    ):
+        assert IDENTITY_TOOLS.match(tool), tool
+
+    for tool in ("mcp__other__speak", "mcp__noisy-studio__read", "Bash"):
+        assert not IDENTITY_TOOLS.match(tool), tool

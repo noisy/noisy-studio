@@ -14,9 +14,14 @@ import re
 from noisy_coding.harness.base import Delivery, Moment
 
 # Identity-sensitive MCP tools, whatever the server was registered as
-# (noisy-coding, noisy-coding-dev, plugin-namespaced).
+# (noisy-studio, noisy-coding, -dev variants, plugin-namespaced).
+#
+# BOTH names are accepted on purpose (#122). The plugin is now noisy-studio,
+# but an installed noisy-coding keeps working until the user reinstalls -
+# and a rename that silently stops injecting speech identity would look
+# like the agent losing its voice for no reason.
 IDENTITY_TOOLS = re.compile(
-    r"^mcp__[^\s]*noisy[_-]coding[^\s]*__(speak|announce|change_voice|set_speaker_style|acknowledge_delivery)$"
+    r"^mcp__[^\s]*noisy[_-](coding|studio)[^\s]*__(speak|announce|change_voice|set_speaker_style|acknowledge_delivery)$"
 )
 
 THINKING = "THINKING…"
