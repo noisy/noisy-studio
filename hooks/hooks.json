@@ -7,7 +7,7 @@
             "type": "command",
             "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/native.sh\" hook",
             "timeout": 14430,
-            "statusMessage": "Listening for your voice",
+            "statusMessage": "Registering voice session",
             "asyncRewake": true,
             "rewakeSummary": "\ud83c\udf99\ufe0f Voice message received"
           }
@@ -47,7 +47,7 @@
             "type": "command",
             "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/native.sh\" hook",
             "timeout": 5,
-            "statusMessage": "Checking voice queue"
+            "statusMessage": "Reporting activity"
           }
         ]
       }
@@ -83,9 +83,21 @@
             "type": "command",
             "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/native.sh\" hook",
             "timeout": 14430,
-            "statusMessage": "Listening for your voice",
+            "statusMessage": "Reporting turn end",
             "asyncRewake": true,
             "rewakeSummary": "\ud83c\udf99\ufe0f Voice message received"
+          }
+        ]
+      }
+    ],
+    "SessionEnd": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "sh \"${CLAUDE_PLUGIN_ROOT}/hooks/native.sh\" hook",
+            "timeout": 5,
+            "statusMessage": "Reporting session end"
           }
         ]
       }

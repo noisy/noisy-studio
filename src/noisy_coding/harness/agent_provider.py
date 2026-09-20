@@ -1,6 +1,12 @@
 """One provider per agent system, composing its private delivery implementation."""
 from __future__ import annotations
 
+from noisy_coding.harness.claude.journal import Journal
+from noisy_coding.harness.claude.socket_delivery import SocketDelivery
+
+# Deliberate rollback: change only this choice, then restart/re-register sessions.
+CLAUDE_DELIVERY = "socket"
+
 from noisy_coding.harness.provider import (
     Availability, ProviderCapabilities, Receipt, Registration, Speech, provider_name,
 )
@@ -10,14 +16,34 @@ class HookDelivery:
     """Pull delivery: the core keeps speech queued until a valid hook picks it up."""
     allows_hook_pickup = True
 
-    def __init__(self, registry):
+    def __init__(self, registry, journal=None):
         self._registry = registry
+        self.journal = journal
 
     def attach(self, registration: Registration) -> Availability:
         return self.availability(registration.conversation)
 
     def submit(self, speech: Speech) -> Receipt:
+        if self.journal:
+            return self.journal.add(speech)
         return Receipt(speech.utterance_id, speech.conversation, 'queued')
+
+    def prepare_hook_pickup(self, speeches):
+        if self.journal:
+            for speech in speeches:
+                self.journal.add(speech)
+            self.journal.claim(speeches)
+
+    def cancel(self, speech):
+        return self.journal.cancel(speech) if self.journal else True
+
+    def start(self, record_receipt, reserve, recording, restore=None):
+        if self.journal:
+            for speech, receipt in self.journal.entries():
+                if receipt.state in ('cancelled', 'confirmed'):
+                    record_receipt(speech, receipt)
+                else:
+                    (restore or record_receipt)(speech, receipt)
 
     def observe(self, events) -> None:
         # The normalized registry already records lifecycle events.
@@ -50,6 +76,15 @@ class AgentProvider:
             return Receipt(speech.utterance_id, speech.conversation, 'unavailable', 'registration required')
         return self._implementation.submit(speech)
 
+    def prepare_hook_pickup(self, speeches):
+        prepare = getattr(self._implementation, 'prepare_hook_pickup', None)
+        if prepare:
+            prepare(speeches)
+
+    def cancel(self, speech: Speech) -> bool:
+        cancel = getattr(self._implementation, 'cancel', None)
+        return cancel(speech) if cancel else True
+
     def observe(self, events) -> None:
         self._implementation.observe(events)
 
@@ -62,11 +97,20 @@ class AgentProvider:
 class AgentProviders:
     def __init__(self, registry, providers=None):
         capabilities = ProviderCapabilities(True, True, True, 'none')
+        journal_path = registry._path.parent / 'claude-delivery.sqlite3' if registry._path else None
+        journal = Journal(journal_path)
+        claude_delivery = SocketDelivery(journal) if CLAUDE_DELIVERY == 'socket' else HookDelivery(registry, journal)
         self._providers = providers if providers is not None else {
-            name: AgentProvider(name, label, HookDelivery(registry), capabilities)
-            for name, label in [('claude', 'Claude Code'), ('codex', 'Codex')]
+            'claude': AgentProvider('claude', 'Claude Code', claude_delivery, capabilities),
+            'codex': AgentProvider('codex', 'Codex', HookDelivery(registry), capabilities),
         }
         self._registry = registry
+
+    def start(self, record_receipt, reserve, recording, restore=None):
+        for provider in self._providers.values():
+            start = getattr(provider._implementation, 'start', None)
+            if start:
+                start(record_receipt, reserve, recording, restore)
 
     def get(self, name: str):
         return self._providers.get(provider_name(name))

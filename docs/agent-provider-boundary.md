@@ -20,7 +20,7 @@ speech through the generic receipt path. Providers must not blindly resend an
 uncertain attempt; a future push implementation must persist attempt state
 before I/O and define its restart policy.
 
-Current hook delivery remains a pull implementation: submission leaves speech
+The retained hook delivery is a pull implementation: submission leaves speech
 queued, and a valid hook collects it through the compatibility gateway. Existing
 hook delivery wording and behavior remain unchanged in #119. It does not claim
 a model-read confirmation. `hook_gateway.py` owns HTTP hook replies and prevents
@@ -32,4 +32,6 @@ legacy imports from `base.py` remain available to existing adapters.
 
 Generic contract tests use a fake push implementation. Hook-specific tests live
 in `test_hook_contract.py`, adapter tests, and the real hook-script integration
-suite. Socket activation and durable uncertain-send handling belong to #120.
+suite. Claude socket delivery and durable attempt handling are described in
+[claude-inbox-delivery.md](claude-inbox-delivery.md). Hook delivery remains the
+Codex default and the deliberate Claude rollback implementation.

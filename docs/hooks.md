@@ -7,17 +7,18 @@ directly. Both execute the same adapter and shared harness flow.
 
 The app owns audio capture/playback. Hooks only register sessions, report
 activity, attach trusted identity to speech tools, and deliver queued input.
-They default to the app on 9765; an explicit listener-port override selects
+Claude incoming voice now uses the registered inbox; see [inbox delivery](claude-inbox-delivery.md). The retained hook voice-delivery implementation is inactive by default. Hooks default to the app on 9765; an explicit listener-port override selects
 development. They do not launch an audio daemon.
 
 | Event | Responsibility |
 | --- | --- |
-| SessionStart | Register the conversation |
-| UserPromptSubmit | Register/refresh activity and consume pending input |
+| SessionStart | Register the conversation and inherited inbox endpoint |
+| UserPromptSubmit | Refresh activity and re-register the inbox after daemon restart |
 | PreToolUse | Report activity and bind speech-tool calls to trusted session identity |
-| PostToolUse | Deliver queued voice while work continues |
+| PostToolUse | Report activity; socket mode never drains voice |
 | SubagentStart / SubagentStop | Track child-agent lifecycle |
-| Stop | Listen for voice and continue the conversation when input arrives |
+| Stop | Report turn completion; socket mode starts no listening hook |
+| SessionEnd | Invalidate the session endpoint |
 
 The session ID is the routing identity. Display labels and transcript paths are
 not interchangeable with it. The daemon's harness contract resolves parent

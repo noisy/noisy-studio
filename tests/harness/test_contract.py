@@ -36,7 +36,7 @@ def test_core_submits_to_the_recording_recipient_even_after_active_tab_changes(p
     assert (submitted.utterance_id, submitted.conversation, submitted.text, submitted.provenance) == (
         utterance, 'session-1', 'the original recipient', 'user speech transcribed by Noisy Studio',
     )
-    assert state.queued_count == 1  # A transport write is not confirmed delivery.
+    assert (state.queued_count, len(state.snapshot_transcripts())) == (0, 1)  # Retained, but no longer waiting to send.
 
 
 def test_participant_cannot_replace_the_parent_connection(provider_world):
@@ -112,4 +112,4 @@ def test_legacy_hook_cannot_consume_a_push_providers_queue(provider_world):
 
     result = drain(state, 'session-1', None)
 
-    assert (result, state.queued_count) == ({'transcripts': [], 'nudge': None, 'stand_down': True}, 1)
+    assert (result, state.queued_count) == ({'transcripts': [], 'nudge': None, 'stand_down': True}, 0)

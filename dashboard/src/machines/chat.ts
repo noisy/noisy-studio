@@ -26,6 +26,7 @@ export const USER_EVENTS = [
   "EMPTY", // transcription came back without speech
   "DROP", // too short / mic changed / daemon restarted mid-flight
   "STT_ERROR",
+  "SEND", "UNCERTAIN", "UNAVAILABLE", "REJECT", "ACCEPT", "CONFIRM",
   "NO_LISTENER", // addressee session offline - queued with nobody draining
 ] as const;
 
@@ -52,7 +53,8 @@ export type UserState =
   | "dropped"
   | "error"
   | "cancelled"
-  | "undelivered";
+  | "undelivered"
+  | "sent" | "uncertain" | "unavailable" | "rejected" | "accepted" | "confirmed";
 
 export type ClaudeState =
   | "queued"
@@ -64,6 +66,11 @@ export type ClaudeState =
   | "unheard"
   | "skipped"
   | "error";
+
+const incomingDeliveryTransitions = {
+  SEND: "sent", UNCERTAIN: "uncertain", UNAVAILABLE: "unavailable",
+  REJECT: "rejected", ACCEPT: "accepted", CONFIRM: "confirmed",
+};
 
 export const userUtteranceMachine = createMachine({
   id: "user-utterance",
@@ -88,6 +95,7 @@ export const userUtteranceMachine = createMachine({
     },
     ready: {
       on: {
+        ...incomingDeliveryTransitions,
         DELIVER: "delivered",
         CANCEL: "cancelled", // recall is legal ONLY while awaiting pickup
         NO_LISTENER: "undelivered", // addressee session went offline
@@ -97,10 +105,17 @@ export const userUtteranceMachine = createMachine({
     // and it flips to delivered if the session reconnects.
     undelivered: {
       on: {
+        ...incomingDeliveryTransitions,
         DELIVER: "delivered",
         CANCEL: "cancelled",
       },
     },
+    sent: { on: { UNCERTAIN: "uncertain", ACCEPT: "accepted", CONFIRM: "confirmed" } },
+    uncertain: { on: { ...incomingDeliveryTransitions } },
+    unavailable: { on: { ...incomingDeliveryTransitions, READY: "ready", CANCEL: "cancelled" } },
+    rejected: { on: { READY: "ready", CANCEL: "cancelled" } },
+    accepted: { on: { CONFIRM: "confirmed", UNCERTAIN: "uncertain" } },
+    confirmed: { type: "final" },
     delivered: { type: "final" },
     empty: { type: "final" },
     dropped: { type: "final" },
@@ -173,6 +188,9 @@ const USER_STATUS_PREFIXES: Array<[string, UserState]> = [
   ["undelivered", "undelivered"],
   ["transcription error", "error"],
   ["cancelled", "cancelled"],
+  ["sent", "sent"], ["delivery uncertain", "uncertain"],
+  ["unavailable", "unavailable"], ["delivery rejected", "rejected"],
+  ["accepted", "accepted"], ["delivery confirmed", "confirmed"],
 ];
 
 const CLAUDE_STATUS_PREFIXES: Array<[string, ClaudeState]> = [
@@ -201,6 +219,9 @@ const USER_CANONICAL_STATUS: Record<UserState, string> = {
   transcribing: "transcribing (live)…",
   ready: "ready — awaiting pickup",
   delivered: "delivered to Claude",
+  sent: "sent — unconfirmed", uncertain: "delivery uncertain — not retried",
+  unavailable: "unavailable — registration required", rejected: "delivery rejected",
+  accepted: "accepted — awaiting confirmation", confirmed: "delivery confirmed",
   empty: "empty — no speech",
   dropped: "dropped — too short",
   error: "transcription error",
@@ -331,7 +352,7 @@ export function timelineZone(role: Role, status: string): TimelineZone {
   if (role === "user") {
     // recording/transcribing never ask (they live in the composer slot);
     // unknown statuses render as settled history rather than jumping zones.
-    return state === "ready" || state === "undelivered" ? "pending" : "done";
+    return state === "ready" || state === "undelivered" || state === "unavailable" ? "pending" : "done";
   }
   // Synthesis runs AHEAD of playback (prefetch), so a synthesizing or
   // ready card is still WAITING its turn — it stays below the line in

@@ -70,6 +70,10 @@ def run(harness: str, payload: dict, listen_seconds: float | None = None) -> int
         return _pre_tool_use(payload, reply)
     if reply.get("may_drain"):
         return _deliver_mid_turn(reply)
+    if reply.get("nudge"):
+        print(json.dumps({"hookSpecificOutput": {
+            "hookEventName": "PostToolUse", "additionalContext": reply["nudge"],
+        }}))
     listener = reply.get("listener")
     if listener in ("start", "poll") and reply.get("listener_id"):
         return _listen(reply)

@@ -91,6 +91,8 @@ export interface DaemonStatus {
 }
 
 export interface Utterance {
+  delivery_state?: string;
+  delivery_detail?: string;
   id: number;
   /** Human label from agent registration; absent for older daemons/history. */
   agent_label?: string;

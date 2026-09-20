@@ -4,7 +4,7 @@ import threading
 import time
 import zlib
 from collections import deque
-from dataclasses import asdict, dataclass
+from dataclasses import replace, asdict, dataclass
 
 from noisy_coding.listener.conversations import ConversationRegistry
 from noisy_coding.harness.provider import Receipt, Speech
@@ -100,6 +100,7 @@ class Transcript:
     # utterance STARTED (#17). Switching tabs while a sentence is finishing
     # or transcribing must not reroute it. Empty = legacy/unstamped.
     addressee: str = ""
+    delivery_state: str = "queued"
 
 
 UTTERANCE_LOG_SIZE = 100
@@ -923,6 +924,7 @@ class ListenerState:
                         timestamp=float(item.get("timestamp", 0.0)),
                         utterance_id=int(item.get("utterance_id", 0)),
                         addressee=str(item.get("addressee", "") or ""),
+                        delivery_state=str(item.get("delivery_state", "queued")),
                     )
                 except (KeyError, TypeError, ValueError):
                     continue
@@ -930,7 +932,10 @@ class ListenerState:
                 restored += 1
                 for utterance in self._utterances:
                     if utterance.get("id") == transcript.utterance_id and utterance.get("role") == "user":
-                        utterance["status"] = "ready — awaiting pickup"
+                        utterance["status"] = (
+                            "delivery uncertain — not retried" if transcript.delivery_state in ("sent", "accepted", "uncertain")
+                            else "ready — awaiting pickup"
+                        )
             if restored:
                 self._add_event_locked("restored", f"{restored} waiting message(s) survived the restart")
         return restored
@@ -1035,12 +1040,18 @@ class ListenerState:
     def record_delivery(self, speech: Speech, receipt: Receipt) -> None:
         if receipt.conversation != speech.conversation or receipt.utterance_id != speech.utterance_id:
             raise ValueError("provider receipt does not match the submitted utterance")
-        if receipt.state == "queued" or not self.conversations.providers.for_conversation(speech.conversation):
+        if not self.conversations.providers.for_conversation(speech.conversation):
             return
         with self._lock:
+            self._transcripts = [replace(t, delivery_state=receipt.state) if (
+                t.utterance_id == speech.utterance_id and t.addressee == speech.conversation
+                and t.timestamp == speech.created_at
+            ) else t for t in self._transcripts]
+            if receipt.state == "queued":
+                return
             # Only a confirmed receipt retires pending speech. Sent/accepted
             # describe weaker observations and must remain distinguishable.
-            if receipt.state == "confirmed":
+            if receipt.state in ("confirmed", "cancelled"):
                 self._transcripts = [t for t in self._transcripts if not (
                     t.utterance_id == speech.utterance_id and t.addressee == speech.conversation
                     and t.timestamp == speech.created_at
@@ -1048,7 +1059,45 @@ class ListenerState:
             self._update_utterance_locked(
                 speech.utterance_id, delivery_state=receipt.state,
                 delivery_detail=receipt.detail,
+                status={"sent": "sent — unconfirmed", "uncertain": "delivery uncertain — not retried",
+                        "unavailable": "unavailable — registration required", "rejected": "delivery rejected",
+                        "accepted": "accepted — awaiting confirmation", "confirmed": "delivery confirmed", "cancelled": "cancelled by you"}[receipt.state],
             )
+
+    def restore_delivery(self, speech: Speech, receipt: Receipt) -> None:
+        """Recover journaled speech even when the periodic history save lagged."""
+        with self._lock:
+            if not any(t.utterance_id == speech.utterance_id and t.addressee == speech.conversation
+                       and t.timestamp == speech.created_at for t in self._transcripts):
+                self._transcripts.append(Transcript(speech.text, speech.created_at, speech.utterance_id,
+                                                    speech.conversation, receipt.state))
+            if speech.utterance_id and not any(u['id'] == speech.utterance_id for u in self._utterances):
+                self._utterances.append({
+                    'id': speech.utterance_id, 'role': 'user', 'status': 'ready — awaiting pickup',
+                    'text': speech.text, 'detail': '', 'cost_usd': 0.0, 'agent': speech.conversation,
+                    'speaker': '', 'voice': '', 'started_at': speech.created_at,
+                    'updated_at': time.time(), 'committed_at': speech.created_at,
+                })
+                self._utterance_seq = max(self._utterance_seq, speech.utterance_id)
+        self.record_delivery(speech, receipt)
+
+    def reserve_speech(self, speeches: list[Speech]) -> list[Speech]:
+        """Atomically protect pending speech from cancellation once a send starts."""
+        reserved = []
+        with self._lock:
+            for speech in speeches:
+                conversation = self.conversations.get(speech.conversation)
+                if conversation and (conversation.hidden or conversation.ended):
+                    continue
+                for i, transcript in enumerate(self._transcripts):
+                    if (transcript.utterance_id == speech.utterance_id
+                            and transcript.addressee == speech.conversation
+                            and transcript.timestamp == speech.created_at
+                            and transcript.delivery_state in ("queued", "unavailable")):
+                        self._transcripts[i] = replace(transcript, delivery_state="uncertain")
+                        reserved.append(speech)
+                        break
+        return reserved
 
     def mark_utterance_cancelled(self, utterance_id: int) -> None:
         """Scratch-my-words: the in-progress card ends as 'cancelled by
@@ -1064,13 +1113,25 @@ class ListenerState:
         Claude's; we return False and the card keeps its delivered status.
         """
         with self._lock:
-            kept = [t for t in self._transcripts if t.utterance_id != utterance_id]
-            cancelled = len(kept) < len(self._transcripts)
-            if cancelled:
-                self._transcripts = kept
+            candidates = [t for t in self._transcripts if t.utterance_id == utterance_id
+                          and t.delivery_state not in ("sent", "accepted", "uncertain")]
+        cancelled_items = []
+        for transcript in candidates:
+            provider = self.conversations.providers.for_conversation(transcript.addressee)
+            speech = Speech(transcript.utterance_id, transcript.addressee, transcript.text, transcript.timestamp)
+            try:
+                if provider is None or provider.cancel(speech):
+                    cancelled_items.append(transcript)
+            except Exception:
+                self.update_utterance(utterance_id, delivery_detail="Cancellation could not be saved; speech remains pending")
+                return False  # A cancellation that could not be persisted must not claim success.
+        with self._lock:
+            cancelled_items = [t for t in cancelled_items if t in self._transcripts]
+            self._transcripts = [t for t in self._transcripts if t not in cancelled_items]
+            if cancelled_items:
                 self._add_event_locked("cancelled", f"utterance {utterance_id} recalled")
                 self._update_utterance_locked(utterance_id, status="cancelled by you")
-            return cancelled
+        return bool(cancelled_items)
 
     def drain(self, agent: str | None = None, touch: bool = True) -> list[Transcript]:
         with self._lock:
@@ -1088,8 +1149,8 @@ class ListenerState:
                 transcripts = [
                     t
                     for t in self._transcripts
-                    if t.addressee == agent
-                    or (not t.addressee and agent == self._active_agent)
+                    if (t.addressee == agent or (not t.addressee and agent == self._active_agent))
+                    and t.delivery_state not in ("sent", "accepted", "uncertain")
                 ]
                 if not transcripts:
                     return []
@@ -1098,7 +1159,8 @@ class ListenerState:
                     t for t in self._transcripts if id(t) not in delivered_ids
                 ]
             else:
-                transcripts, self._transcripts = self._transcripts, []
+                transcripts = [t for t in self._transcripts if t.delivery_state not in ("sent", "accepted", "uncertain")]
+                self._transcripts = [t for t in self._transcripts if t.delivery_state in ("sent", "accepted", "uncertain")]
             if transcripts:
                 self._add_event_locked(
                     "delivered", " ".join(t.text for t in transcripts)
@@ -1417,7 +1479,7 @@ class ListenerState:
     @property
     def queued_count(self) -> int:
         with self._lock:
-            return len(self._transcripts)
+            return sum(t.delivery_state in ("queued", "unavailable") for t in self._transcripts)
 
     @property
     def last_transcript_at(self) -> float:
@@ -1444,6 +1506,8 @@ class ListenerState:
         moments later. Live activity (the tool/thinking one-liner the hooks
         push) proves the process is running even while it is not polling.
         """
+        if self.conversations.providers.for_conversation(agent) is not None:
+            return self.conversations.status(agent) in ("live", "idle")
         seen = self._agents.get(agent)
         if seen is not None and now - seen <= AGENT_OFFLINE_AFTER_SECONDS:
             return True

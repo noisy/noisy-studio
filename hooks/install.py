@@ -24,7 +24,7 @@ SCRIPT = HOOKS_DIR / "claude_hook.py"
 # timeout must outlive it (slack for the wake itself).
 LISTEN_SECONDS = 14400  # 4h idle window (U1: no hook-timeout cap); deaf state is the fallback
 LISTENER_EVENTS = ("SessionStart", "Stop")
-QUICK_EVENTS = ("UserPromptSubmit", "SubagentStart", "SubagentStop")
+QUICK_EVENTS = ("UserPromptSubmit", "SubagentStart", "SubagentStop", "SessionEnd")
 TOOL_EVENTS = ("PreToolUse", "PostToolUse")
 
 

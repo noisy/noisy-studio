@@ -237,3 +237,17 @@ describe("reachable", () => {
     expect(reachable("claude", "played", "playing")).toBe(true);
   });
 });
+
+
+describe("inbox delivery receipts", () => {
+  it("keeps unconfirmed writes distinct from delivery and prevents recall", () => {
+    expect(statusToState("user", "sent — unconfirmed")).toBe("sent");
+    expect(statusAllows("user", "sent — unconfirmed", "CANCEL")).toBe(false);
+    expect(statusAllows("user", "delivery uncertain — not retried", "CANCEL")).toBe(false);
+  });
+  it("allows recovery before a write and recognizes skipped polling transitions", () => {
+    expect(statusAllows("user", "unavailable — registration required", "CANCEL")).toBe(true);
+    expect(validStatusChange("user", "ready — awaiting pickup", "sent — unconfirmed")).toBe(true);
+    expect(statusAllows("user", "sent — unconfirmed", "DELIVER")).toBe(false);
+  });
+});

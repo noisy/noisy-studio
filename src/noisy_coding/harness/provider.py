@@ -11,7 +11,7 @@ from typing import Literal, Protocol
 
 from noisy_coding.harness.base import Event
 
-DeliveryState = Literal['queued', 'sent', 'accepted', 'confirmed', 'rejected', 'unavailable', 'uncertain']
+DeliveryState = Literal['queued', 'sent', 'accepted', 'confirmed', 'rejected', 'unavailable', 'uncertain', 'cancelled']
 
 
 @dataclass(frozen=True)

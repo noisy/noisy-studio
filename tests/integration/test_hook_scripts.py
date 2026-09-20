@@ -31,7 +31,11 @@ def _rows(name: str) -> list[dict]:
 
 @pytest.fixture
 def daemon(tmp_path, monkeypatch):
+    # Retained hook implementation remains independently executable for rollback.
+    from noisy_coding.harness import agent_provider
+    monkeypatch.setattr(agent_provider, "CLAUDE_DELIVERY", "hooks")
     monkeypatch.setattr(http_api, "DIST_DIR", tmp_path / "missing")
+    monkeypatch.setattr(http_api, "SETTINGS_FILE", tmp_path / "settings.json")
     state = ListenerState()
     server = start_http_api(state, 0)
     yield state, server.server_address[1]

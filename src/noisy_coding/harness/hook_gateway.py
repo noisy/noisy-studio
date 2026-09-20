@@ -9,7 +9,7 @@ from dataclasses import asdict
 from typing import TYPE_CHECKING
 
 from noisy_coding import harness
-from noisy_coding.harness.provider import Registration
+from noisy_coding.harness.provider import Registration, Speech
 
 if TYPE_CHECKING:
     from noisy_coding.listener.state import ListenerState
@@ -39,8 +39,16 @@ def _apply_harness_event(
     key = conversation.key
     provider = registry.providers.get(name)
     if provider is not None:
-        provider.attach(Registration(key, str(payload.get("session_id") or key), participant=result.participant))
+        connection = payload.get("noisy_studio_connection") if payload.get("hook_event_name") in ("SessionStart", "UserPromptSubmit") else None
+        provider.attach(Registration(key, str(payload.get("session_id") or key), connection=connection, participant=result.participant))
+        if not provider.allows_hook_pickup:
+            registry._readiness[conversation.harness] = provider.availability
+            conversation.listener = None
         provider.observe(result.events)
+        if connection is not None and result.participant is None and not provider.allows_hook_pickup:
+            for item in state.snapshot_transcripts():
+                if item["addressee"] == key and item.get("delivery_state", "queued") in ("queued", "unavailable"):
+                    state.submit_speech(Speech(item["utterance_id"], key, item["text"], item["timestamp"]))
     if conversation.hidden:
         # The user closed this tab. Routine hooks from a still-running
         # session must not resurrect it; only a new session or a new user
@@ -48,7 +56,7 @@ def _apply_harness_event(
         # rules still apply - closing a tab does not change who speaks.
         return {
             "conversation": key,
-            "may_drain": result.may_drain,
+            "may_drain": result.may_drain and (provider is None or provider.allows_hook_pickup),
             "speech_identity": result.speech_identity,
             "listener": "none",
             "participant": result.participant,
@@ -67,13 +75,16 @@ def _apply_harness_event(
             state.register_agent(key, event.title)
     response = {
         "conversation": key,
-        "may_drain": result.may_drain,
+        "may_drain": result.may_drain and (provider is None or provider.allows_hook_pickup),
         "speech_identity": result.speech_identity,
-        "listener": result.listener,
+        "listener": result.listener if provider is None or provider.allows_hook_pickup else "none",
         "participant": result.participant,
         "label": conversation.label(),
     }
-    if result.listener in ("start", "poll"):
+    if (payload.get("hook_event_name") == "PostToolUse" and result.participant is None
+            and provider is not None and not provider.allows_hook_pickup):
+        response["nudge"] = state.pop_due_nudge(key)
+    if response["listener"] in ("start", "poll"):
         window = adapter.capabilities.max_idle_seconds
         if listen_seconds is not None and window:
             # The hook may shorten (never lengthen) the harness window - a
@@ -112,12 +123,24 @@ def _render_delivery(state: ListenerState, key: str, transcripts: list[dict], mo
 
 def drain(state: ListenerState, agent: str | None, listener_id: str | None) -> dict:
     provider = state.conversations.providers.for_conversation(agent or "")
+    if agent is None and any(not state.conversations.providers.for_conversation(key).allows_hook_pickup
+                             for key in state.conversations.keys()
+                             if state.conversations.providers.for_conversation(key) is not None):
+        return {"transcripts": [], "nudge": None, "stand_down": True}
     if provider is not None and not provider.allows_hook_pickup:
         return {"transcripts": [], "nudge": None, "stand_down": True}
     if listener_id and not state.conversations.listener_alive(agent or "", listener_id):
         return {"transcripts": [], "nudge": None, "stand_down": True}
     conversation = state.conversations.get(agent or "")
     hidden = bool(conversation and conversation.hidden)
+    if provider is not None:
+        pending = [Speech(t['utterance_id'], t['addressee'], t['text'], t['timestamp'])
+                   for t in state.snapshot_transcripts()
+                   if t['addressee'] == agent and t.get('delivery_state', 'queued') in ('queued', 'unavailable')]
+        try:
+            provider.prepare_hook_pickup(pending)
+        except Exception:
+            return {"transcripts": [], "nudge": None, "stand_down": True}
     transcripts = [asdict(t) for t in state.drain(agent, touch=not hidden)]
     nudge = state.pop_due_nudge(agent) if agent else None
     moment = "wake" if listener_id else "mid_turn"

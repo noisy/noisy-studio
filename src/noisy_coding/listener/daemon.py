@@ -499,6 +499,11 @@ def run(config: VadConfig | None = None) -> None:
         conversation = state.conversations.get(key)
         if conversation is not None:
             state.register_agent(key, conversation.label())
+    # Providers own integration I/O; the core supplies queue ownership and receipts.
+    from noisy_coding.harness.provider import Speech
+    for item in state.snapshot_transcripts():
+        state.submit_speech(Speech(item["utterance_id"], item["addressee"], item["text"], item["timestamp"]))
+    state.conversations.providers.start(state.record_delivery, state.reserve_speech, lambda: state.recording, state.restore_delivery)
     # Global PTT hotkeys (#25): armed only when a key is configured. The
     # listener hangs off the state so the /settings endpoint can rearm it.
     from noisy_coding.listener import hotkey as hotkey_mod

@@ -17,6 +17,12 @@ const USER_CHIPS: Record<UserState, StatusChip> = {
   // trouble when Claude is just busy, and "ready" begs ready-for-what.
   ready: { kind: "work", label: "◌ AWAITING AGENT" },
   delivered: { kind: "done", label: "✓ DELIVERED" },
+  sent: { kind: "off", label: "◌ SENT · UNCONFIRMED" },
+  uncertain: { kind: "fail", label: "! UNCERTAIN · NOT RETRIED" },
+  unavailable: { kind: "fail", label: "! REGISTRATION REQUIRED" },
+  rejected: { kind: "fail", label: "✕ REJECTED" },
+  accepted: { kind: "off", label: "◌ ACCEPTED · UNCONFIRMED" },
+  confirmed: { kind: "done", label: "✓ CONFIRMED" },
   empty: { kind: "fail", label: "✕ NO SPEECH" },
   dropped: { kind: "fail", label: "✕ DROPPED" },
   error: { kind: "fail", label: "✕ ERROR" },

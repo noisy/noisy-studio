@@ -51,3 +51,16 @@ export const WithSubagent: StoryObj<typeof ConversationLog> = {
     template: `<div style="max-width:760px"><ConversationLog v-bind="args" /></div>`,
   }),
 };
+
+export const InboxDeliveryStates: StoryObj<typeof ConversationLog> = {
+  ...Feed,
+  args: {utterances: [
+    ["sent — unconfirmed", "Written to the inbox; the host may hold or refuse it."],
+    ["delivery uncertain — not retried", "The connection ended during the write. No automatic resend."],
+    ["unavailable — registration required", "Type once in this Claude session to register it again."],
+    ["delivery rejected", "The registered endpoint could not be used."],
+  ].map(([status, delivery_detail], index) => ({
+    ...feed[0]!, id: index + 20, text: "Please check the release changes.",
+    status, delivery_detail, agent_label: "Release assistant",
+  }))},
+};

@@ -76,9 +76,9 @@ class ConversationRegistry:
         path: Path | None = None,
     ) -> None:
         self._clock = clock
+        self._path = path
         self.providers = AgentProviders(self)
         self._readiness = {}
-        self._path = path
         self._by_key: dict[str, Conversation] = {}
         self._alias: dict[str, str] = {}
         self._capabilities: dict[str, Capabilities] = {}

@@ -20,6 +20,9 @@ def main() -> None:
     payload = _hook_flow.read_payload()
     if not payload:
         return
+    if payload.get("hook_event_name") in ("SessionStart", "UserPromptSubmit") and not payload.get("agent_id"):
+        # Read only the inherited endpoint. Never print it or derive it from an ID.
+        payload["noisy_studio_connection"] = {"socket": os.environ.get("CLAUDE_CODE_MESSAGING_SOCKET", "")}
     # Optional: shorten the listening window (seconds); the daemon never
     # lets a hook lengthen it past the harness default.
     window = os.environ.get("NOISY_CODING_REWAKE_WAIT_SECONDS")
