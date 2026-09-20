@@ -48,7 +48,7 @@ def test_socket_carries_only_a_wake_and_hook_delivers_grouped_speech_once(world)
     waker.tick(state.record_delivery)
     waker.tick(state.record_delivery)
     prompt = waker._send.call_args.args[1]
-    assert prompt.startswith('[Noisy Studio wake ')
+    assert prompt.startswith('Noisy Studio is waking Claude')
     assert 'first part' not in prompt and 'second part' not in prompt
     assert len(state.snapshot_transcripts()) == 2
     response = receive(state, prompt)

@@ -74,7 +74,11 @@ class SocketWake:
             endpoint = self._endpoints.get(conversation)
             if endpoint is None:
                 return WakeResult('unavailable', self.availability(conversation).reason)
-            prompt = '[Noisy Studio wake ' + uuid.uuid4().hex[:12] + ']'
+            prompt = (
+                'Noisy Studio is waking Claude to receive your queued voice messages through its hooks. '
+                'The notice below is added automatically by Claude Code. '
+                '[wake: ' + uuid.uuid4().hex[:12] + ']'
+            )
             if not self.journal.claim_wake(conversation, prompt):
                 return WakeResult('pending', 'wake-up already pending')
             try:
