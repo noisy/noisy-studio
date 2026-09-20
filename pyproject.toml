@@ -29,10 +29,6 @@ noisy-coding-mobile = "noisy_coding.mobile_server:main"
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
 
-[[tool.uv.index]]
-url = "https://pypi.org/simple"
-default = true
-
 [build-system]
 requires = ["uv_build>=0.11.0,<0.12.0"]
 build-backend = "uv_build"
