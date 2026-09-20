@@ -13,10 +13,10 @@ PAYLOAD = {
 }
 
 
-def test_the_transcript_is_the_key_and_the_session_id_an_alias():
+def test_the_session_id_is_the_key_and_the_transcript_an_alias():
     result = ClaudeHooks(read_text=lambda _p: "").interpret({**PAYLOAD, "hook_event_name": "Stop"})
-    assert result.conversation == PAYLOAD["transcript_path"]
-    assert result.events[0].aliases == (PAYLOAD["session_id"],)
+    assert result.conversation == PAYLOAD["session_id"]
+    assert result.events[0].aliases == (PAYLOAD["transcript_path"],)
     assert result.short_id == "6eef14ed"
 
 
@@ -48,7 +48,7 @@ def test_subagent_payload_is_a_participant_of_the_parent():
     result = adapter.interpret(
         {**PAYLOAD, "hook_event_name": "PostToolUse", "agent_id": "ae5366ae", "agent_type": "general-purpose"}
     )
-    assert result.conversation == PAYLOAD["transcript_path"]
+    assert result.conversation == PAYLOAD["session_id"]
     assert result.participant == "ae5366ae"
     assert result.may_drain is False
     assert all(e.participant == "ae5366ae" for e in result.events)
@@ -60,7 +60,7 @@ def test_speak_identity_is_the_conversation_key_for_every_server_name():
                  "mcp__plugin_noisy-coding_noisy-coding__change_voice"):
         result = adapter.interpret({**PAYLOAD, "hook_event_name": "PreToolUse", "tool_name": tool,
                                     "tool_input": {"text": "x"}})
-        assert result.speech_identity == PAYLOAD["transcript_path"]
+        assert result.speech_identity == PAYLOAD["session_id"]
     other = adapter.interpret({**PAYLOAD, "hook_event_name": "PreToolUse", "tool_name": "Bash",
                                "tool_input": {"command": "ls -la"}})
     assert other.speech_identity is None

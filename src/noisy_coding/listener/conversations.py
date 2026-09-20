@@ -22,6 +22,11 @@ from pathlib import Path
 from typing import Literal
 
 from noisy_coding.harness.base import Capabilities, Interpretation
+from noisy_coding.listener.conversation_labels import (
+    UNNAMED_CONVERSATION,
+    conversation_label,
+    conversation_title,
+)
 from noisy_coding.listener.identity import canonical_identity
 
 __all__ = ["Conversation", "ConversationRegistry", "Listener", "Status"]
@@ -62,10 +67,10 @@ class Conversation:
     # What a tab is called before its session has any name of its own. A
     # tab never shows an id or a path (Krzysztof, 2026-09-13): the newest
     # real name wins, and until one exists this neutral text stands in.
-    UNNAMED = "New conversation"
+    UNNAMED = UNNAMED_CONVERSATION
 
     def label(self) -> str:
-        return self.title or self.UNNAMED
+        return conversation_label(self.title)
 
 
 class ConversationRegistry:
@@ -131,8 +136,8 @@ class ConversationRegistry:
             if event.kind == "session_started":
                 conversation.ended = False
                 conversation.hidden = False
-                if event.title:
-                    conversation.title = event.title
+                if title := conversation_title(event.title):
+                    conversation.title = title
             elif event.kind == "session_ended":
                 conversation.ended = True
                 conversation.turn_open = False
@@ -148,8 +153,8 @@ class ConversationRegistry:
                 if event.participant:
                     conversation.participants[event.participant] = now
             elif event.kind == "title_changed":
-                if event.title:
-                    conversation.title = event.title
+                if title := conversation_title(event.title):
+                    conversation.title = title
             elif event.kind == "participant_started" and event.participant:
                 conversation.participants[event.participant] = now
             elif event.kind == "participant_ended" and event.participant:
@@ -171,6 +176,7 @@ class ConversationRegistry:
                 position=self._next_position(), short_id=key[:8],
             )
             self._by_key[conversation.key] = conversation
+        title = conversation_title(title)
         if title and title != key and title != key[:8]:
             conversation.title = title
         if unhide:
@@ -287,7 +293,7 @@ class ConversationRegistry:
             c = self._by_key[key]
             out[key] = {
                 "label": c.label(),
-                "title": c.title,
+                "title": conversation_title(c.title),
                 "short_id": c.short_id,
                 "harness": c.harness,
                 "status": self.status(key),
@@ -342,6 +348,7 @@ class ConversationRegistry:
                 conversation = Conversation(**row)
             except TypeError:
                 continue
+            conversation.title = conversation_title(conversation.title)
             # A listener from a previous daemon life is gone with it: the
             # tab starts deaf until its session's next hook says otherwise.
             conversation.deaf_reason = "daemon restarted"

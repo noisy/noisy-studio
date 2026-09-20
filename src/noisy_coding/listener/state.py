@@ -7,6 +7,7 @@ from collections import deque
 from dataclasses import asdict, dataclass
 
 from noisy_coding.listener.conversations import ConversationRegistry
+from noisy_coding.listener.conversation_labels import UNNAMED_CONVERSATION, conversation_label
 from noisy_coding.listener.vad import (
     DEFAULT_MIC_SENSITIVITY,
     MAX_MIC_SENSITIVITY,
@@ -1099,9 +1100,9 @@ class ListenerState:
 
     @property
     def agent_labels(self) -> dict:
-        # name -> label; falls back to the name itself when no label was given.
+        # Legacy names can be paths, even without a transcript suffix.
         with self._lock:
-            return {n: self._agent_labels.get(n, n) for n in self._agents}
+            return {n: conversation_label(self._agent_labels.get(n, n)) for n in self._agents}
 
     @property
     def agents_meta(self) -> dict:
@@ -1121,7 +1122,7 @@ class ListenerState:
                 # the same lie as stamping its messages 'no listener'.
                 online = self._agent_alive_locked(name, now)
                 meta[name] = {
-                    "label": self._agent_labels.get(name, name),
+                    "label": conversation_label(self._agent_labels.get(name, name)),
                     "online": online,
                     "activated_at": self._agent_activated.get(name, seen),
                     "offline_since": None if online else seen + AGENT_OFFLINE_AFTER_SECONDS,
@@ -1341,11 +1342,12 @@ class ListenerState:
         with self._lock:
             self._touch_agent_locked(name)
             if label:
+                label = conversation_label(label)
                 # A fallback label (the shortened agent id) must not evict a
                 # real title: hooks re-register on every call, and the ones
                 # that cannot read the transcript would otherwise keep
                 # reverting the tab to the bare hash.
-                is_fallback = label == name or label == name[:8]
+                is_fallback = label in (name, name[:8], UNNAMED_CONVERSATION)
                 if not (is_fallback and self._agent_labels.get(name)):
                     self._agent_labels[name] = label
             if self._active_agent is None:

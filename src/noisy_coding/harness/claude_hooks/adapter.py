@@ -8,8 +8,8 @@ see docs/agent-integration-analysis.md §10):
 - a subagent's hooks carry the PARENT's `session_id` and `transcript_path`
   plus its own `agent_id`/`agent_type` - so a subagent is a participant of
   the parent's conversation, and must never drain its queue;
-- the transcript file is stable across `--resume`, so it is the
-  conversation key; `session_id` is an alias of it;
+- `session_id` is the canonical conversation key; the transcript path is
+  an alias, never a display name;
 - SessionStart and Stop both accept `asyncRewake`, so a listener can start
   at second zero and after every turn.
 """
