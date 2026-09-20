@@ -21,8 +21,8 @@ async def main(engine: str) -> None:
                     await session.initialize()
                     result = await session.list_tools()
                     names = {tool.name for tool in result.tools}
-                    if not {'speak', 'announce'} <= names:
-                        raise RuntimeError('Frozen MCP is missing speech tools')
+                    if not {'speak', 'announce', 'acknowledge_delivery'} <= names:
+                        raise RuntimeError('Frozen MCP is missing speech or receipt tools')
         errors.seek(0)
         if 'Traceback' in errors.read():
             raise RuntimeError('Frozen MCP reported an exception during startup or shutdown')

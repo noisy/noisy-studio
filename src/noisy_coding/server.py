@@ -90,6 +90,31 @@ def _speak_result_message(result: dict | None) -> str | None:
 
 
 @mcp.tool()
+async def acknowledge_delivery(message_ids: list[str], agent_id: str | None = None) -> str:
+    """Acknowledge Noisy Studio messages you have actually read.
+
+    Copy the receipt IDs from the delivered message. Call once for the group,
+    before acting on it. This confirms receipt only, not task completion.
+    Leave agent_id unset: the trusted host hook supplies the receiving session.
+    Never acknowledge IDs you did not receive or invent IDs from prior messages.
+    """
+    error = await _identity_error(agent_id)
+    if error:
+        return error
+    port = os.environ.get(LISTENER_PORT_ENV_VAR, "8765")
+    try:
+        async with httpx.AsyncClient(timeout=3.0) as client:
+            response = await client.post(f"http://127.0.0.1:{port}/delivery/acknowledge",
+                                         json={"agent": agent_id.strip(), "message_ids": message_ids})
+            result = response.json()
+    except (httpx.HTTPError, ValueError):
+        return "Receipt could not be recorded. Delivery remains unconfirmed; do not resend the original message."
+    if "error" in result:
+        return f"Receipt not recorded: {result['error']}"
+    return f"Acknowledged {len(result.get('confirmed', []))} message(s); {len(result.get('unmatched', []))} unmatched."
+
+
+@mcp.tool()
 async def speak(text: str, interrupt: bool = False, speaker: str = "", agent_id: str | None = None) -> str:
     """Speak a short message aloud to the user through their speakers.
 

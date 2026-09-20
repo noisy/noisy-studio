@@ -48,9 +48,26 @@ class Journal:
         with self._lock:
             db = self._db()
             timestamp = (time.time() if written_at is None else written_at) if state == 'sent' else None
-            db.executemany('UPDATE deliveries SET state=?, detail=?, written_at=COALESCE(?, written_at) WHERE id=?',
+            db.executemany("UPDATE deliveries SET state=?, detail=?, written_at=COALESCE(?, written_at) WHERE id=? AND state!='confirmed'",
                            [(state, detail, timestamp, self.key(s)) for s in speeches])
             db.commit()
+
+    def acknowledge(self, conversation: str, message_ids: list[str]) -> list[tuple[Speech, Receipt]]:
+        with self._lock:
+            db = self._db()
+            confirmed = []
+            for message_id in dict.fromkeys(message_ids):
+                row = db.execute('SELECT speech, state FROM deliveries WHERE id=?', (message_id,)).fetchone()
+                if row is None:
+                    continue
+                speech = Speech(**json.loads(row[0]))
+                if speech.conversation != conversation or row[1] not in ('sent', 'unknown', 'uncertain', 'confirmed'):
+                    continue
+                detail = 'Receiving agent acknowledged this message; task completion is separate.'
+                db.execute("UPDATE deliveries SET state='confirmed', detail=? WHERE id=?", (detail, message_id))
+                confirmed.append((speech, Receipt(speech.utterance_id, conversation, 'confirmed', detail, message_id=message_id)))
+            db.commit()
+            return confirmed
 
     def expire_sent(self, cutoff: float, detail: str) -> list[tuple[Speech, Receipt]]:
         """Bound unconfirmed status without turning missing evidence into failure."""

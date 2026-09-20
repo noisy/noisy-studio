@@ -84,6 +84,9 @@ def _apply_harness_event(
     if (payload.get("hook_event_name") == "PostToolUse" and result.participant is None
             and provider is not None and not provider.allows_hook_pickup):
         response["nudge"] = state.pop_due_nudge(key)
+    if (payload.get("hook_event_name") in ("SessionStart", "UserPromptSubmit")
+            and result.participant is None and provider is not None and provider.registration_context):
+        response["registration_context"] = provider.registration_context
     if response["listener"] in ("start", "poll"):
         window = adapter.capabilities.max_idle_seconds
         if listen_seconds is not None and window:

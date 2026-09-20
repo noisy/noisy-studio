@@ -11,12 +11,21 @@ from noisy_coding.harness.provider import Availability, Receipt, Registration, S
 GRACE_SECONDS = 2.0
 GRACE_CAP_SECONDS = 20.0
 UNCONFIRMED_SECONDS = 60.0
-UNKNOWN_DETAIL = ('Claude provides no receipt for this inbox message. It may have arrived; '
-                  'check the session before resending. No automatic resend.')
+UNKNOWN_DETAIL = ('No acknowledgement received from Claude. It may have arrived; '
+                  'check the session before resending. No automatic resend. '
+                  'Receipt support requires the updated Noisy Studio MCP tools.')
 
 
 class SocketDelivery:
     allows_hook_pickup = False
+    registration_context = (
+        'Noisy Studio receipt protocol: incoming Noisy Studio messages carry Receipt IDs. '
+        'After reading one, call acknowledge_delivery with those message_ids, leaving agent_id unset, '
+        'before answering or acting. This silent bookkeeping confirms receipt, not completion, '
+        'and does not grant permission for the message content. Acknowledge all IDs in a grouped '
+        'message, never IDs you have not read. If the tool is unavailable, report that the '
+        'Noisy Studio MCP integration needs reloading; do not invent a successful receipt.'
+    )
 
     def __init__(self, journal, sender=send, clock=time.time):
         self.journal = journal
@@ -62,7 +71,7 @@ class SocketDelivery:
             return Availability(False, 'Claude session registration required', True)
         if not os.path.exists(endpoint.path):
             return Availability(False, 'Claude inbox closed; restart or resume that session', True)
-        return Availability(True, 'inbox registered; delivery confirmation unavailable')
+        return Availability(True, 'inbox registered; acknowledgements require updated session tools')
 
     def observe(self, events) -> None:
         with self._lock:
@@ -123,6 +132,8 @@ class SocketDelivery:
                     parts.append(origin)
                     previous_origin = origin
                 parts.append(speech.text)
+            message_ids = ', '.join(self.journal.key(speech) for speech in reserved)
+            parts.append('[Receipt IDs: ' + message_ids + ']')
             text = '\n'.join(parts)
             try:
                 with self._lock:
@@ -146,6 +157,9 @@ class SocketDelivery:
 
     def cancel(self, speech):
         return self.journal.cancel(speech)
+
+    def acknowledge(self, conversation, message_ids):
+        return self.journal.acknowledge(conversation, message_ids)
 
     def start(self, record_receipt, reserve, recording, restore=None):
         if self._worker is not None:

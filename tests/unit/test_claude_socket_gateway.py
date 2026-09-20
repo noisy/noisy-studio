@@ -28,6 +28,8 @@ def test_socket_default_disables_start_stop_and_posttool_consumers_but_keeps_ide
     })
 
     assert (started['listener'], stopped['listener'], post['may_drain'], identity['speech_identity']) == ('none', 'none', False, SESSION)
+    assert 'acknowledge_delivery' in started['registration_context']
+    assert 'registration_context' not in post
     assert drain(state, SESSION, 'old-listener')['stand_down'] is True
     assert drain(state, None, None)['stand_down'] is True
 

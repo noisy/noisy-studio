@@ -57,7 +57,8 @@ def test_subagent_payload_is_a_participant_of_the_parent():
 def test_speak_identity_is_the_conversation_key_for_every_server_name():
     adapter = ClaudeHooks(read_text=lambda _p: "")
     for tool in ("mcp__noisy-coding__speak", "mcp__noisy-coding-dev__announce",
-                 "mcp__plugin_noisy-coding_noisy-coding__change_voice"):
+                 "mcp__plugin_noisy-coding_noisy-coding__change_voice",
+                 "mcp__noisy-coding__acknowledge_delivery"):
         result = adapter.interpret({**PAYLOAD, "hook_event_name": "PreToolUse", "tool_name": tool,
                                     "tool_input": {"text": "x"}})
         assert result.speech_identity == PAYLOAD["session_id"]

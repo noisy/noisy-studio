@@ -1044,6 +1044,11 @@ class ListenerState:
         if not self.conversations.providers.for_conversation(speech.conversation):
             return
         with self._lock:
+            if receipt.state != "confirmed" and any(
+                u.get("id") == speech.utterance_id and u.get("delivery_state") == "confirmed"
+                for u in self._utterances
+            ):
+                return  # An acknowledgement can beat completion of the socket write.
             self._transcripts = [replace(t, delivery_state=receipt.state) if (
                 t.utterance_id == speech.utterance_id and t.addressee == speech.conversation
                 and t.timestamp == speech.created_at

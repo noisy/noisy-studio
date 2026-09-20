@@ -39,18 +39,30 @@ alternate message shape that changes this envelope was found in the
 [Claude Code messaging reference](https://code.claude.com/docs/en/cross-session-messaging).
 Do not impersonate a keyboard prompt or alter inbound controls to hide the wrapper.
 
-The live feedback on #120 confirms delivery to the receiving session, but a
-general reply or later hook activity cannot identify which utterance was read.
-A true received state needs a correlated receipt bound to that session and
-message. The status timeout below improves presentation; it does not provide
-that missing evidence. Host notices to another Claude sender are not a documented
-receipt API for our independent raw socket sender.
+Each group includes stable receipt IDs and asks the receiving agent to call
+`acknowledge_delivery` after reading. The trusted PreToolUse integration supplies
+the receiving session identity; the daemon matches that identity and the IDs
+against attempted messages in its durable journal. This is an explicit agent
+acknowledgement, not a native host receipt or proof of completed work. A general
+reply or later hook activity is not used as confirmation. Missing or failed tool
+calls leave the outcome unknown. Host permission rules remain unchanged.
+
+SessionStart/UserPromptSubmit supply the receipt convention through integration
+context. Putting that instruction only in the peer message was insufficient in
+an ordinary-speech live check: Claude could answer without acknowledging it.
+Per-message content now includes IDs only, without repeating the full convention.
+
+**Upgrade existing sessions:** reload/reconnect the Noisy Studio MCP server, or
+start a fresh Claude session using the updated integration, so the new tool is
+available. Updating only the daemon cannot replace an already-running MCP tool
+server. Historical messages without receipt IDs remain unknown; do not resend
+them merely to obtain a receipt. No extra acknowledgement is spoken aloud.
 
 - **Queued:** waiting for the continuation window or a usable registration.
 - **Sent, unconfirmed:** the socket write completed. This does not establish that
   Claude admitted, read or acted on it; host policy may hold or refuse it.
 - **Delivery unknown:** 60 seconds after a completed write, the status settles
-  here. Claude's raw inbox supplies no correlated receipt. This is not a failure
+  here if no agent acknowledgement has arrived. This is not a failure
   verdict: check the receiving session before deciding to resend. The deadline
   survives daemon restart. Older journal entries without a write timestamp settle
   immediately. Neither timeout nor restart triggers a resend or permits recall.
@@ -61,9 +73,12 @@ receipt API for our independent raw socket sender.
 - **Rejected:** local target validation failed, or the message was no longer
   eligible before writing. A wrong target rejected by the host cannot be inferred
   from a successful raw write; it becomes unknown on our side.
-- **Confirmed:** reserved for an actual correlated application receipt. The native
-  socket currently supplies no such receipt; normal production delivery never
-  claims this state or asks Claude to echo every message.
+- **Confirmed:** the receiving agent called `acknowledge_delivery` for this exact
+  message in this session. Late or repeated acknowledgements are safe, including
+  after restart or after the status became unknown. A socket completion arriving
+  after acknowledgement cannot downgrade the confirmed state. Queued, cancelled
+  and wrong-session messages cannot be confirmed. This does not assert completion
+  of the user's requested work or require echoing the user's words.
 
 The private `claude-delivery.sqlite3` journal in the selected instance's config
 folder commits an attempt before I/O. Restart restores pending speech even when

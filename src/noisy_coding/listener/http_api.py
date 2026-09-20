@@ -671,7 +671,30 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 self._respond({"error": str(error), "code": "invalid_speech_settings", "recovery": recovery_info()}, status=409)
 
         def _handle_POST(self) -> None:
-            if self.path == "/harness/event":
+            if self.path == "/delivery/acknowledge":
+                body = self._read_json_body()
+                conversation = body.get("agent")
+                message_ids = body.get("message_ids")
+                if (not isinstance(conversation, str) or not conversation
+                        or not isinstance(message_ids, list) or not 1 <= len(message_ids) <= 100
+                        or any(not isinstance(value, str) or len(value) != 64
+                               or any(char not in '0123456789abcdef' for char in value) for value in message_ids)):
+                    self._respond({"error": "canonical agent and valid message_ids required"}, status=400)
+                    return
+                provider = state.conversations.providers.for_conversation(conversation)
+                if provider is None:
+                    self._respond({"error": "receiving session is not registered"}, status=404)
+                    return
+                try:
+                    receipts = provider.acknowledge(conversation, message_ids)
+                except Exception:
+                    self._respond({"error": "receipt storage unavailable"}, status=503)
+                    return
+                for delivered_message, receipt in receipts:
+                    state.record_delivery(delivered_message, receipt)
+                confirmed = [receipt.message_id for _, receipt in receipts]
+                self._respond({"confirmed": confirmed, "unmatched": [value for value in message_ids if value not in confirmed]})
+            elif self.path == "/harness/event":
                 body = self._read_json_body()
                 name = str(body.get("harness") or "")
                 payload = body.get("payload")

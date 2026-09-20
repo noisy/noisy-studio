@@ -16,7 +16,7 @@ from noisy_coding.harness.base import Delivery, Moment
 # Identity-sensitive MCP tools, whatever the server was registered as
 # (noisy-coding, noisy-coding-dev, plugin-namespaced).
 IDENTITY_TOOLS = re.compile(
-    r"^mcp__[^\s]*noisy[_-]coding[^\s]*__(speak|announce|change_voice|set_speaker_style)$"
+    r"^mcp__[^\s]*noisy[_-]coding[^\s]*__(speak|announce|change_voice|set_speaker_style|acknowledge_delivery)$"
 )
 
 THINKING = "THINKING…"

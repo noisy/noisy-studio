@@ -12,7 +12,7 @@ const DAEMON = env.NOISY_CODING_DAEMON_URL ?? "http://127.0.0.1:8765";
 // The client always uses relative URLs: same-origin when the daemon serves
 // the built app at /next, proxied to the daemon in `vite dev`.
 const DAEMON_PATHS = [
-  "/status", "/utterances", "/character", "/drain", "/events",
+  "/status", "/utterances", "/character", "/drain", "/events", "/delivery",
   "/stream", "/pause", "/resume", "/mute", "/mode", "/settings",
   "/voice", "/active-agent", "/devices", "/speak", "/ptt", "/cancel",
   "/interrupt", "/playback-pause", "/skip-unheard", "/shutdown", "/shutdown-cancel", "/shutdown-postpone", "/voice-mute", "/credentials", "/dismiss-agent",

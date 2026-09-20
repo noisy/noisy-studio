@@ -48,7 +48,7 @@ def run(harness: str, payload: dict, listen_seconds: float | None = None) -> int
     event_name = str(payload.get("hook_event_name") or "")
     tool_name = str(payload.get("tool_name") or "")
     identity_call = event_name == "PreToolUse" and "noisy" in tool_name and (
-        tool_name.endswith(("__speak", "__announce", "__change_voice", "__set_speaker_style"))
+        tool_name.endswith(("__speak", "__announce", "__change_voice", "__set_speaker_style", "__acknowledge_delivery"))
     )
     if reply is None or reply.get("status") == 404:
         return 0  # no daemon, or one too old to know this contract: never block
@@ -68,6 +68,10 @@ def run(harness: str, payload: dict, listen_seconds: float | None = None) -> int
 
     if event_name == "PreToolUse":
         return _pre_tool_use(payload, reply)
+    if reply.get("registration_context") and event_name in ("SessionStart", "UserPromptSubmit"):
+        print(json.dumps({"hookSpecificOutput": {
+            "hookEventName": event_name, "additionalContext": reply["registration_context"],
+        }}))
     if reply.get("may_drain"):
         return _deliver_mid_turn(reply)
     if reply.get("nudge"):

@@ -37,7 +37,7 @@ def test_continuations_are_grouped_in_order_without_crossing_recipients(delivery
     now[0] = 104
     delivery.flush(record)
 
-    assert [(call.args[0].session_id, call.args[1]) for call in sender.call_args_list] == [
+    assert [(call.args[0].session_id, call.args[1].split('\n[Receipt IDs:')[0]) for call in sender.call_args_list] == [
         (SESSION_1, '[VOICE · Noisy Studio transcript]\nfirst part\ncontinuation'),
         (SESSION_2, '[VOICE · Noisy Studio transcript]\nother conversation'),
     ]
@@ -155,7 +155,41 @@ def test_app_notifications_are_not_presented_as_microphone_speech(delivery_world
 
     delivery.flush(record)
 
-    assert sender.call_args.args[1] == '[NOISY STUDIO] App notification:\n[CHARACTER] Values changed.'
+    assert sender.call_args.args[1].split('\n[Receipt IDs:')[0] == '[NOISY STUDIO] App notification:\n[CHARACTER] Values changed.'
+
+
+def test_acknowledgement_is_session_bound_idempotent_and_survives_restart(delivery_world):
+    delivery, journal, sender, now, record, receipts = delivery_world
+    speech1 = Speech(1, SESSION_1, 'first', 100)
+    speech2 = Speech(2, SESSION_1, 'second', 100)
+    speech3 = Speech(3, SESSION_2, 'other recipient', 100)
+    for speech in [speech1, speech2, speech3]:
+        delivery.submit(speech)
+    now[0] = 103
+    delivery.flush(record)
+    ids = [journal.key(speech1), journal.key(speech2)]
+    assert all(message_id in sender.call_args_list[0].args[1] for message_id in ids)
+    assert journal.acknowledge(SESSION_2, ids) == []
+    now[0] = 200
+    delivery.flush(record)
+
+    restored = Journal(journal._path)
+    confirmed = restored.acknowledge(SESSION_1, ids + ids)
+    repeated = restored.acknowledge(SESSION_1, ids)
+    # Simulate socket completion arriving after the receiver's acknowledgement.
+    restored.record([speech1, speech2], 'sent', 'write complete')
+
+    assert [(s.utterance_id, r.state) for s, r in confirmed] == [(1, 'confirmed'), (2, 'confirmed')]
+    assert repeated == confirmed
+    assert [(s.utterance_id, r.state) for s, r in restored.entries()] == [(1, 'confirmed'), (2, 'confirmed'), (3, 'unknown')]
+
+
+def test_acknowledgement_cannot_confirm_a_message_that_was_never_attempted(delivery_world):
+    delivery, journal, _sender, _now, _record, _receipts = delivery_world
+    speech = Speech(1, SESSION_1, 'still queued', 100)
+    delivery.submit(speech)
+
+    assert delivery.acknowledge(SESSION_1, [journal.key(speech)]) == []
 
 
 def test_sent_deadline_uses_write_time_and_survives_restart_without_resending(delivery_world):

@@ -34,6 +34,9 @@ class HookDelivery:
                 self.journal.add(speech)
             self.journal.claim(speeches)
 
+    def acknowledge(self, conversation, message_ids):
+        return self.journal.acknowledge(conversation, message_ids) if self.journal else []
+
     def cancel(self, speech):
         return self.journal.cancel(speech) if self.journal else True
 
@@ -65,6 +68,10 @@ class AgentProvider:
     def allows_hook_pickup(self) -> bool:
         return getattr(self._implementation, 'allows_hook_pickup', False) is True
 
+    @property
+    def registration_context(self) -> str:
+        return getattr(self._implementation, 'registration_context', '')
+
     def attach(self, registration: Registration) -> Availability:
         if registration.participant:
             return self.availability(registration.conversation)
@@ -88,6 +95,10 @@ class AgentProvider:
     def observe(self, events) -> None:
         self._implementation.observe(events)
 
+    def acknowledge(self, conversation, message_ids):
+        acknowledge = getattr(self._implementation, 'acknowledge', None)
+        return acknowledge(conversation, message_ids) if acknowledge else []
+
     def availability(self, conversation: str) -> Availability:
         if conversation not in self._sessions:
             return Availability(False, 'registration required', True)
@@ -101,7 +112,7 @@ class AgentProviders:
         journal = Journal(journal_path)
         claude_delivery = SocketDelivery(journal) if CLAUDE_DELIVERY == 'socket' else HookDelivery(registry, journal)
         self._providers = providers if providers is not None else {
-            'claude': AgentProvider('claude', 'Claude Code', claude_delivery, capabilities),
+            'claude': AgentProvider('claude', 'Claude Code', claude_delivery, ProviderCapabilities(True, True, True, 'application')),
             'codex': AgentProvider('codex', 'Codex', HookDelivery(registry), capabilities),
         }
         self._registry = registry

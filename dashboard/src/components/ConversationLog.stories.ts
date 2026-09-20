@@ -55,7 +55,8 @@ export const WithSubagent: StoryObj<typeof ConversationLog> = {
 export const InboxDeliveryStates: StoryObj<typeof ConversationLog> = {
   ...Feed,
   args: {utterances: [
-    ["delivery unknown", "Claude provides no receipt for this inbox message. It may have arrived; check the session before resending. No automatic resend."],
+    ["delivery confirmed", "Receiving agent acknowledged this message; task completion is separate."],
+    ["delivery unknown", "No acknowledgement received from Claude. It may have arrived; check the session before resending. No automatic resend. Receipt support requires the updated Noisy Studio MCP tools."],
     ["sent — unconfirmed", "Written to the inbox; the host may hold or refuse it."],
     ["delivery uncertain — not retried", "The connection ended during the write. No automatic resend."],
     ["unavailable — registration required", "Type once in this Claude session to register it again."],

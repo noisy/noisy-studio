@@ -17,6 +17,19 @@ from noisy_coding import server
 
 @pytest.mark.asyncio
 @respx.mock
+async def test_acknowledgement_uses_injected_session_and_preserves_message_ids(monkeypatch):
+    monkeypatch.setenv("NOISY_CODING_LISTENER_PORT", "12345")
+    message_ids = ['a' * 64, 'b' * 64]
+    route = respx.post("http://127.0.0.1:12345/delivery/acknowledge").mock(
+        return_value=httpx.Response(200, json={"confirmed": message_ids, "unmatched": []}))
+
+    await server.acknowledge_delivery(message_ids, agent_id="session-1")
+
+    assert json.loads(route.calls[0].request.content) == {"agent": "session-1", "message_ids": message_ids}
+
+
+@pytest.mark.asyncio
+@respx.mock
 async def test_speak_routes_by_the_injected_identity_only(monkeypatch):
     monkeypatch.setenv("NOISY_CODING_LISTENER_PORT", "12345")
     # Even a stale environment identity must not leak into routing.
