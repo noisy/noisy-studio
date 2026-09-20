@@ -3,7 +3,7 @@ import VersionBadge from "./VersionBadge.vue";
 
 const meta: Meta<typeof VersionBadge> = {
   component: VersionBadge,
-  title: "HUD/VersionBadge",
+  title: "Dashboard/VersionBadge",
   decorators: [
     () => ({
       template:

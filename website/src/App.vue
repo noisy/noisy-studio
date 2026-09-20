@@ -110,7 +110,10 @@ const source = "https://github.com/noisy/noisy-coding";
   <footer class="site-footer wrap">
     <a class="brand" href="#">Noisy Studio</a
     ><span>Your voice, in the workflow.</span
-    ><a :href="source">Built in the open ↗</a>
+    ><a :href="source">Built in the open ↗</a
+    ><!-- Storybook ships in the same Pages deployment (#121), so this is a
+         relative path rather than a second domain to keep in sync. -->
+    ><a href="storybook/">Storybook ↗</a>
   </footer>
   <AnalyticsPreference />
 </template>

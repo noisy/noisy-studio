@@ -20,7 +20,7 @@ import "../styles/dashboard.css";
  * deaf prop yet); the winning look becomes a `status` on the real tab.
  */
 
-const meta: Meta = { title: "HUD/AgentTabs — Listening state (proposal)" };
+const meta: Meta = { title: "Lab/AgentTabsListening" };
 export default meta;
 type Story = StoryObj;
 

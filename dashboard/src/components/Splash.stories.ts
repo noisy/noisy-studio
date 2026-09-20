@@ -5,7 +5,7 @@ import Splash from "./Splash.vue";
  * progress line under it (round-2 variant F). Rendered at the Electron
  * window's real size, 320x170. The alternatives live in
  * Splash.variants.stories.ts. */
-const meta: Meta<typeof Splash> = { component: Splash, title: "App/Splash/Splash" };
+const meta: Meta<typeof Splash> = { component: Splash, title: "Dashboard/Splash" };
 export default meta;
 
 export const Chosen: StoryObj<typeof Splash> = {

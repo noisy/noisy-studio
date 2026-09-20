@@ -36,6 +36,10 @@ settings. See [desktop packaging](docs/desktop-app.md) for signed app builds.
 - [Agent hooks](docs/hooks.md)
 - [Ports](docs/ports.md)
 - [Product naming](docs/rebranding.md)
+- [Storybook](https://noisystudio.ai/storybook/) - how the dashboard and the
+  widget are meant to look, published from `main`. Run it locally with
+  `cd dashboard && npm run storybook`. Its title shows the commit it was
+  built from, so a story can be cited by URL and version.
 
 API credentials belong in the app's provider settings, never in chat or source.
 Offline providers download their models on first use and then run locally.

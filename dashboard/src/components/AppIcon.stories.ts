@@ -8,7 +8,7 @@ import { defineComponent } from "vue";
  * white ring on the current build is exactly that: a transparent SVG
  * flattened onto white during conversion, not something the system added.
  */
-const meta: Meta = { title: "App/Icon" };
+const meta: Meta = { title: "Dashboard/AppIcon" };
 export default meta;
 
 const HEX = "22,3 39,13 39,31 22,41 5,31 5,13";

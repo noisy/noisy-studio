@@ -11,7 +11,7 @@ import CompanionCrewScene from "./marketing/CompanionCrewScene.vue";
  * step-through buttons.
  */
 const meta: Meta = {
-  title: "Synthetic Screenshots/Crew",
+  title: "Website/CompanionCrew",
   parameters: { layout: "fullscreen" },
 };
 export default meta;

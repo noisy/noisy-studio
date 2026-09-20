@@ -64,9 +64,25 @@ size (the 77px-avatar lesson).
 - New component ⇒ its own file + Storybook story + spec, in the same
   change. Components stay small; App.vue must not grow.
 - Explore concepts as throwaway Storybook boards (mock HTML variants
-  A/B/C), let Krzysztof pick, THEN implement in the real component and
-  collapse the boards into one canonical state-matrix story.
+  A/B/C) **under `Lab/`**, let Krzysztof pick, THEN implement in the real
+  component and collapse the boards into one canonical state-matrix story.
+  A `Lab/` story is promoted or deleted; it does not live there forever.
+  This rule existed and was not followed - 43 stories accumulated four
+  naming styles, proposals sitting beside finished components, and two
+  entries loose at the root (#116).
 - Tune scoped-CSS replicas in Storybook, then port back (tabsbar).
+- **Storybook has four sections and only four**: `Dashboard/` (main window),
+  `Widget/` (companion), `Website/` (marketing components and the
+  synthetic-screenshot rigs), `Lab/` (proposals). Nothing at the root.
+  Title is `Section/Component`, where Component is the **file name** in
+  PascalCase - so the sidebar and the filesystem answer the same question.
+  States are stories inside the file, never separate titles, and titles
+  carry no annotations like "(proposal)" or "Concepts": that is what the
+  section is for. Full conventions in `dashboard/.storybook/README.md`.
+- Storybook is published from `main` at <https://noisystudio.ai/storybook/>,
+  so a story can be cited by URL. Its title shows the commit it was built
+  from. A broken story fails the deploy - it is a reference, and a
+  reference that lies is worse than none.
 - Verify visually with headless-Chrome screenshots
   (`--headless --screenshot` + sips crop) — don't ask the user to be
   your eyes for pixel checks.

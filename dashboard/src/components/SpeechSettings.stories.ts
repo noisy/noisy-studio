@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/vue3';
 import SpeechSettings from './SpeechSettings.vue';
 import { speechFixture } from './speechSettings.fixture';
 import { setSpeechSettingsFixture } from '../storybook/daemon.fixture';
-const meta: Meta<typeof SpeechSettings> = {title: 'Settings/Speech', component: SpeechSettings};
+const meta: Meta<typeof SpeechSettings> = {title: 'Dashboard/SpeechSettings', component: SpeechSettings};
 export default meta;
 type Story = StoryObj<typeof SpeechSettings>;
 function story(state: Parameters<typeof speechFixture>[0] = 'ready', direction?: 'stt' | 'tts', width = 940): Story {

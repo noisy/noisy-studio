@@ -3,7 +3,7 @@ import VoiceAvatar from './VoiceAvatar.vue';
 import AvatarSetPicker from './AvatarSetPicker.vue';
 import { AVATAR_SETS, AVATAR_VOICES } from '../avatars/catalog';
 
-const meta: Meta = { title: 'Product/Voice avatars', parameters: { layout: 'fullscreen' } };
+const meta: Meta = { title: 'Dashboard/VoiceAvatars', parameters: { layout: 'fullscreen' } };
 export default meta;
 export const AllSets: StoryObj = {
   render: () => ({

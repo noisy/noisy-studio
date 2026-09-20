@@ -4,7 +4,7 @@ import ConversationLog from "./ConversationLog.vue";
 
 const meta: Meta<typeof ConversationLog> = {
   component: ConversationLog,
-  title: "HUD/ConversationLog",
+  title: "Dashboard/ConversationLog",
 };
 export default meta;
 

@@ -35,7 +35,7 @@ const LOCAL = {
 
 const meta: Meta<typeof EngineChoice> = {
   component: EngineChoice,
-  title: "HUD/EngineChoice",
+  title: "Dashboard/EngineChoice",
 };
 export default meta;
 

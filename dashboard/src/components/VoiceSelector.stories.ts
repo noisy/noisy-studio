@@ -3,7 +3,7 @@ import VoiceSelector from "./VoiceSelector.vue";
 
 const meta: Meta<typeof VoiceSelector> = {
   component: VoiceSelector,
-  title: "HUD/VoiceSelector",
+  title: "Dashboard/VoiceSelector",
   decorators: [() => ({ template: '<div style="width:300px;background:#04101a;padding:16px;"><story /></div>' })],
 };
 export default meta;

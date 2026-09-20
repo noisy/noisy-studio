@@ -15,7 +15,7 @@ import { defineComponent, ref } from "vue";
  * machine - the concepts surface that honestly.
  */
 
-const meta: Meta = { title: "HUD/ProviderChooser Concepts" };
+const meta: Meta = { title: "Lab/ProviderChooserOptions" };
 export default meta;
 
 // Shared mock state: what the daemon would report.

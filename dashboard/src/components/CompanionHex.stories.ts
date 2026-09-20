@@ -9,7 +9,7 @@ import { defineComponent, onMounted, ref } from "vue";
  * because the whole reason this came up is that the widget floats over
  * unknown pixels.
  */
-const meta: Meta = { title: "Companion/Hexagon" };
+const meta: Meta = { title: "Widget/CompanionHex" };
 export default meta;
 
 const Hex = defineComponent({
