@@ -82,6 +82,8 @@ def _apply_harness_event(
         "label": conversation.label(),
     }
     if (payload.get('hook_event_name') == 'UserPromptSubmit' and result.participant is None
+            and isinstance(payload.get('noisy_studio_connection'), dict)
+            and payload['noisy_studio_connection'].get('hook_protocol') == 2
             and provider is not None and provider.accept_wake(key, payload.get('prompt'))):
         picked_up = drain(state, key, None)
         response['wake_delivery'] = picked_up.get('delivery')

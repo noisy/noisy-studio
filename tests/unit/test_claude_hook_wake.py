@@ -18,7 +18,7 @@ def world(tmp_path):
     state.conversations = ConversationRegistry(path=tmp_path / 'conversations.json')
     _apply_harness_event(state, 'claude-hooks', {
         'hook_event_name': 'SessionStart', 'session_id': SESSION,
-        'noisy_studio_connection': {'socket': str(tmp_path / 'inbox')},
+        'noisy_studio_connection': {'socket': str(tmp_path / 'inbox'), 'hook_protocol': 2},
     }, listen_seconds=0)
     provider = state.conversations.providers.get('claude')
     waker = provider._implementation.waker
@@ -36,6 +36,7 @@ def queue(state, text='Actual user speech'):
 def receive(state, prompt, session=SESSION):
     return _apply_harness_event(state, 'claude-hooks', {
         'hook_event_name': 'UserPromptSubmit', 'session_id': session, 'prompt': prompt,
+        'noisy_studio_connection': {'socket': 'registered-test-endpoint', 'hook_protocol': 2},
     })
 
 
@@ -97,7 +98,7 @@ def test_pending_wake_survives_restart_without_a_duplicate_write(world):
     waker.tick(state.record_delivery)
     prompt = waker._send.call_args.args[1]
     restored = SocketWake(Journal(provider._implementation.journal._path), sender=Mock())
-    restored.attach(Registration(SESSION, SESSION, {'socket': 'same-session'}))
+    restored.attach(Registration(SESSION, SESSION, {'socket': 'same-session', 'hook_protocol': 2}))
 
     assert restored.wake(SESSION).state == 'pending'
     restored._send.assert_not_called()
@@ -157,3 +158,18 @@ def test_explicit_session_restart_allows_new_control_but_not_duplicate_speech(wo
     assert receive(state, new_prompt)['wake_delivery'] is not None
     assert receive(state, old_prompt)['suppress_empty_wake'] is True
     assert state.snapshot_transcripts() == []
+
+
+def test_old_hook_is_not_sent_a_wake_it_cannot_consume(world):
+    state, provider, waker = world
+    queue(state)
+    _apply_harness_event(state, 'claude-hooks', {
+        'hook_event_name': 'UserPromptSubmit', 'session_id': SESSION,
+        'noisy_studio_connection': {'socket': 'old-hook-endpoint'},
+    })
+
+    waker.tick(state.record_delivery)
+
+    waker._send.assert_not_called()
+    assert 'Update Noisy Studio hooks' in waker.availability(SESSION).reason
+    assert len(state.snapshot_transcripts()) == 1

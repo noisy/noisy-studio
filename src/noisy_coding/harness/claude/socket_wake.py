@@ -26,6 +26,7 @@ class SocketWake:
         self._worker = None
         self._failure = ''
         self._can_wake = can_wake
+        self._unsupported = set()
 
     def attach(self, registration):
         if registration.participant or registration.connection is None:
@@ -33,6 +34,10 @@ class SocketWake:
         path = registration.connection.get('socket') if isinstance(registration.connection, dict) else None
         with self._lock:
             self._endpoints.pop(registration.conversation, None)
+            if not isinstance(registration.connection, dict) or registration.connection.get('hook_protocol') != 2:
+                self._unsupported.add(registration.conversation)
+                return  # An old hook cannot consume the wake_delivery response.
+            self._unsupported.discard(registration.conversation)
             try:
                 valid = str(uuid.UUID(registration.native_session_id)) == registration.native_session_id.lower()
             except (ValueError, AttributeError):
@@ -56,6 +61,8 @@ class SocketWake:
             return Availability(False, self._failure, True)
         with self._lock:
             endpoint = self._endpoints.get(conversation)
+            if conversation in self._unsupported:
+                return Availability(False, 'Update Noisy Studio hooks to enable socket wake-up', True)
         if endpoint and os.path.exists(endpoint.path):
             return Availability(True, 'socket wake available; speech delivered by hooks')
         return Availability(False, 'No hook listener; register the Claude session for wake-up', True)
@@ -66,7 +73,7 @@ class SocketWake:
                 return WakeResult('unavailable', self._failure or 'session is closed')
             endpoint = self._endpoints.get(conversation)
             if endpoint is None:
-                return WakeResult('unavailable', 'Claude wake-up registration required')
+                return WakeResult('unavailable', self.availability(conversation).reason)
             prompt = '[Noisy Studio wake ' + uuid.uuid4().hex[:12] + ']'
             if not self.journal.claim_wake(conversation, prompt):
                 return WakeResult('pending', 'wake-up already pending')
