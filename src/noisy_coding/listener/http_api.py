@@ -969,20 +969,21 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 # style, a brief in-character ack is welcome). Voice and
                 # speed are the daemon's business — switching them must
                 # never provoke a comment from Claude.
-                traits_changed = any(
-                    before.get(k) != values.get(k)
-                    for k in values
-                    if k not in ("voice", "speed")
-                )
+                changed_traits = {
+                    k for k in values
+                    if k not in ("voice", "speed") and before.get(k) != values[k]
+                }
                 # The instruction reaches the agent via its queue only if it's
                 # the active one; editing a background tab just stores the values.
-                if traits_changed and agent in (None, state.active_agent):
+                if changed_traits and agent in (None, state.active_agent):
+                    current_traits = ", ".join(
+                        f"{k} {v}" + (f" (was {before[k]})" if k in changed_traits else "")
+                        for k, v in values.items()
+                        if k not in ("voice", "speed")
+                    )
                     state.add_transcript(
-                        f"[CHARACTER] The user moved your character sliders to: {summary}. "
-                        "Adjust the style of your spoken and written replies accordingly "
-                        "— the daemon applies the voice and speed to your speech by "
-                        "itself — and briefly acknowledge the new setting in character. "
-                        "Never comment on the voice or speed."
+                        f"[CHARACTER] Values /100: {current_traits}. "
+                        "Apply to replies; acknowledge briefly."
                     )
                 notify_gender_change(state, agent, before["voice"], values["voice"])
                 save_characters(state)

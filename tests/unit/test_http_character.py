@@ -33,33 +33,36 @@ def test_same_gender_voice_change_never_reaches_the_agent(character_server):
     assert state.drain() == []
 
 
-def test_trait_change_sends_one_character_instruction(character_server):
+@pytest.mark.parametrize(("patch", "expected_values"), [
+    pytest.param(
+        {"verbosity": 80},
+        "humor 20, honesty 60, verbosity 80 (was 40), talkative 40",
+        id="one_changed_trait",
+    ),
+    pytest.param(
+        {"verbosity": 80, "talkative": 20, "speed": 1.2},
+        "humor 20, honesty 60, verbosity 80 (was 40), talkative 20 (was 40)",
+        id="multiple_changes_without_playback_details",
+    ),
+])
+def test_character_instruction_lists_current_values_and_marks_only_changes(character_server, patch, expected_values):
     state, port = character_server
 
-    _post_character(port, {"humor": 90})
+    _post_character(port, patch)
 
-    transcripts = state.drain()
-    assert len(transcripts) == 1
-    assert transcripts[0].text.startswith("[CHARACTER]")
-    assert "Never comment on the voice" in transcripts[0].text
+    assert [message.text for message in state.drain()] == [
+        f"[CHARACTER] Values /100: {expected_values}. "
+        "Apply to replies; acknowledge briefly."
+    ]
 
 
-def test_agent_receives_the_same_trait_names_and_values_as_the_dashboard(character_server):
+def test_repeated_character_values_do_not_notify_the_agent_again(character_server):
     state, port = character_server
+    state.set_character({"verbosity": 80})
 
-    _post_character(port, {"verbosity": 80, "talkative": 20})
+    _post_character(port, {"verbosity": 80})
 
-    transcripts = state.drain()
-    assert len(transcripts) == 1
-    assert transcripts[0].text == (
-        "[CHARACTER] The user moved your character sliders to: "
-        "humor 20/100, honesty 60/100, verbosity 80/100, talkative 20/100, "
-        "voice 'carina', speed 1.0x. "
-        "Adjust the style of your spoken and written replies accordingly "
-        "— the daemon applies the voice and speed to your speech by "
-        "itself — and briefly acknowledge the new setting in character. "
-        "Never comment on the voice or speed."
-    )
+    assert state.drain() == []
 
 
 def test_gender_flip_sends_a_silent_persona_instruction(character_server):

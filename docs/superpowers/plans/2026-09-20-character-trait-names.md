@@ -34,3 +34,9 @@ close. Live verification compared 18 pre-restart profile digests against their
 expected migrated forms: every trait, voice and speed was preserved; no legacy
 keys remained. The API returned canonical keys, Jabra Link 380 remained selected,
 and the daemon-served dashboard bundle matched the checked build byte for byte.
+
+Follow-up: keep character instructions compact while explicitly identifying
+changes. Send all four current values once, annotate only changed traits with
+`(was N)`, and state the /100 scale once. Omit playback details and the long
+explanation. Preserve the existing brief acknowledgment and active-agent-only
+delivery behavior; unchanged requests still produce no character instruction.
