@@ -5,6 +5,7 @@
  */
 
 import type { Character, DaemonStatus, InputDevice, SettingsPatch, Utterance, HotkeyState } from "../types";
+import { canonicalCharacter } from "../character";
 
 async function getJson<T>(path: string): Promise<T> {
   const response = await fetch(path);
@@ -48,7 +49,7 @@ export async function getUtterances(agent?: string): Promise<Utterance[]> {
 export async function getCharacter(agent?: string): Promise<Character> {
   const query = agent ? `?agent=${encodeURIComponent(agent)}` : "";
   const body = await getJson<{ character: Character }>(`/character${query}`);
-  return body.character;
+  return canonicalCharacter(body.character);
 }
 
 export function setMuted(muted: boolean): Promise<void> {

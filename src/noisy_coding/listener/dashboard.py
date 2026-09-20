@@ -204,10 +204,10 @@ DASHBOARD_HTML = """<!doctype html>
         <input type="range" id="ch-humor" min="0" max="100" step="5"><span class="val" id="ch-humor-val"></span></label>
       <label><span class="name">Honesty <small>diplomatic ↔ blunt</small></span>
         <input type="range" id="ch-honesty" min="0" max="100" step="5"><span class="val" id="ch-honesty-val"></span></label>
-      <label><span class="name">Brevity <small>detailed ↔ terse</small></span>
-        <input type="range" id="ch-brevity" min="0" max="100" step="5"><span class="val" id="ch-brevity-val"></span></label>
-      <label><span class="name">Chatty <small>milestones only ↔ frequent updates</small></span>
-        <input type="range" id="ch-chatty" min="0" max="100" step="5"><span class="val" id="ch-chatty-val"></span></label>
+      <label><span class="name">Verbosity <small>radio clicks ↔ lecture</small></span>
+        <input type="range" id="ch-verbosity" min="0" max="100" step="5"><span class="val" id="ch-verbosity-val"></span></label>
+      <label><span class="name">Talkative <small>milestones only ↔ frequent updates</small></span>
+        <input type="range" id="ch-talkative" min="0" max="100" step="5"><span class="val" id="ch-talkative-val"></span></label>
       <label><span class="name">Voice <small>who speaks to you</small></span>
         <select id="ch-voice"></select><span class="val"></span></label>
     </div>
@@ -302,7 +302,7 @@ DASHBOARD_HTML = """<!doctype html>
     document.getElementById("state-label").textContent = label;
   }
 
-  const TRAITS = ["humor", "honesty", "brevity", "chatty"];
+  const TRAITS = ["humor", "honesty", "verbosity", "talkative"];
   const VOICES = {
     altair:"male", ara:"female", atlas:"male", carina:"female", castor:"male",
     celeste:"female", cosmo:"male", eve:"female", helios:"male", helix:"male",

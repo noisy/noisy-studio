@@ -9,8 +9,8 @@ import { stateLabel } from "./systemState";
 const character: Character = {
   humor: 50,
   honesty: 50,
-  brevity: 100,
-  chatty: 100,
+  verbosity: 0,
+  talkative: 100,
   voice: "altair",
   speed: 1.1,
 };
@@ -28,19 +28,19 @@ describe("CharacterReadout", () => {
     expect(wrapper.emitted('change')).toEqual([[{ humor: 80 }]]);
   });
 
-  it('displays existing brevity as inverse verbosity without changing the character', () => {
+  it('displays canonical verbosity directly without changing the character', () => {
     const wrapper = mount(CharacterReadout, { props: { character } });
     const slider = wrapper.get('input[aria-label="Verbosity"]');
     expect((slider.element as HTMLInputElement).value).toBe('0');
-    expect(slider.attributes('aria-valuetext')).toBe('0 · minimal');
+    expect(slider.attributes('aria-valuetext')).toBe('0 · clicks');
     expect(wrapper.emitted('change')).toBeUndefined();
   });
 
-  it('translates higher verbosity into lower backend brevity', async () => {
+  it('sends the displayed verbosity unchanged to the backend', async () => {
     const wrapper = mount(CharacterReadout, { props: { character } });
     await wrapper.get('input[aria-label="Verbosity"]').setValue('80');
-    expect(wrapper.emitted('change')).toEqual([[{ brevity: 20 }]]);
-    expect(wrapper.get('input[aria-label="Verbosity"]').attributes('aria-valuetext')).toBe('80 · detailed');
+    expect(wrapper.emitted('change')).toEqual([[{ verbosity: 80 }]]);
+    expect(wrapper.get('input[aria-label="Verbosity"]').attributes('aria-valuetext')).toBe('80 · generous');
   });
 
   it("emits the selected speech rate", async () => {

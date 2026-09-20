@@ -72,7 +72,7 @@ def main() -> None:
             payload = json.load(response)
             transcripts = payload["transcripts"]
             # Narration nudge (#16): the daemon's reminder that this agent
-            # has been working silently past its chatty budget.
+            # has been working silently past its talkative budget.
             nudge = payload.get("nudge")
     except Exception:
         return

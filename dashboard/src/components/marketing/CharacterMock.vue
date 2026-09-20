@@ -12,7 +12,7 @@ import CharacterReadout from "../CharacterReadout.vue";
 import HudPanel from "../HudPanel.vue";
 import VoicePersona from "../VoicePersona.vue";
 
-const CHARACTER: Character = { humor: 75, honesty: 90, brevity: 60, chatty: 35, voice: "lux", speed: 1.1 };
+const CHARACTER: Character = { humor: 75, honesty: 90, verbosity: 40, talkative: 35, voice: "lux", speed: 1.1 };
 </script>
 
 <template>

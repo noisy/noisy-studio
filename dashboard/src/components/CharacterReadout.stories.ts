@@ -6,7 +6,7 @@ import StatusStrip from "./StatusStrip.vue";
 const meta: Meta = { title: "HUD/Character Settings" };
 export default meta;
 
-const character = { humor: 60, honesty: 80, brevity: 40, chatty: 100, voice: "altair", speed: 1.15 };
+const character = { humor: 60, honesty: 80, verbosity: 60, talkative: 100, voice: "altair", speed: 1.15 };
 
 // The editor on its own.
 export const Content: StoryObj = {
@@ -14,6 +14,21 @@ export const Content: StoryObj = {
     components: { CharacterReadout },
     setup: () => ({ character }),
     template: `<div style="max-width:330px"><CharacterReadout :character="character" /></div>`,
+  }),
+};
+
+/** The stored values and displayed scales have the same direction (#108). */
+export const VerbosityRange: StoryObj = {
+  render: () => ({
+    components: { CharacterReadout },
+    setup: () => ({
+      quiet: { ...character, verbosity: 0, talkative: 0 },
+      expansive: { ...character, verbosity: 100, talkative: 100 },
+    }),
+    template: `<div style="display:flex;gap:48px">
+      <div style="width:280px"><h3>Radio clicks, only when asked</h3><CharacterReadout :character="quiet" /></div>
+      <div style="width:280px"><h3>Lecture, frequent updates</h3><CharacterReadout :character="expansive" /></div>
+    </div>`,
   }),
 };
 
@@ -33,7 +48,7 @@ export const InPanel: StoryObj = {
 
 // Inside the persona rail, which recolors --cyan → --violet. Regression
 // guard: humor must stay BLUE here (it used to turn violet). If humor and
-// chatty look identical, the fix regressed.
+// talkative look identical, the fix regressed.
 export const InPersonaRail: StoryObj = {
   name: "in persona rail (--cyan → --violet)",
   render: () => ({

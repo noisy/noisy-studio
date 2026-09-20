@@ -65,9 +65,8 @@ export function segTraitFromAngle(angleDeg: number): number {
 export const TRAIT_WORDS: Record<string, readonly [string, string, string, string, string, string]> = {
   humor: ["sterile", "dry", "warm", "playful", "witty", "absurd"],
   honesty: ["courtier", "soft", "diplomatic", "frank", "candid", "no filter"],
-  brevity: ["lecture", "generous", "balanced", "tight", "terse", "clicks"],
-  verbosity: ["minimal", "very short", "short", "balanced", "detailed", "expansive"],
-  chatty: ["silent", "milestones", "colleague", "aloud", "narrating", "commentary"],
+  verbosity: ["clicks", "terse", "tight", "balanced", "generous", "lecture"],
+  talkative: ["silent", "milestones", "colleague", "aloud", "narrating", "commentary"],
 };
 
 /** The semantic word for a trait at a given (snapped) value. */

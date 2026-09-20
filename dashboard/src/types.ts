@@ -65,7 +65,7 @@ export interface DaemonStatus {
   diagnostic_checks?: Record<string, { ok?: boolean; ms?: number; detail?: string; pending?: boolean }> | null;
   activity: Record<string, { text: string; at: number }>;
   /** #16 narration-nudge silence clocks, per agent: how long it has been
-   * silent, its chatty budget (null = nudging off), and whether it's
+   * silent, its talkative budget (null = nudging off), and whether it's
    * currently nudge-eligible (activity line fresh). */
   nudge_clocks?: Record<string, { silence: number; threshold: number | null; fresh: boolean }>;
   language: string;
@@ -120,8 +120,8 @@ export interface Utterance {
 export interface Character {
   humor: number;
   honesty: number;
-  brevity: number;
-  chatty: number;
+  verbosity: number;
+  talkative: number;
   voice: string;
   speed: number;
 }

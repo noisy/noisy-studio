@@ -10,8 +10,8 @@ const presets = [
     character: {
       humor: 75,
       honesty: 80,
-      brevity: 60,
-      chatty: 40,
+      verbosity: 40,
+      talkative: 40,
       voice: "lux",
       speed: 1.05,
     },
@@ -22,8 +22,8 @@ const presets = [
     character: {
       humor: 20,
       honesty: 100,
-      brevity: 80,
-      chatty: 10,
+      verbosity: 20,
+      talkative: 10,
       voice: "atlas",
       speed: 0.9,
     },
@@ -34,8 +34,8 @@ const presets = [
     character: {
       humor: 90,
       honesty: 60,
-      brevity: 20,
-      chatty: 90,
+      verbosity: 80,
+      talkative: 90,
       voice: "cosmo",
       speed: 1.35,
     },
@@ -46,8 +46,8 @@ const presets = [
     character: {
       humor: 0,
       honesty: 100,
-      brevity: 100,
-      chatty: 0,
+      verbosity: 0,
+      talkative: 0,
       voice: "orion",
       speed: 1,
     },

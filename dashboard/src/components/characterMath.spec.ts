@@ -44,11 +44,13 @@ describe("traitWord", () => {
     expect(traitWord("humor", 0)).toBe("sterile");
     expect(traitWord("humor", 60)).toBe("playful");
     expect(traitWord("humor", 100)).toBe("absurd");
-    expect(traitWord("chatty", 100)).toBe("commentary");
+    expect(traitWord("talkative", 100)).toBe("commentary");
+    expect(traitWord("verbosity", 0)).toBe("clicks");
+    expect(traitWord("verbosity", 100)).toBe("lecture");
   });
 
   it("indexes by value/20 across all four traits at their extremes", () => {
-    for (const trait of ["humor", "honesty", "brevity", "chatty"]) {
+    for (const trait of ["humor", "honesty", "verbosity", "talkative"]) {
       expect(typeof traitWord(trait, 0)).toBe("string");
       expect(typeof traitWord(trait, 100)).toBe("string");
       expect(traitWord(trait, 0)).not.toBe(traitWord(trait, 100));

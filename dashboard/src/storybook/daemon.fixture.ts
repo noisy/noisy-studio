@@ -26,7 +26,7 @@ export function resetScenario(next: Scenario) {
     agents_meta:next === 'no-tabs' ? {} : {codex:{label:'Codex',online:true,activated_at:1,offline_since:null},claude:{label:'Code review',online:true,activated_at:2,offline_since:null},docs:{label:'Documentation',online:false,activated_at:3,offline_since:now-60}}
   };
   if(next === 'long') status.agents_meta!.codex.label=status.agent_labels.codex;
-  character={humor:40,honesty:100,brevity:80,chatty:40,voice:'lux',speed:1.1};
+  character={humor:40,honesty:100,verbosity:20,talkative:40,voice:'lux',speed:1.1};
   const texts=[
     'How is the payment retries work going?',
     'The backoff logic is ready. I found one edge case: queued events could disappear during a redeploy. I’m checking that path now.',

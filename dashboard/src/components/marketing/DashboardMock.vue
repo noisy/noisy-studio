@@ -49,7 +49,7 @@ const STATUS = {
   active_agent: "payment-retries",
 } as DaemonStatus;
 
-const CHARACTER: Character = { humor: 40, honesty: 90, brevity: 70, chatty: 30, voice: "lux", speed: 1.1 };
+const CHARACTER: Character = { humor: 40, honesty: 90, verbosity: 30, talkative: 30, voice: "lux", speed: 1.1 };
 
 // The scopes draw from a live level; feed them a plausible voice envelope
 // so the canvases are not flat in a static capture.

@@ -8,7 +8,7 @@ import { traitWord } from "./characterMath";
 const props = defineProps<{ character: Character }>();
 const emit = defineEmits<{ change: [patch: Partial<Character>] }>();
 
-type Trait = "humor" | "honesty" | "brevity" | "chatty";
+type Trait = "humor" | "honesty" | "verbosity" | "talkative";
 
 // Editing preview: values follow the pointer instantly; the daemon's answer
 // (next poll) becomes the truth and clears the preview.
@@ -24,20 +24,19 @@ const shown = computed<Character>(() => ({ ...props.character, ...preview.value 
 const TRAITS: { key: Trait; label: string; color: string }[] = [
   { key: "humor", label: "Humor", color: "var(--cyan)" },
   { key: "honesty", label: "Honesty", color: "var(--green)" },
-  { key: "brevity", label: "Verbosity", color: "var(--amber)" },
-  { key: "chatty", label: "Talkative", color: "var(--violet)" },
+  { key: "verbosity", label: "Verbosity", color: "var(--amber)" },
+  { key: "talkative", label: "Talkative", color: "var(--violet)" },
 ];
 
 const dials = computed(() =>
   TRAITS.map((t) => {
-    // Preserve the daemon's brevity setting while presenting its inverse as verbosity.
-    const value = t.key === 'brevity' ? 100 - shown.value.brevity : shown.value[t.key];
-    return { ...t, value, word: traitWord(t.key === 'brevity' ? 'verbosity' : t.key, value) };
+    const value = shown.value[t.key];
+    return { ...t, value, word: traitWord(t.key, value) };
   }),
 );
 
 function setTrait(trait: Trait, value: number) {
-  preview.value = { ...preview.value, [trait]: trait === 'brevity' ? 100 - value : value };
+  preview.value = { ...preview.value, [trait]: value };
 }
 function commitTrait(trait: Trait) {
   const value = preview.value[trait];

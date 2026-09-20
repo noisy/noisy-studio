@@ -91,7 +91,7 @@ export interface Utterance {
   started_at: number; updated_at: number;
 }
 export interface Character {
-  humor: number; honesty: number; brevity: number; chatty: number;
+  humor: number; honesty: number; verbosity: number; talkative: number;
   voice: string; speed: number;
 }
 ```
@@ -181,7 +181,7 @@ interface BubbleProps {
 **Style port:** radial gauges (prototype CSS 240–248 + JS gauge builder 632–655 → rewrite as computed SVG in Vue), `.voicecur` (254–262), `.speeddial` (274–277); bigstate ring + costs from header/odometer sections (85–103, 279–301 — odometer simplified to plain glowing total, fuel bar kept).
 
 **Interfaces:**
-- `CharacterReadout` props `{ character: Character }` — four gauges (humor/honesty/brevity/chatty), current voice name, speed dial. No inputs, no emits (read-only v1).
+- `CharacterReadout` props `{ character: Character }` — four gauges (humor/honesty/verbosity/talkative), current voice name, speed dial. No inputs, no emits (read-only v1).
 - `StatusStrip` props `{ status: DaemonStatus | null; offline: boolean }` — state label logic: offline→`OFFLINE`, muted→`MUTED BY YOU`, !listening→`SPEAKING`, recording→`RECORDING`, else `LISTENING`; exported `stateLabel(status, offline)` for tests; costs `you/claude/total`, credits fuel bar (fraction of $5 prepaid, 20 cells).
 
 - [ ] Steps: failing tests (gauge arc length ∝ value; voice rendered uppercase; stateLabel table) → implement → stories → pass → commit `feat(dashboard): CharacterReadout and StatusStrip`.

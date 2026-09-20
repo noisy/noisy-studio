@@ -7,6 +7,7 @@ import {
 import { openStateStream, type StateSnapshot, type StreamHandle } from "../api/stateStream";
 import { validStatusChange } from "../machines/chat";
 import type { Character, DaemonStatus, Utterance } from "../types";
+import { canonicalCharacter } from "../character";
 
 const ERROR_LOG_SIZE = 20;
 
@@ -31,7 +32,7 @@ const CHARACTER_CACHE_KEY = "noisy.lastCharacter";
 function readCachedCharacter(): Character | null {
   try {
     const raw = localStorage.getItem(CHARACTER_CACHE_KEY);
-    return raw ? (JSON.parse(raw) as Character) : null;
+    return raw ? canonicalCharacter(JSON.parse(raw)) : null;
   } catch {
     return null;
   }
