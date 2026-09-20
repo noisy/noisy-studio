@@ -17,7 +17,7 @@ and replace the old application when installing the renamed build.
 
 | Area | Existing identifier | Why it remains |
 | --- | --- | --- |
-| Repository and checkout | `noisy/noisy-coding`, `noisy-coding/` | Repository and existing directory renames are deferred. |
+| Local checkout | `noisy-coding/` | Existing directory names remain valid; the repository is now `noisy/noisy-studio`. |
 | Website URLs | Current domain and `/noisy-coding/` Pages base | Avoid broken links and deployment paths. |
 | Python and CLI | `noisy-coding`, `noisy_coding`, `noisy-coding-*` | Imports, entry points, metadata lookup, installers, and release scripts must move together. |
 | Plugins and MCP | `noisy-coding`, `mcp__noisy-coding__*` | Existing registrations, hook matchers, ownership markers, and update commands depend on them. |
@@ -25,7 +25,6 @@ and replace the old application when installing the renamed build.
 | Browser preferences | `noisy-coding.*` | Preserve accent, avatar, and audio settings. |
 | Desktop identity | `pl.noisy.coding.companion*`, old Electron profile names | Preserve application identity and existing profiles; OS upgrade/permission behavior still needs a packaged-app check. |
 | Internal build names | npm package names, `noisy-coding-daemon` | These are technical identities, separate from the visible app and download names. |
-| Docker and registry | Existing images, containers, services, volumes, MCP registry name | Hooks and installations depend on these; a volume rename can make saved state appear missing. |
 
 A later technical rename needs agreed aliases/fallbacks, collision handling when
 both old and new settings exist, and rollback behavior. Do not replace these

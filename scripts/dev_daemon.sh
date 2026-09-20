@@ -1,7 +1,7 @@
 #!/bin/sh
 # Start a LOCAL DEV noisy-coding daemon next to the production install.
 #
-# Production owns the default ports (8765-8767) and the default config dir
+# Production owns ports 9765-9766 and the default config dir
 # (~/.config/noisy-coding). This daemon takes the dev HTTP port below (WS
 # bridge follows automatically on port+1) AND a SEPARATE config dir, so dev
 # state (history, conversations, settings, voice claims) never mixes with

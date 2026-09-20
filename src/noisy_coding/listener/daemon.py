@@ -39,7 +39,7 @@ from noisy_coding.listener.vad import UtteranceSegmenter, VadConfig
 
 STT_LANGUAGE_ENV_VAR = "NOISY_CODING_STT_LANGUAGE"
 MODE_ENV_VAR = "NOISY_CODING_MODE"
-# Container/headless defaults; saved settings (newer intent) override them.
+# Source defaults; saved settings (newer intent) override them.
 INPUT_DEVICE_ENV_VAR = "NOISY_CODING_INPUT_DEVICE"
 # Opt-in for the dashboard tab as microphone/speaker (plain-web deployments);
 # the native app never sets it (#99).
@@ -365,8 +365,8 @@ def _open_input_stream(
     except (sd.PortAudioError, ValueError) as error:
         if not selected:
             # No selection and even the default won't open: this host has
-            # no usable audio hardware at all (a container, a headless
-            # box). The browser tab is the only possible microphone.
+            # no usable audio hardware. The optional browser input
+            # can supply a microphone instead.
             _log(f"[mic] no audio hardware ({error}) — the browser tab is the microphone")
             state.add_event("mic_error", "no audio hardware — browser tab input")
             return _open_input_stream(state, config, on_audio, wanted="browser")
@@ -862,11 +862,8 @@ def main() -> None:
     except sd.PortAudioError as error:
         print(f"Cannot open microphone: {error}", file=sys.stderr)
         print(
-            "Hint: no audio device/server reachable. In Docker on Linux, pass the "
-            "host's PulseAudio socket:\n"
-            "  -v $XDG_RUNTIME_DIR/pulse/native:/run/pulse/native "
-            "-e PULSE_SERVER=unix:/run/pulse/native\n"
-            "(see docker-compose.yml in the repo).",
+            "Hint: check microphone permission in System Settings, reconnect your "
+            "microphone, and select an available input device in Noisy Studio.",
             file=sys.stderr,
         )
         sys.exit(1)

@@ -11,13 +11,13 @@ an extra daemon. Hooks retain their exit-code/stdout/stderr delivery contract.
 The standalone Codex preview integration keeps its explicit uv prerequisite and
 configured endpoint; do not overwrite local integration settings.
 
-- [ ] Replace obsolete launchers and manifest targets; test missing app,
+- [x] Replace obsolete launchers and manifest targets; test missing app,
       explicit engine/port, protocol output and hook exit-code preservation.
-- [ ] Remove retired image-build, compose and registry artifacts; update current
+- [x] Remove retired image-build, compose and registry artifacts; update current
       runtime branches and documentation to the supported native installation.
-- [ ] Verify unit/harness, frontend, desktop and build checks. Freeze the engine
+- [x] Verify unit/harness, frontend, desktop and build checks. Freeze the engine
       and verify a real MCP initialization/tool listing plus hook execution.
-- [ ] Commit coherent increments; restart dev only if its runtime changes require
+- [x] Commit coherent increments; restart dev only if its runtime changes require
       it, using the 60-second postponable countdown and microphone checks.
 
 Historical references deliberately retained (list these in a future PR):
@@ -30,3 +30,14 @@ Current guides, code, manifests and workflows must not retain instructions for
 the retired distribution. No installed application or private configuration is
 removed as part of repository cleanup. Signing and release publication remain
 separate actions; this task does not publish a new app.
+
+Verification completed: 400 Python unit/harness tests passed (1 skipped),
+309 dashboard tests and 16 desktop tests passed. Dashboard and Storybook builds
+passed. A locally frozen engine initialized MCP, listed speech tools and ran
+the hook entry point without a shutdown traceback. The live dev daemon served
+the current dashboard build and retained its Jabra microphone; no restart was
+needed for these integration entry points and static dashboard changes.
+
+The source audit found only the four historical references listed above.
+The new plugin needs an app built with these entry points; no new signed app
+has been published or installed as part of this change.

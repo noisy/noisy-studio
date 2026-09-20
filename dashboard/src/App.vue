@@ -68,23 +68,11 @@ const levelDb = computed(() =>
 // A dev instance is any daemon serving off the production port. The marker
 // is deliberately confined to the logo block — the rest of the theme stays
 // production-identical so prod colors can be tested on a local instance.
-/* Which instance is this?
- *
- * Three now live side by side, and "which one am I looking at" must never
- * be a guess - especially on stream, where the dev instance is on screen
- * almost all the time.
- *   8765  the Docker install
- *   9765  the desktop app's own daemon - a user's normal case, so no badge
- *   other a daemon someone is developing against
- */
-const instanceKind =
-  window.location.port === "" || window.location.port === "8765"
-    ? "docker"
-    : window.location.port === "9765"
-      ? "app"
-      : "dev";
-const isDevInstance = instanceKind === "dev";
-const instanceLabel = instanceKind === "dev" ? "DEV INSTANCE" : "";
+const props = withDefaults(defineProps<{ instancePort?: string }>(), {
+  instancePort: () => window.location.port,
+});
+const isDevInstance = computed(() => props.instancePort !== "" && props.instancePort !== "9765");
+const instanceLabel = computed(() => isDevInstance.value ? "DEV INSTANCE" : "");
 
 // Controls: fire the POST, then let the next 400 ms poll reflect reality —
 // no optimistic local state to get out of sync.
@@ -520,9 +508,6 @@ const LANGUAGES: Record<string, string> = {
   </div>
 
   <div class="hud" :inert="unconfigured">
-    <!-- The Docker path preselects the tab as mic/speaker, so the picker
-         never fires a change event — and getUserMedia needs a user
-         gesture anyway. This banner IS that gesture. -->
     <!-- Graceful shutdown (#35): D5 bar picked in Storybook. -->
     <ShutdownBanner
       v-if="shutdownSeconds !== null"

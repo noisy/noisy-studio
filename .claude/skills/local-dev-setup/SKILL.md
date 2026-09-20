@@ -1,64 +1,66 @@
 ---
 name: local-dev-setup
-description: Set up or fix the side-by-side LOCAL DEV instance of Noisy Studio in this repo — dev daemon on port 7765, noisy-coding-dev MCP, project-scoped hooks. Use when asked to prepare the local development environment, when the dev daemon is down, or when a session in this repo should talk to the dev instance instead of production.
+description: Run the isolated source daemon alongside the installed Noisy Studio app.
 ---
 
-# Local dev environment for Noisy Studio contributors
+# Local development
 
-This skill lives in `.claude/skills/` — project scope, for people hacking on
-THIS repo. It is deliberately NOT in the plugin's `skills/` directory, so it
-never ships to end users.
+Read `docs/local-development.md` and any stream-specific handoff supplied by
+the user. The source checkout serves the live dev instance, so treat restarts
+as visible interruptions.
 
-The full recipe with rationale is `docs/local-development.md` — read it when
-anything here surprises you. Quick path:
+- Production app: HTTP 9765, WebSocket 9766, `~/.config/noisy-coding`.
+- Dev launcher: HTTP 7765, WebSocket 7766, `~/.config/noisy-coding-dev`.
+- Vite: 5173, explicitly set `NOISY_CODING_DAEMON_URL=http://127.0.0.1:7765`.
 
-## 1. Dev daemon (port 7765; production keeps 8765–8767)
+Run `uv sync`, then `scripts/dev_daemon.sh`. Check the printed config location;
+never let concurrent daemons share a configuration folder. First launch seeds
+provider/tuning settings but not conversation history.
+
+Point hooks and MCP at the same explicit dev port. Source MCP should set
+`NOISY_CODING_NO_AUTOSPAWN=1`. Do not install duplicate hook sets. Add new API
+routes to Vite's `DAEMON_PATHS` and restart Vite after configuration changes.
+
+Before restarting, announce it and request `POST /shutdown` with
+`{"delay_seconds":60}`. Let the user postpone or cancel; wait for the port to
+free before relaunching. Never kill the daemon. Check its new startup line and
+selected microphone afterwards; use the device required by the stream handoff.
+Do not touch production, OBS, or stream overlays.
+
+Run appropriate checks before handing off and verify behavior against the
+selected running instance. Do not display secrets or full private state.
+
+## Clearing the xAI key to test the no-key path
+
+The settings panel can only *replace* a key, never remove one, so the
+"user has not configured anything yet" path cannot be reached from the UI.
+Clear it on disk instead.
+
+**Dev instance only.** Production credentials live in
+`~/.config/noisy-coding/credentials.json` and are not part of this.
 
 ```sh
-scripts/dev_daemon.sh
+F=~/.config/noisy-coding-dev/credentials.json
+cp -p "$F" /tmp/creds-dev-backup-$(date +%s).json   # take one even if a copy exists
+python3 -c "
+import json,sys
+p=sys.argv[1]; d=json.load(open(p)); d.pop('xai_api_key', None)
+json.dump(d, open(p,'w'), indent=2)" "$F"
 ```
 
-Builds the dashboard if `dashboard/dist` is missing, then starts the listener
-from this checkout. Verify: `curl -s http://127.0.0.1:7765/status` returns
-JSON. Dashboard: <http://127.0.0.1:7765> — amber logo + LOCAL DEV badge.
+Restore by copying the backup back over it.
 
-Run it in the background (`run_in_background`) and restart it after changing
-Python code; rebuild (`cd dashboard && npm run build`) after dashboard changes.
+**No daemon restart is needed.** The key is read per call, not cached at
+startup, so the next speech attempt fails immediately with:
 
-## 2. Session wiring — should already be in place
+```
+No xAI API key configured yet — set it on the dashboard (SETTINGS panel)
+```
 
-- MCP is per contributor machine (LOCAL scope — a committed `.mcp.json`
-  would be auto-loaded by the plugin and leak the dev server to end users):
+Two things to know before doing this while anyone is listening:
 
-  ```sh
-  claude mcp add noisy-coding-dev --scope local \
-    --env NOISY_CODING_LISTENER_PORT=7765 -- uv run noisy-coding-mcp
-  ```
-
-  Tools appear as `mcp__noisy-coding-dev__*` after a restart.
-- Hooks are committed to this repo, so normally there is nothing to do:
-  `.claude/settings.json` → the five hooks duplicated with local commands
-  (`NOISY_CODING_LISTENER_PORT=7765 python3 hooks/<script>.py`). They run IN
-  ADDITION to the global production hooks — that is intended; each set talks
-  to its own daemon.
-
-If either is missing, restore it from `docs/local-development.md` §2.
-
-## Verify against the DAEMON, not just Vite
-
-Vite serves `public/` and its own module graph, masking daemon-side
-gaps: the avatars sprite worked on :5173 for hours while the container
-404'd it (the daemon's static route didn't know the file). Any change
-involving static files, routes or daemon-served behavior must be checked
-on the daemon port (7765 dev / 8765 prod build) — ideally with a
-headless-Chrome screenshot — before calling it done.
-
-## 3. Sanity checks / gotchas
-
-- Speak through dev with `mcp__noisy-coding-dev__speak`, through production
-  with `mcp__noisy-coding__speak` — never assume they are the same daemon.
-- Dev reads the HOST config (`~/.config/noisy-coding`): shared API key, but
-  its own voice/settings; production reads the container volume.
-- With both mics live the user's speech arrives TWICE (once per daemon) —
-  treat the second copy as a duplicate, and suggest muting one dashboard.
-- Rewake locks do not collide (host vs container) — see docs/hooks.md.
+- **It takes the agent's voice away.** Every `speak` fails until the key is
+  restored; the session keeps working in text.
+- Inspect the file by **shape**, never by content - key names and value
+  lengths are enough to confirm what happened, and a secret that is never
+  printed cannot end up in a transcript or on a livestream.

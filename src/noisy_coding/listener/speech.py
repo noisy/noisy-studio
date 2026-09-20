@@ -655,7 +655,7 @@ async def _play_audio(
         try:
             await playback.play(audio.audio, audio.content_type)
         except Exception as error:
-            # Hardware-free host (container): there is NOTHING to play
+            # No audio device is available: there is nothing to play
             # through right now. Park, don't error — the speech is
             # synthesized and waits for CATCH UP once a tab connects.
             raise NoAudioSink(str(error)) from error

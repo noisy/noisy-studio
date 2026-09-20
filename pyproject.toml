@@ -8,7 +8,7 @@ authors = [
 ]
 requires-python = ">=3.13"
 dependencies = [
-    # Exact pins, belt-and-suspenders with the lockfile-driven Docker
+    # Exact pins, belt-and-suspenders with the lockfile-driven native
     # install: upgrades are a deliberate edit here, followed by `uv lock`
     # and the test suite — never a surprise from the resolver.
     "httpx==0.28.1",
@@ -17,7 +17,7 @@ dependencies = [
     "sounddevice==0.5.5",
     "websockets==16.0",
     # Global push-to-talk hotkey (#25): a CGEventTap needs the Quartz
-    # bindings - macOS only, the Docker/Linux daemon runs without it.
+    # bindings - macOS only, source-only Linux development runs without it.
     "pyobjc-framework-Quartz==12.1; sys_platform == 'darwin'",
 ]
 

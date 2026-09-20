@@ -281,7 +281,7 @@ def _ensure_daemon() -> None:
 def main() -> None:
     _ensure_daemon()
     # stdio (default): Claude Code launches this process per session.
-    # http: one long-lived server (the Docker image) — Claude Code connects
+    # http: optional standalone source transport — a client connects
     # with `claude mcp add --transport http http://host:8767/mcp`.
     if os.environ.get("NOISY_CODING_MCP_TRANSPORT", "stdio") == "http":
         mcp.settings.host = os.environ.get("NOISY_CODING_MCP_BIND", "127.0.0.1")

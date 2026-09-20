@@ -1,74 +1,35 @@
-# Noisy Studio — agent notes
+# Noisy Studio
 
-Voice coding for Claude Code: a daemon (production runs in Docker) plus Claude
-Code hooks and an MCP server. Python backend in `src/noisy_coding/`, Vue
-dashboard in `dashboard/`, hooks in `hooks/`.
+Native desktop voice coding app. Internal package and plugin names remain
+`noisy-coding`; user-facing copy says Noisy Studio.
 
-## Local development setup
+## Development
 
-Follow `docs/local-development.md` — do not improvise. In short: production
-owns ports 8765–8767; the dev instance from this checkout runs on 7765
-(`scripts/dev_daemon.sh`). Wiring a session to dev means BOTH:
+Read `.claude/skills/local-dev-setup/SKILL.md` and `docs/local-development.md`.
+The installed app uses HTTP 9765, WebSocket 9766, and the production config
+folder. `scripts/dev_daemon.sh` uses 7765/7766 and a separate dev config folder.
+Do not run two daemons on the same port or against the same configuration.
+Claude integrations use the bundled engine through `hooks/native.sh`.
+Codex preview uses the explicitly configured endpoint; see `docs/codex.md`.
 
-1. a second MCP server named `noisy-coding-dev` (stdio, LOCAL scope — one
-   `claude mcp add --scope local` per machine; NEVER commit it to a
-   `.mcp.json`, the plugin auto-ships that file to end users), and
-2. project-scoped hook overrides in this repo's `.claude/settings.json`
-   pointing at local `hooks/*.py` with `NOISY_CODING_LISTENER_PORT=7765`.
-   These DUPLICATE the global docker-exec hooks on purpose — global ones
-   keep serving production, project ones serve dev.
+Before changing the live dev instance, read the stream handoff if supplied.
+Always restart through `POST /shutdown` with `{"delay_seconds":60}`. Wait for
+the port to free before relaunching; respect cancellation and postponement.
+Never kill the daemon. Verify the microphone after restarting.
 
-## Key docs
+## Checks
 
-- `docs/hooks.md` — the five hooks, why each exists, registration paths
-- `docs/ports.md` — what each port is for
-- `docs/local-development.md` — dev instance next to production
+Run `uv run pytest tests/unit tests/harness -q` for Python changes. Run dashboard
+checks/build for frontend changes. Any component behavior change must update
+its Storybook scenarios in the same commit. Use focused, meaningful tests.
+Frozen integrations also have a real protocol smoke check in the release job.
 
-## Releasing
+## Releases
 
-Run `python3 scripts/bump_version.py X.Y.Z` - it bumps all four version
-files AND prints the release checklist. Follow it to the letter; the one
-step agents keep forgetting: **auto-generated release notes only list PRs
-and miss direct commits - always write real notes** (highlights for
-humans) and publish with `gh release edit vX.Y.Z --notes-file ... --draft=false`,
-then verify the GitHub release and the Docker image manifest.
+Use `scripts/bump_version.py` to keep all version files consistent. The native
+release workflow builds, signs, notarizes and smoke-tests the app. Publication
+requires explicit authorization. Update app and plugin together and verify the
+running version and a spoken round trip. See `.claude/skills/creating-releases/SKILL.md`.
 
-Deploying to the local prod container is part of the release:
-
-    docker compose pull && docker compose up -d
-    curl -s http://127.0.0.1:8765/status | grep -o '"version": "[^"]*"'
-
-The curl MUST report the version just released - `up -d` alone proves
-nothing. docker-compose.yml runs the PUBLISHED image; never point it at
-`build:` (a stale local build once shadowed a release as 2.13.4) - the
-working tree runs via docker-compose.dev.yml under a distinct name.
-
-## Restarting the daemon
-
-Never `kill` it. Use the graceful path, and **always sixty seconds**:
-
-    curl -X POST http://127.0.0.1:7765/shutdown -d '{"delay_seconds":60}'
-
-The dashboard shows a countdown with CANCEL and RESTART NOW, and the daemon
-refuses to die mid-recording. Sixty is not negotiable downwards: a shorter
-countdown is not enough warning to finish a thought, and Krzysztof can
-always hit RESTART NOW to go faster. The delay exists for him, not for us.
-
-## Frontend changes
-
-New UI (a widget, banner, layout, any new look) is designed in Storybook
-FIRST - present several variants (3-5) as *.stories.ts and let Krzysztof
-pick before wiring anything into the app. Only trivially-derivative
-changes (same pattern as an existing element) may skip this.
-
-**And Storybook is kept up to date afterwards.** It is the reference for
-what the UI does, not a scratchpad from when a component was designed:
-
-- change a component's behaviour, update its stories in the same commit
-- a bug worth fixing is a state worth a story - regressions belong where
-  they can be seen, not only in a spec
-- delete stories for things that no longer exist (git remembers them);
-  stale variants cost more than they save, because someone will judge a
-  change against a story that no longer describes the product
-- cover the parts, not just the assembled whole - a component in isolation
-  is where a change usually breaks first
+Keep changes in small functional commits. Never display credentials, private
+configuration, or process command lines while on stream.

@@ -44,3 +44,14 @@ export const RecoverSpeechSettings:StoryObj = {
     return {components:{App},template:'<App />'};
   },
 };
+
+// The app has no instance badge; source endpoints clearly identify development.
+function instanceStory(port: string): StoryObj {
+  return {render: () => {
+    resetScenario('conversation');
+    return {components: {App}, setup: () => ({port}), template: '<App :instance-port="port" />'};
+  }};
+}
+export const NativeApp = instanceStory('9765');
+export const DevInstance = instanceStory('7765');
+export const SourceCompatibilityPort = instanceStory('8765');

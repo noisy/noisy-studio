@@ -151,8 +151,7 @@ def _maybe_refresh_latest_version(state: ListenerState) -> None:
 
 
 DEFAULT_PORT = 8765
-# Bind address. Loopback by default; a Docker container must bind 0.0.0.0
-# or the published port can't reach it (set NOISY_CODING_BIND=0.0.0.0 there).
+# Bind to loopback by default; source deployments can explicitly override it.
 BIND_ENV_VAR = "NOISY_CODING_BIND"
 # Mic-level frame cadence for the dashboard oscilloscope (~20 fps). A data
 # rate for smooth rendering, not coordination logic.

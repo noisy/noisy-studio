@@ -270,8 +270,7 @@ class TabAudioBridge:
     def serve_forever(self, port: int) -> None:  # pragma: no cover — thread shell
         from websockets.sync.server import serve
 
-        # Same bind rule as the HTTP API: loopback by default, overridable
-        # for containers where the published port must reach us.
+        # Same bind rule as the HTTP API: loopback by default, explicitly overridable.
         host = os.environ.get("NOISY_CODING_BIND", "127.0.0.1")
         with serve(self._handle, host, port) as server:
             server.serve_forever()

@@ -1,130 +1,41 @@
 # Noisy Studio
 
-**Talk to your coding agent while it works — voice support for Claude Code, and Codex in preview.**
-It's your voice that's noisy, not your code.
+Talk to your coding agent while it works. Noisy Studio is a native desktop app
+with speech recognition, spoken replies, per-conversation voice and character
+settings, and a dashboard for the conversations you are following.
 
-Previously noisy-coding. Installation commands and configuration identifiers
-retain their existing names for compatibility; see [the rebranding notes](docs/rebranding.md).
+## Install
 
-[![Docker Pulls](https://img.shields.io/docker/pulls/noisy/noisy-coding)](https://hub.docker.com/r/noisy/noisy-coding)
-[![Release](https://img.shields.io/github/v/release/noisy/noisy-coding)](https://github.com/noisy/noisy-coding/releases)
-[![CI](https://github.com/noisy/noisy-coding/actions/workflows/ci.yml/badge.svg)](https://github.com/noisy/noisy-coding/actions/workflows/ci.yml)
-[![Last commit](https://img.shields.io/github/last-commit/noisy/noisy-coding)](https://github.com/noisy/noisy-coding/commits/main)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Glama score](https://glama.ai/mcp/servers/noisy/noisy-coding/badges/score.svg)](https://glama.ai/mcp/servers/noisy/noisy-coding)
+Download the macOS Apple Silicon app from [Releases](https://github.com/noisy/noisy-studio/releases),
+move **Noisy Studio.app** to Applications, and open it. Complete provider and
+audio setup in the app. The app includes its own Python engine; ordinary Claude
+installation needs neither Python nor a separate service manager.
 
-Your agent speaks short summaries aloud. An always-on listener turns your
-speech into messages it receives **mid-task, without stopping it** —
-no push-to-send, no copy-pasting transcripts. Step away from the keyboard
-and keep steering your agent.
-
-## Why you'll like it
-
-- **Interrupt-free flow** — speak while your agent is working; your words land
-  in the running session, not a text box.
-- **Hands-free reviews** — your agent reads its findings aloud; you answer
-  from across the room.
-- **Live "tactical HUD" dashboard** — conversation log with replay/recall,
-  real-time oscilloscope, mute buttons, costs and latencies at a glance.
-- **Per-agent character** — voice, speed, and personality dials for every
-  agent, all from the dashboard.
-- **Nothing to configure in files** — API key, devices, language,
-  push-to-talk: everything lives in the UI and persists.
-- **Never talks over you** — one voice at a time; speech you missed parks
-  as UNHEARD and a CATCH UP button replays it.
-
-Speech-to-text and text-to-speech run on the
-[Grok (xAI) Voice API](https://docs.x.ai/developers/rest-api-reference/inference/voice) —
-extremely cheap in practice (a small one-time budget lasts months of
-daily use).
-
-## Install for Claude Code
-
-The backend ships as a hardware-free Docker image
-([`noisy/noisy-coding`](https://hub.docker.com/r/noisy/noisy-coding)):
-the dashboard browser tab is the microphone and the speaker. You need
-Docker and a browser — no Python, no git, no environment variables.
-
-```bash
-# terminal: marketplace + plugin in one line
-claude plugin marketplace add noisy/noisy-coding && claude plugin install noisy-coding@noisy
-```
-
-```
-# inside Claude Code (new session):
-/noisy-coding:setup
-```
-
-The setup command starts the published image and walks you through first
-contact. Then finish in the browser at <http://127.0.0.1:8765>: paste
-your xAI API key (console.x.ai) and click the amber **ENABLE TAB AUDIO**
-banner — that one click makes the tab your microphone and speaker. Keep
-the tab open and just talk.
-
-Prefer staying inside Claude Code? Same thing, four commands:
-`/plugin marketplace add noisy/noisy-coding` →
-`/plugin install noisy-coding@noisy` → `/reload-plugins` →
-`/noisy-coding:setup`.
-
-Other setups — plain Docker without the plugin, native install with
-hardware mic/speakers, remote hosts, all configuration knobs — live in
-[docs/INSTALL.md](docs/INSTALL.md).
-
-## Install for Codex (preview)
-
-Install the Codex plugin, then ask it to set up voice. You need local Codex
-with lifecycle hooks, `uv`, and a running Noisy Studio daemon (app or Docker).
-See [the Codex guide](docs/codex.md) for pre-release checkout installation,
-endpoint selection, and a spoken round-trip check.
+For Claude Code, install the companion plugin:
 
 ```sh
-codex plugin marketplace add noisy/noisy-coding
-codex plugin add noisy-coding@noisy-coding
+claude plugin marketplace add noisy/noisy-studio
+claude plugin install noisy-coding@noisy
 ```
 
-In a new session: **“Use Noisy Studio to set up voice.”** Review its hooks
-through `/hooks`; the installer preserves unrelated settings. The chat uses
-registered agent labels, so multiple integrations can share one dashboard.
+Restart Claude Code and ask it to set up Noisy Studio voice. Keep the app and
+plugin versions together: the plugin launches the engine bundled with the app.
+The internal plugin name remains `noisy-coding` for compatibility.
 
-**Codex's Stop hook holds a turn open while listening for up to one hour.**
-Use `--listen-seconds 60` for a shorter wait, or `0` to disable idle listening;
-see [idle listening](docs/codex.md#why-codex-can-look-busy-while-listening).
+[Installation and troubleshooting](docs/INSTALL.md) covers permissions,
+providers, updates, and a spoken round trip. The [Codex preview](docs/codex.md)
+uses the same app and currently requires `uv` for its integration processes.
+macOS is the validated release platform; other platforms are source development.
 
-## How it works
+## Development
 
-All speech logic lives in one **listener daemon** — the single owner of
-the microphone, the playback queue and the speakers. The MCP server is a
-thin messenger that forwards `speak` requests; agent lifecycle hooks deliver
-your transcribed speech back into the session (see
-[docs/hooks.md](docs/hooks.md)).
+Use [local development](docs/local-development.md) for the isolated daemon on
+7765 and dashboard hot reload. The installed app owns 9765 and has separate
+settings. See [desktop packaging](docs/desktop-app.md) for signed app builds.
 
-```
-mic (hardware or browser tab via WS :8766)
-  -> VAD -> Grok STT -> transcript queue -> HTTP :8765
-                              ^ drained by agent lifecycle hooks
-speak (MCP, stdio or HTTP :8767) -> POST /speak -> daemon queue
-  -> Grok TTS -> speakers (hardware or browser tab)
-```
+- [Agent hooks](docs/hooks.md)
+- [Ports](docs/ports.md)
+- [Product naming](docs/rebranding.md)
 
-## Tools
-
-| Tool | What it does |
-| --- | --- |
-| `speak(text, interrupt?)` | Queues `text` for speech and waits until it has played. Voice/speed/language come from the daemon (dashboard character), not the call. |
-| `announce(text)` | Fire-and-forget variant: returns immediately, plays in the background. |
-| `change_voice(voice_id)` | Deliberately switches this agent's voice (persists, shows on the dashboard). |
-| `list_voices()` | Lists the built-in Grok voices (`ara`, `eve`, `leo`, `rex`, …). |
-
-## Docs
-
-- [docs/INSTALL.md](docs/INSTALL.md) — plain Docker, native install,
-  remote hosts, environment variables, development commands
-- [docs/hooks.md](docs/hooks.md) — how Claude hears you
-- [docs/codex.md](docs/codex.md) — Codex setup, hook trust, identity, and removal
-- [docs/ports.md](docs/ports.md) — what each port is for
-- [docs/local-development.md](docs/local-development.md) — hacking on
-  Noisy Studio itself
-
-## License
-
-[MIT](LICENSE) © Krzysztof Szumny
+API credentials belong in the app's provider settings, never in chat or source.
+Offline providers download their models on first use and then run locally.

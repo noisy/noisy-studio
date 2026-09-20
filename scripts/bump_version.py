@@ -109,13 +109,9 @@ print("""
 NEXT STEPS (release checklist):
   1. tests + dashboard build green
   2. commit 'release X.Y.Z', tag vX.Y.Z, push both
-  3. wait for the release workflow (docker image + draft)
-  4. WRITE REAL RELEASE NOTES - the auto-generated body only lists PRs
-     and misses direct commits. Summarize highlights for humans, then:
-       gh release edit vX.Y.Z --notes-file <notes> --draft=false
-  5. verify: gh release view + docker manifest inspect noisy/noisy-coding:X.Y.Z
-  6. deploy + PROVE it: docker compose pull && docker compose up -d, then
-     curl -s http://127.0.0.1:8765/status must report X.Y.Z - the running
-     version is the only evidence a deploy happened (a stale local build
-     once served 2.13.4 while the 2.16.0 release looked "done")
+  3. wait for the release workflow (signed native app + release draft)
+  4. write release notes describing the changes for users
+  5. verify the release assets, signatures, notarization and packaged smoke checks
+  6. publish only when authorized; install the app and update the plugin together
+  7. verify the running app reports X.Y.Z and voice works in both directions
 """)

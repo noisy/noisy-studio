@@ -44,7 +44,7 @@ def configure_file(path, port=None, listen_seconds=3600, agent_label="Codex", un
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--port", type=int, help="daemon port: app 9765, Docker 8765, dev 7765, or your custom port")
+    parser.add_argument("--port", type=int, help="daemon port: app 9765, dev 7765, or your custom port")
     parser.add_argument("--listen-seconds", type=int, default=3600, help="idle listening window, 0 disables Stop listening")
     parser.add_argument("--agent-label", default="Codex", help="display name prefix; session IDs remain unique")
     parser.add_argument("--uninstall", action="store_true", help="remove only settings owned by this installer")

@@ -1,3 +1,6 @@
+> Historical analysis from before the native integration overhaul.
+> For current setup, use INSTALL.md, hooks.md and codex.md.
+
 # Agent integration: why it is fragile, and how to rebuild it for 3.0
 
 **Status:** analysis, 2026-09-10. Input for the 3.0 stabilisation work.

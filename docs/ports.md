@@ -1,14 +1,18 @@
-# Ports
+# Ports and instance selection
 
-All ports bind to `127.0.0.1` only and are overridable via environment
-variables. Production (Docker) uses the defaults; a local dev instance shifts
-them (see [local-development.md](local-development.md)).
+| Instance | HTTP/dashboard | Voice WebSocket |
+| --- | --- | --- |
+| Installed native app | 9765 | 9766 |
+| Source development (`scripts/dev_daemon.sh`) | 7765 | 7766 |
+| Dashboard hot reload (Vite) | 5173, proxies explicitly to 7765 | proxied |
 
-| Port | What | Why | Override |
-|------|------|-----|----------|
-| 8765 | HTTP API + dashboard | The daemon: transcript queue for the hooks (`/drain`), live activity (`/activity`), status (`/status`), and it serves the dashboard UI | `NOISY_CODING_LISTENER_PORT` |
-| 8766 | WebSocket tab-audio bridge | Streams mic frames from / speaker audio to the dashboard browser tab. Do not probe it with raw TCP — a bare connect dumps handshake tracebacks into the logs | none — always the HTTP port + 1 (8765→8766, dev 7765→7766) |
-| 8767 | MCP endpoint | `speak`, `announce`, `change_voice`, `list_voices` for agents, over streamable HTTP (a plain GET answers `406` — that is healthy; MCP requires `Accept: text/event-stream`) | `NOISY_CODING_MCP_PORT` |
+Claude MCP uses stdio through the bundled engine; normal installation needs
+no separate MCP network port. Hooks and MCP must select the same daemon.
+The packaged integration defaults to 9765 and respects an explicit
+`NOISY_CODING_LISTENER_PORT`. The Codex preview stores its selected endpoint;
+see [codex.md](codex.md). Do not scan ports and silently choose an instance.
 
-Dev-instance convention: 7765 (HTTP) → 7766 (bridge, automatic), MCP in stdio
-mode instead of a port.
+Direct source entry points retain 8765 as a compatibility default. Prefer the
+dev launcher, which sets 7765 and an isolated configuration explicitly.
+An optional source HTTP MCP transport can be configured separately; it is not
+part of the desktop installation.

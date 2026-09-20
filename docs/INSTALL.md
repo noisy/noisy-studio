@@ -1,117 +1,49 @@
-# Installation options
+# Install Noisy Studio
 
-The recommended path is the Claude Code plugin — see the
-[README](../README.md#install-in-2-minutes). This page covers everything
-else: plain Docker, native install, remote hosts, and configuration.
+The supported release is the native macOS Apple Silicon app. Download it from
+[GitHub Releases](https://github.com/noisy/noisy-studio/releases), move
+**Noisy Studio.app** to `/Applications` or `~/Applications`, then open it.
+The signed app includes its engine and dependencies.
 
-## Plain Docker (no plugin, nothing to clone)
+Choose speech providers in the app. Enter credentials only in its settings.
+For local providers, allow the initial model download; cached models work
+offline. Grant microphone access to **Noisy Studio Engine** when prompted.
+Input Monitoring is needed for the optional global hotkey, not ordinary startup.
+Select the intended microphone and speaker and verify their levels.
 
-```bash
-# 1. the whole backend in one box, straight from Docker Hub
-docker run -d --name noisy-coding \
-  -p 127.0.0.1:8765-8767:8765-8767 \
-  -v noisy-coding-config:/root/.config/noisy-coding \
-  --restart unless-stopped \
-  noisy/noisy-coding:latest
+## Claude Code
 
-# 2. dashboard: API key + THIS BROWSER TAB (mic and output) in Settings
-open http://127.0.0.1:8765
-
-# 3. connect Claude Code to the MCP server in the container
-claude mcp add --transport http --scope user noisy-coding http://127.0.0.1:8767/mcp
-
-# 4. register the hooks (this is how Claude HEARS you), restart Claude Code
-docker run --rm -v ~/.claude:/root/.claude noisy/noisy-coding \
-  python3 /app/hooks/install.py --docker
+```sh
+claude plugin marketplace add noisy/noisy-studio
+claude plugin install noisy-coding@noisy
 ```
 
-Voice, speed, personality, language, push-to-talk, transcription mode:
-everything lives in the dashboard and persists across restarts (in a
-Docker volume). No environment variables, no config files.
+Restart Claude Code, review the installed hooks, and ask for voice setup.
+The plugin runs MCP and lifecycle hooks through the app's bundled executable;
+no host Python or uv is needed. The app must be running on port 9765.
+`NOISY_STUDIO_ENGINE` can explicitly select another engine for development;
+`NOISY_CODING_LISTENER_PORT` selects its daemon endpoint. These integration
+processes never start another audio daemon.
 
-Notes:
+Ask the agent to speak, answer aloud, and confirm both messages appear under
+the intended conversation. A healthy HTTP endpoint alone does not prove audio.
 
-- The dashboard tab is the audio device — keep it open while talking.
-  Speech that arrives with no tab open parks as UNHEARD; the CATCH UP
-  button replays it when you return.
-- Remote host? `getUserMedia` needs a secure context, so tunnel instead of
-  exposing plain HTTP:
-  `ssh -L 8765:localhost:8765 -L 8766:localhost:8766 -L 8767:localhost:8767 host`
-- Linux can alternatively pass the host's PulseAudio/PipeWire socket
-  through for native audio — see the commented variant in
-  `docker-compose.yml`.
+## Codex preview
 
-## Native install (alternative to Docker)
+See [the dedicated guide](codex.md). This preview still requires uv for its
+hook/MCP processes and explicitly selects the app endpoint during setup.
 
-For always-on voice without a browser tab (hardware mic/speakers), run the
-daemon natively. Requires Python 3.13 and
-[uv](https://docs.astral.sh/uv/); the API key is still configured in the
-dashboard, never in the shell.
+## Updates and troubleshooting
 
-```bash
-git clone https://github.com/noisy/noisy-coding && cd noisy-coding
-uv sync
-uv run noisy-coding-listener          # first run triggers the mic prompt
-claude mcp add noisy-coding --scope user \
-  -- uv run --project "$PWD" noisy-coding-mcp
-python3 hooks/install.py
-open http://127.0.0.1:8765            # paste your xAI API key
-```
+Update the app and plugin together, then start a new coding session. An older
+app may not support the plugin's bundled integration entry points. If tools
+report that the app is missing, check the installation location and update it.
+Hooks fail open when the app is absent so normal coding can continue.
 
-macOS plays through the built-in `afplay`; installing `mpv` (optional)
-enables lower-latency streaming playback. Linux needs
-`sudo apt install libportaudio2 mpv`.
+If microphone access fails, check System Settings > Privacy & Security,
+reconnect the device and reselect it in the app. Do not disable Gatekeeper or
+remove quarantine as a routine installation step. Report a rejected signed
+release with its version instead.
 
-## Hooks (how Claude hears you)
-
-`python3 hooks/install.py` registers them in `~/.claude/settings.json`
-(user scope, idempotent — run it again after moving the repo). They are
-stdlib-only and run on the system `python3` (3.9+): `PostToolUse` delivers
-speech while Claude works, `Stop` wakes an idle session when you speak,
-`UserPromptSubmit`/`PreToolUse` feed the dashboard's live-activity line.
-They fail open — with the daemon down they exit silently, so keyboard-only
-sessions are unaffected.
-
-## Configuration
-
-There is deliberately **no required configuration outside the UI** — the
-dashboard writes everything to `~/.config/noisy-coding/` (a named volume in
-Docker). The environment variables below exist for development and unusual
-setups only:
-
-| Variable | Default | Meaning |
-| --- | --- | --- |
-| `NOISY_CODING_LISTENER_PORT` | `8765` | Port of the daemon's HTTP API |
-| `NOISY_CODING_BIND` | `127.0.0.1` | HTTP/WS bind address (`0.0.0.0` in Docker) |
-| `NOISY_CODING_STT_LANGUAGE` | auto | Initial language hint (the UI selector overrides) |
-| `NOISY_CODING_MODE` | `batch` | Initial STT mode (`batch`/`live`) |
-| `NOISY_CODING_STOP_WAIT_SECONDS` | `30` | How long the Stop hook waits for speech |
-| `NOISY_CODING_NO_AUTOSPAWN` | — | Don't auto-start the daemon from the server |
-| `NOISY_CODING_INPUT_DEVICE` | system default | Initial mic (`browser` = the dashboard tab) |
-| `NOISY_CODING_OUTPUT_DEVICE` | `system` | Initial speaker (`browser` = the dashboard tab) |
-| `NOISY_CODING_MCP_TRANSPORT` | `stdio` | `http` exposes the MCP server (Docker) |
-| `NOISY_CODING_MCP_PORT` | `8767` | MCP HTTP port (with `http` transport) |
-
-## Development
-
-```bash
-uv run pytest                      # python tests (offline, API mocked)
-cd dashboard && npm test           # frontend tests (Vitest)
-cd dashboard && npm run storybook  # component workbench
-cd dashboard && npm run build      # the daemon serves dashboard/dist at /
-```
-
-Live smoke test (spends API credits, plays audio):
-
-```bash
-uv run python scripts/smoke_test.py "Hello from Grok"
-```
-
-Hacking on Noisy Studio itself? See
-[local-development.md](local-development.md) for running a dev instance
-next to production.
-# Codex
-
-For Codex plugin installation, shared daemon selection, hook review, and
-removal, follow [Codex setup](codex.md). The Claude instructions below
-remain specific to that integration.
+Keep production and development separate: [ports](ports.md),
+[local development](local-development.md), [hook delivery](hooks.md).

@@ -9,14 +9,13 @@ No OpenAI API key or OpenAI voice provider is required for this integration.
 Requirements: local Codex with plugin and lifecycle-hook support (tested
 with CLI **0.153.4**), [uv](https://docs.astral.sh/uv/getting-started/installation/),
 and a running Noisy Studio daemon. `uv` installs the required Python version
-and the plugin's pinned Python dependencies. macOS is the validated host;
-Linux needs PortAudio for the existing shared package. Native Windows is
-not yet validated; use WSL where the existing POSIX hooks are supported.
+and the plugin's pinned Python dependencies. macOS is the validated release host. Other platforms are source development
+and are not supported desktop releases.
 
 After this branch is released:
 
 ```sh
-codex plugin marketplace add noisy/noisy-coding
+codex plugin marketplace add noisy/noisy-studio
 codex plugin add noisy-coding@noisy-coding
 ```
 
@@ -38,7 +37,6 @@ Select the daemon you intend to use:
 | Installation | Default HTTP port |
 | --- | --- |
 | Desktop app | 9765 |
-| Docker | 8765 |
 | Development | 7765 |
 
 These are defaults, not routing rules. Custom ports are supported. If
@@ -99,8 +97,7 @@ the same session ID. The MCP process can therefore be shared across
 sessions; directory names and shared environment variables do not route
 Codex speech. A missing identity produces a tool error and, when reachable,
 a dashboard error event. Review `/hooks` instead of hardcoding another name.
-Legacy Claude servers ignore this argument; only the Codex launcher enables
-host-injected identity. A duplicate listener reports its conflict in Codex
+Claude and Codex both require identity supplied by their trusted host hooks. A duplicate listener reports its conflict in Codex
 and the dashboard, and exits without consuming another listener's queue.
 
 If speaking fails after first installation, ensure `uv` is on the PATH
@@ -112,7 +109,7 @@ not install a second global hook set alongside the plugin. If you used
 the earlier manual prototype, remove only its `noisy-coding` entries after
 reviewing them; keep unrelated hooks.
 
-The dashboard uses registered agent labels and an “Agent” fallback. Legacy
+The dashboard uses registered agent labels and a “New conversation” fallback. Legacy
 history fields such as `role: "claude"` remain compatible with older daemons;
 they no longer determine the chat heading.
 

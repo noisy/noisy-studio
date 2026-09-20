@@ -64,8 +64,7 @@ def identity(hook_input: dict) -> tuple[str, str]:
     label = (os.environ.get("NOISY_CODING_SESSION_TITLE", "").strip()
              if os.environ.get("NOISY_CODING_HARNESS") == "codex" else env_name)
     if not label:
-        # Set by exec.sh, which reads the transcript host-side: inside the
-        # container the transcript_path below points at a file we can't see.
+        # An explicit integration title can be used when the transcript is unavailable.
         label = os.environ.get("NOISY_CODING_SESSION_TITLE", "").strip()
     if not label:
         label = _title_from_transcript(hook_input.get("transcript_path", ""))

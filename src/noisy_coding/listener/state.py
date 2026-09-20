@@ -141,8 +141,7 @@ class ListenerState:
         self._tab_mic = False  # the tab's mic is actually capturing
         self._active_input_device = ""  # what is actually open right now (#41)
         self._output_device = "system"  # where Claude's voice plays: system | browser
-        # The dashboard tab as microphone/speaker was the Docker era's only
-        # audio path. The native app owns the hardware, so the browser
+        # The native app owns the audio hardware, so the browser
         # devices are opt-in (NOISY_CODING_BROWSER_AUDIO=1) and a stored
         # "browser" pick migrates back to the system devices (#99).
         self._browser_audio = False
