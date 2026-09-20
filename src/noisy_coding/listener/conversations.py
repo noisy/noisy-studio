@@ -15,13 +15,16 @@ from __future__ import annotations
 
 import json
 import time
-import uuid
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Literal
 
-from noisy_coding.harness.base import Capabilities, Interpretation
+from noisy_coding.harness.base import Capabilities, Observation
+from noisy_coding.harness import hook_runtime
+from noisy_coding.harness.agent_provider import AgentProviders
+from noisy_coding.harness.provider import provider_name
+from noisy_coding.harness.hook_runtime import Listener
 from noisy_coding.listener.conversation_labels import (
     UNNAMED_CONVERSATION,
     conversation_label,
@@ -36,13 +39,6 @@ Status = Literal["live", "idle", "deaf", "ended", "unknown"]
 # For harnesses with heuristic liveness only: activity newer than this
 # means the agent is mid-turn even though no turn event told us so.
 HEURISTIC_LIVE_SECONDS = 180.0
-
-
-@dataclass
-class Listener:
-    id: str
-    started_at: float
-    expires_at: float | None  # None = push harness, never expires
 
 
 @dataclass
@@ -80,6 +76,8 @@ class ConversationRegistry:
         path: Path | None = None,
     ) -> None:
         self._clock = clock
+        self.providers = AgentProviders(self)
+        self._readiness = {}
         self._path = path
         self._by_key: dict[str, Conversation] = {}
         self._alias: dict[str, str] = {}
@@ -108,10 +106,16 @@ class ConversationRegistry:
 
     # -- events -------------------------------------------------------
 
+    def observe(self, provider, observation: Observation) -> Conversation:
+        """Apply provider-normalized events without any host protocol fields."""
+        self._readiness[provider.name] = provider.availability
+        return self.apply(provider.name, observation, provider.capabilities)
+
     def apply(
-        self, harness: str, result: Interpretation, capabilities: Capabilities
+        self, harness: str, result: Observation, capabilities: Capabilities
     ) -> Conversation:
         now = self._clock()
+        harness = provider_name(harness)
         self._capabilities[harness] = capabilities
         conversation = self._by_key.get(result.conversation)
         if conversation is None:
@@ -123,6 +127,7 @@ class ConversationRegistry:
                 short_id=result.short_id,
             )
             self._by_key[conversation.key] = conversation
+        conversation.harness = harness
         if result.short_id and not conversation.short_id:
             conversation.short_id = result.short_id
         for event in result.events:
@@ -195,28 +200,12 @@ class ConversationRegistry:
         `window` overrides the harness default lease (a hook may shorten it)."""
         conversation = self._require(key)
         capabilities = self._capabilities.get(conversation.harness)
-        if window is None:
-            window = capabilities.max_idle_seconds if capabilities else None
-        now = self._clock()
-        listener_id = listener_id or uuid.uuid4().hex
-        conversation.listener = Listener(
-            id=listener_id,
-            started_at=now,
-            expires_at=(now + window) if window is not None else None,
-        )
-        conversation.deaf_reason = ""
+        identifier = hook_runtime.start(conversation, capabilities, self._clock(), listener_id, window)
         self._save()
-        return listener_id
+        return identifier
 
     def listener_alive(self, key: str, listener_id: str) -> bool:
-        """Is this listener the current, unexpired one? Stale ones stand down."""
-        conversation = self._by_key.get(key)
-        if conversation is None or conversation.listener is None:
-            return False
-        listener = conversation.listener
-        if listener.id != listener_id:
-            return False
-        return listener.expires_at is None or self._clock() < listener.expires_at
+        return hook_runtime.alive(self._by_key.get(key), listener_id, self._clock())
 
     def listener_stopped(self, key: str, listener_id: str, reason: str = "") -> None:
         conversation = self._by_key.get(key)
@@ -242,12 +231,15 @@ class ConversationRegistry:
         if capabilities and capabilities.liveness == "heuristic":
             if conversation.last_activity and now - conversation.last_event_at <= HEURISTIC_LIVE_SECONDS:
                 return "live"
-        if capabilities and capabilities.wake == "push":
-            return "idle"
-        listener = conversation.listener
-        if listener and (listener.expires_at is None or now < listener.expires_at):
-            return "idle"
-        return "deaf"
+        readiness = self.availability(key)
+        return "idle" if readiness.ready else "deaf"
+
+    def availability(self, key: str):
+        conversation = self._by_key.get(key)
+        if conversation and conversation.harness in self._readiness:
+            return self._readiness[conversation.harness](key)
+        capabilities = self._capabilities.get(conversation.harness) if conversation else None
+        return hook_runtime.availability(conversation, capabilities, self._clock())
 
     def deaf_reason(self, key: str) -> str:
         conversation = self._by_key.get(key)
@@ -255,7 +247,7 @@ class ConversationRegistry:
             return ""
         if self.status(key) != "deaf":
             return ""
-        return conversation.deaf_reason or "no listener"
+        return self.availability(key).reason or conversation.deaf_reason or "not available"
 
     # -- order and visibility ----------------------------------------
 
@@ -348,6 +340,7 @@ class ConversationRegistry:
                 conversation = Conversation(**row)
             except TypeError:
                 continue
+            conversation.harness = provider_name(conversation.harness)
             conversation.title = conversation_title(conversation.title)
             # A listener from a previous daemon life is gone with it: the
             # tab starts deaf until its session's next hook says otherwise.
@@ -378,6 +371,6 @@ class ConversationRegistry:
                 self._alias[alias] = conversation.key
         for name, caps in data.get("capabilities", {}).items():
             try:
-                self._capabilities[name] = Capabilities(**caps)
+                self._capabilities[provider_name(name)] = Capabilities(**caps)
             except TypeError:
                 continue

@@ -7,6 +7,7 @@ from collections import deque
 from dataclasses import asdict, dataclass
 
 from noisy_coding.listener.conversations import ConversationRegistry
+from noisy_coding.harness.provider import Receipt, Speech
 from noisy_coding.listener.character_traits import canonical_character_traits
 from noisy_coding.listener.conversation_labels import UNNAMED_CONVERSATION, conversation_label
 from noisy_coding.listener.vad import (
@@ -1021,6 +1022,32 @@ class ListenerState:
                 status=status,
                 text=text,
                 committed_at=now,
+            )
+
+        # Provider calls may perform I/O. Never hold the audio/state lock across them.
+        self.submit_speech(Speech(utterance_id, addressee, text, now))
+
+    def submit_speech(self, speech: Speech) -> Receipt:
+        receipt = self.conversations.providers.submit(speech)
+        self.record_delivery(speech, receipt)
+        return receipt
+
+    def record_delivery(self, speech: Speech, receipt: Receipt) -> None:
+        if receipt.conversation != speech.conversation or receipt.utterance_id != speech.utterance_id:
+            raise ValueError("provider receipt does not match the submitted utterance")
+        if receipt.state == "queued" or not self.conversations.providers.for_conversation(speech.conversation):
+            return
+        with self._lock:
+            # Only a confirmed receipt retires pending speech. Sent/accepted
+            # describe weaker observations and must remain distinguishable.
+            if receipt.state == "confirmed":
+                self._transcripts = [t for t in self._transcripts if not (
+                    t.utterance_id == speech.utterance_id and t.addressee == speech.conversation
+                    and t.timestamp == speech.created_at
+                )]
+            self._update_utterance_locked(
+                speech.utterance_id, delivery_state=receipt.state,
+                delivery_detail=receipt.detail,
             )
 
     def mark_utterance_cancelled(self, utterance_id: int) -> None:

@@ -13,6 +13,8 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from noisy_coding import credentials, diagnostics, harness, playback
+from noisy_coding.harness.hook_gateway import _apply_harness_event, _render_for
+from noisy_coding.harness import hook_gateway
 from noisy_coding.config_dir import CONFIG_DIR
 from noisy_coding.providers.config import ConfigurationError, recovery_info
 from noisy_coding.listener import stt_lab
@@ -388,98 +390,6 @@ def save_settings(state: ListenerState) -> None:
         pass
 
 
-_ADAPTERS: dict[str, harness.Harness] = {}
-
-
-def _adapter(name: str) -> harness.Harness:
-    if name not in _ADAPTERS:
-        _ADAPTERS[name] = harness.get(name)
-    return _ADAPTERS[name]
-
-
-def _apply_harness_event(
-    state: ListenerState, name: str, payload: dict, listen_seconds: float | None = None
-) -> dict:
-    """Run one hook payload through its harness adapter and the registry.
-
-    The registry is the source of truth for tabs; the legacy agent table in
-    ListenerState is kept in step (same key) so speech routing, activity and
-    the dashboard keep working while they migrate to /status.conversations.
-    """
-    adapter = _adapter(name)
-    result = adapter.interpret(payload)
-    registry = state.conversations
-    conversation = registry.apply(name, result, adapter.capabilities)
-    key = conversation.key
-    if conversation.hidden:
-        # The user closed this tab. Routine hooks from a still-running
-        # session must not resurrect it; only a new session or a new user
-        # turn does (registry.apply un-hides on those). Identity and drain
-        # rules still apply - closing a tab does not change who speaks.
-        return {
-            "conversation": key,
-            "may_drain": result.may_drain,
-            "speech_identity": result.speech_identity,
-            "listener": "none",
-            "participant": result.participant,
-            "label": conversation.label(),
-        }
-    already = key in state.agents
-    state.register_agent(key, conversation.label())
-    if not already:
-        state.add_event("agent", f"'{conversation.label()}' registered ({adapter.label})")
-    for event in result.events:
-        if event.kind == "activity" and event.participant is None:
-            state.set_activity(key, event.detail)
-        elif event.kind == "turn_ended":
-            state.set_activity(key, "")
-        elif event.kind == "title_changed" and event.title:
-            state.register_agent(key, event.title)
-    response = {
-        "conversation": key,
-        "may_drain": result.may_drain,
-        "speech_identity": result.speech_identity,
-        "listener": result.listener,
-        "participant": result.participant,
-        "label": conversation.label(),
-    }
-    if result.listener in ("start", "poll"):
-        window = adapter.capabilities.max_idle_seconds
-        if listen_seconds is not None and window:
-            # The hook may shorten (never lengthen) the harness window - a
-            # Codex user picks how long the synchronous Stop holds the turn.
-            window = max(0.0, min(float(listen_seconds), window))
-        if window is not None and window <= 0:
-            response["listener"] = "none"  # idle listening disabled by the hook
-        else:
-            response["listener_id"] = registry.listener_started(key, window=window)
-            response["listen_seconds"] = window
-            response["harness"] = name
-    return response
-
-
-def _render_for(state: ListenerState, key: str, messages: list[str], moment: str) -> dict | None:
-    conversation = state.conversations.get(key)
-    if conversation is None:
-        return None
-    try:
-        adapter = _adapter(conversation.harness)
-    except KeyError:
-        return None
-    delivery = adapter.deliver(messages, moment)  # type: ignore[arg-type]
-    return {
-        "context": delivery.context,
-        "system_message": delivery.system_message,
-        "exit_code": delivery.exit_code,
-    }
-
-
-def _render_delivery(state: ListenerState, key: str, transcripts: list[dict], moment: str) -> dict | None:
-    if not transcripts:
-        return None
-    return _render_for(state, key, [t["text"] for t in transcripts], moment)
-
-
 def _named_agent_labels(state: ListenerState) -> dict:
     """agent -> label, with the registry's name for every conversation it
     knows. The legacy table falls back to the raw agent string (an id, or
@@ -669,30 +579,11 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 listener_id = query.get("listener", [None])[0]
                 if agent:
                     agent = state.conversations.resolve(agent) or agent
-                if listener_id and not state.conversations.listener_alive(agent or "", listener_id):
-                    # A newer listener took over (or this one expired):
-                    # stand down without touching the queue, so the current
-                    # listener - not a stale one - receives the message.
-                    self._respond({"transcripts": [], "nudge": None, "stand_down": True})
-                    return
                 active_before = state.active_agent
-                conversation = state.conversations.get(agent or "")
-                hidden = bool(conversation and conversation.hidden)
-                transcripts = [asdict(t) for t in state.drain(agent, touch=not hidden)]
+                response = hook_gateway.drain(state, agent, listener_id)
                 if state.active_agent != active_before:
-                    save_settings(state)  # bootstrap activation must stick too
-                # Narration nudge (#16): piggybacks on the poll the hooks
-                # already make — the daemon lends the clockless model a
-                # sense of elapsed silence. Old hooks ignore the extra key.
-                nudge = state.pop_due_nudge(agent) if agent else None
-                moment = "wake" if listener_id else "mid_turn"
-                delivery = _render_delivery(state, agent or "", transcripts, moment)
-                self._respond({
-                    "transcripts": transcripts,
-                    "nudge": nudge,
-                    "stand_down": False,
-                    "delivery": delivery,
-                })
+                    save_settings(state)
+                self._respond(response)
             elif url.path == "/events":
                 since = int(parse_qs(url.query).get("since", ["0"])[0])
                 self._respond({"events": state.events_since(since)})

@@ -61,7 +61,7 @@ def test_session_start_registers_the_tab_and_listens_until_the_window_ends(daemo
     result = _run(CLAUDE_HOOK, start, port, {"NOISY_CODING_REWAKE_WAIT_SECONDS": "1"})
     assert result.returncode == 0 and result.stdout == ""
     assert 1.0 <= time.time() - began < 5.0
-    key = start["transcript_path"]
+    key = start["session_id"]
     assert state.agent_labels[key] == "New conversation"
     # The window ran out: the tab is deaf and says so.
     assert state.conversations.status(key) == "deaf"
@@ -72,7 +72,7 @@ def test_post_tool_use_delivers_queued_voice_as_context(daemon):
     state, port = daemon
     rows = _rows("session.jsonl")
     _run(CLAUDE_HOOK, rows[0], port, {"NOISY_CODING_REWAKE_WAIT_SECONDS": "0"})
-    key = rows[0]["transcript_path"]
+    key = rows[0]["session_id"]
     _queue(state, key, "please add a test")
     post = next(r for r in rows if r["hook_event_name"] == "PostToolUse")
     result = _run(CLAUDE_HOOK, post, port)
@@ -87,7 +87,7 @@ def test_a_subagents_post_tool_use_leaves_the_parents_queue_alone(daemon):
     state, port = daemon
     rows = _rows("participant.jsonl")
     _run(CLAUDE_HOOK, rows[0], port, {"NOISY_CODING_REWAKE_WAIT_SECONDS": "0"})
-    key = rows[0]["transcript_path"]
+    key = rows[0]["session_id"]
     _queue(state, key, "for the main thread only")
     child = next(r for r in rows if r.get("agent_id") and r["hook_event_name"] == "PostToolUse")
     result = _run(CLAUDE_HOOK, child, port)
@@ -100,7 +100,7 @@ def test_stop_wakes_the_model_with_the_spoken_text(daemon):
     state, port = daemon
     rows = _rows("session.jsonl")
     _run(CLAUDE_HOOK, rows[0], port, {"NOISY_CODING_REWAKE_WAIT_SECONDS": "0"})
-    key = rows[0]["transcript_path"]
+    key = rows[0]["session_id"]
     _queue(state, key, "what did you change")
     stop = next(r for r in rows if r["hook_event_name"] == "Stop")
     result = _run(CLAUDE_HOOK, stop, port, {"NOISY_CODING_REWAKE_WAIT_SECONDS": "5"})
@@ -114,7 +114,7 @@ def test_a_stale_stop_listener_stands_down_when_a_newer_one_starts(daemon):
     state, port = daemon
     rows = _rows("session.jsonl")
     _run(CLAUDE_HOOK, rows[0], port, {"NOISY_CODING_REWAKE_WAIT_SECONDS": "0"})
-    key = rows[0]["transcript_path"]
+    key = rows[0]["session_id"]
     stop = next(r for r in rows if r["hook_event_name"] == "Stop")
     environment = {k: v for k, v in os.environ.items() if not k.startswith("NOISY_CODING_")}
     environment.update(NOISY_CODING_LISTENER_PORT=str(port), NOISY_CODING_REWAKE_WAIT_SECONDS="20",
@@ -145,7 +145,7 @@ def test_pre_tool_use_injects_the_conversation_identity_into_speak(daemon):
     result = _run(CLAUDE_HOOK, forged, port)
     output = json.loads(result.stdout)
     assert output["hookSpecificOutput"]["permissionDecision"] == "allow"
-    assert output["hookSpecificOutput"]["updatedInput"]["agent_id"] == speak["transcript_path"]
+    assert output["hookSpecificOutput"]["updatedInput"]["agent_id"] == speak["session_id"]
     assert output["hookSpecificOutput"]["updatedInput"]["text"] == "Hello from the fixture"
     assert "Hello from the fixture" in output["systemMessage"]
     ordinary = next(r for r in rows if r["hook_event_name"] == "PreToolUse" and r["tool_name"] == "Agent")

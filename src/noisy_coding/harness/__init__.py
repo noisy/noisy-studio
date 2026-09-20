@@ -47,6 +47,7 @@ def names() -> list[str]:
 
 
 def get(name: str) -> Harness:
+    name = {"claude": "claude-hooks", "codex": "codex-hooks"}.get(name, name)
     if name not in REGISTRY:
         raise KeyError(f"unknown harness {name!r}; have {names()}")
     return REGISTRY[name]()

@@ -78,35 +78,14 @@ class Event:
 
 
 @dataclass(frozen=True)
-class Interpretation:
+class Observation:
+    """Normalized conversation events; no host reply or polling instructions."""
     conversation: str
     events: tuple[Event, ...] = ()
-    # Participants (subagents) never take the conversation's queue: a
-    # message spoken to the user's agent must reach the parent, not a child
-    # that happened to run a tool first (#40).
-    may_drain: bool = False
-    # What the calling hook must inject into identity-sensitive tool calls
-    # (speak/announce/...). None when this payload is not such a call.
-    speech_identity: str | None = None
-    listener: ListenerAction = "none"
-    # A short human fallback label when no title is known (e.g. id[:8]).
     short_id: str = ""
     participant: str | None = None
 
 
-@dataclass(frozen=True)
-class Delivery:
-    context: str
-    system_message: str
-    exit_code: int
-    extra: dict = field(default_factory=dict)
-
-
-class Harness(Protocol):
-    name: str  # registry key ("claude-hooks", "codex-hooks", ...)
-    label: str  # human wording ("Claude Code", "Codex")
-    capabilities: Capabilities
-
-    def interpret(self, payload: dict) -> Interpretation: ...
-
-    def deliver(self, messages: list[str], moment: Moment) -> Delivery: ...
+# Compatibility imports for older adapters. New core code uses Observation and
+# the transport-independent Provider/Speech/Receipt contract in provider.py.
+from noisy_coding.harness.hook_contract import Delivery, Harness, Interpretation  # noqa: E402

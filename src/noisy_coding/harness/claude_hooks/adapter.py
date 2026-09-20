@@ -19,12 +19,11 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 
+from noisy_coding.harness.hook_contract import Delivery, Interpretation
 from noisy_coding.harness.base import (
     Capabilities,
-    Delivery,
     Event,
     HarnessError,
-    Interpretation,
     Moment,
 )
 from noisy_coding.harness.hook_common import (
