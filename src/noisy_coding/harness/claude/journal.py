@@ -24,6 +24,7 @@ class Journal:
             self._connection = sqlite3.connect(str(self._path) if self._path else ':memory:', check_same_thread=False)
             self._connection.execute('PRAGMA synchronous=FULL')
             self._connection.execute('CREATE TABLE IF NOT EXISTS deliveries (id TEXT PRIMARY KEY, speech TEXT NOT NULL, state TEXT NOT NULL, detail TEXT NOT NULL)')
+            self._connection.execute('CREATE TABLE IF NOT EXISTS wake_requests (prompt TEXT PRIMARY KEY, conversation TEXT NOT NULL, state TEXT NOT NULL)')
             columns = {row[1] for row in self._connection.execute('PRAGMA table_info(deliveries)')}
             if 'written_at' not in columns:
                 self._connection.execute('ALTER TABLE deliveries ADD COLUMN written_at REAL')
@@ -34,6 +35,37 @@ class Journal:
     def key(speech: Speech) -> str:
         identity = [speech.conversation, speech.utterance_id, float(speech.created_at)]
         return hashlib.sha256(json.dumps(identity).encode()).hexdigest()
+
+    def claim_wake(self, conversation: str, prompt: str) -> bool:
+        with self._lock:
+            db = self._db()
+            if db.execute("SELECT 1 FROM wake_requests WHERE conversation=? AND state IN ('uncertain','requested')", (conversation,)).fetchone():
+                return False
+            db.execute("INSERT INTO wake_requests VALUES (?, ?, 'uncertain')", (prompt, conversation))
+            db.commit()
+            return True
+
+    def finish_wake(self, prompt: str, state: str) -> None:
+        with self._lock:
+            db = self._db()
+            db.execute("UPDATE wake_requests SET state=? WHERE prompt=? AND state!='handled'", (state, prompt))
+            db.commit()
+
+    def accept_wake(self, conversation: str, prompt: str) -> bool:
+        with self._lock:
+            db = self._db()
+            row = db.execute('SELECT 1 FROM wake_requests WHERE conversation=? AND prompt=?', (conversation, prompt)).fetchone()
+            if row is None:
+                return False
+            db.execute("UPDATE wake_requests SET state='handled' WHERE prompt=?", (prompt,))
+            db.commit()
+            return True
+
+    def retire_wakes(self, conversation: str) -> None:
+        with self._lock:
+            db = self._db()
+            db.execute("UPDATE wake_requests SET state='retired' WHERE conversation=? AND state IN ('requested','uncertain')", (conversation,))
+            db.commit()
 
     def add(self, speech: Speech) -> Receipt:
         with self._lock:

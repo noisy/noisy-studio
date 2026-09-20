@@ -11,6 +11,11 @@ from noisy_coding.listener.state import ListenerState
 SESSION = '00000000-0000-4000-8000-000000000001'
 
 
+@pytest.fixture(autouse=True)
+def direct_socket_selection(monkeypatch):
+    monkeypatch.setattr(agent_provider, 'CLAUDE_DELIVERY', 'socket')
+
+
 def register(state, endpoint, **extra):
     return _apply_harness_event(state, 'claude-hooks', {
         'hook_event_name': 'SessionStart', 'session_id': SESSION,
@@ -18,7 +23,7 @@ def register(state, endpoint, **extra):
     })
 
 
-def test_socket_default_disables_start_stop_and_posttool_consumers_but_keeps_identity(tmp_path):
+def test_socket_selection_disables_start_stop_and_posttool_consumers_but_keeps_identity(tmp_path):
     state = ListenerState()
     started = register(state, tmp_path / 'inbox')
     stopped = _apply_harness_event(state, 'claude-hooks', {'hook_event_name': 'Stop', 'session_id': SESSION})

@@ -8,7 +8,9 @@ from noisy_coding.listener.http_api import start_http_api
 from noisy_coding.listener.state import ListenerState
 
 
-def test_acknowledgement_during_send_confirms_only_its_session_and_is_not_downgraded(tmp_path):
+def test_acknowledgement_during_send_confirms_only_its_session_and_is_not_downgraded(tmp_path, monkeypatch):
+    from noisy_coding.harness import agent_provider
+    monkeypatch.setattr(agent_provider, 'CLAUDE_DELIVERY', 'socket')
     state = ListenerState()
     state.conversations = ConversationRegistry(path=tmp_path / 'conversations.json')
     session1 = '00000000-0000-4000-8000-000000000001'

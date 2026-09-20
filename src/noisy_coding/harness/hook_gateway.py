@@ -41,8 +41,8 @@ def _apply_harness_event(
     if provider is not None:
         connection = payload.get("noisy_studio_connection") if payload.get("hook_event_name") in ("SessionStart", "UserPromptSubmit") else None
         provider.attach(Registration(key, str(payload.get("session_id") or key), connection=connection, participant=result.participant))
+        registry._readiness[conversation.harness] = provider.availability
         if not provider.allows_hook_pickup:
-            registry._readiness[conversation.harness] = provider.availability
             conversation.listener = None
         provider.observe(result.events)
         if connection is not None and result.participant is None and not provider.allows_hook_pickup:
@@ -81,6 +81,11 @@ def _apply_harness_event(
         "participant": result.participant,
         "label": conversation.label(),
     }
+    if (payload.get('hook_event_name') == 'UserPromptSubmit' and result.participant is None
+            and provider is not None and provider.accept_wake(key, payload.get('prompt'))):
+        picked_up = drain(state, key, None)
+        response['wake_delivery'] = picked_up.get('delivery')
+        response['suppress_empty_wake'] = not bool(picked_up.get('delivery'))
     if (payload.get("hook_event_name") == "PostToolUse" and result.participant is None
             and provider is not None and not provider.allows_hook_pickup):
         response["nudge"] = state.pop_due_nudge(key)
@@ -145,6 +150,15 @@ def drain(state: ListenerState, agent: str | None, listener_id: str | None) -> d
         except Exception:
             return {"transcripts": [], "nudge": None, "stand_down": True}
     transcripts = [asdict(t) for t in state.drain(agent, touch=not hidden)]
+    if provider is not None and transcripts:
+        for item in transcripts:
+            state.update_utterance(item['utterance_id'], delivery_state='confirmed',
+                                   delivery_detail='Handed to the receiving hook.')
+        try:
+            provider.complete_hook_pickup([Speech(t['utterance_id'], t['addressee'], t['text'], t['timestamp']) for t in transcripts])
+        except Exception:
+            # The pre-pickup claim is already durable; never replay on failure.
+            state.add_event('delivery_storage_error', 'Hook pickup completed; its final receipt could not be saved')
     nudge = state.pop_due_nudge(agent) if agent else None
     moment = "wake" if listener_id else "mid_turn"
     return {

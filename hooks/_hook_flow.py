@@ -68,6 +68,16 @@ def run(harness: str, payload: dict, listen_seconds: float | None = None) -> int
 
     if event_name == "PreToolUse":
         return _pre_tool_use(payload, reply)
+    if event_name == 'UserPromptSubmit' and reply.get('suppress_empty_wake'):
+        print(json.dumps({'decision': 'block', 'reason': 'No queued voice remains.',
+                          'hookSpecificOutput': {'hookEventName': event_name, 'suppressOriginalPrompt': True}}))
+        return 0
+    if event_name == 'UserPromptSubmit' and reply.get('wake_delivery'):
+        delivery = reply['wake_delivery']
+        print(json.dumps({'systemMessage': delivery['system_message'], 'hookSpecificOutput': {
+            'hookEventName': event_name, 'additionalContext': delivery['context'],
+        }}))
+        return 0
     if reply.get("registration_context") and event_name in ("SessionStart", "UserPromptSubmit"):
         print(json.dumps({"hookSpecificOutput": {
             "hookEventName": event_name, "additionalContext": reply["registration_context"],

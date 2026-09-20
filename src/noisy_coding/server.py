@@ -89,7 +89,6 @@ def _speak_result_message(result: dict | None) -> str | None:
     return None
 
 
-@mcp.tool()
 async def acknowledge_delivery(message_ids: list[str], agent_id: str | None = None) -> str:
     """Acknowledge Noisy Studio messages you have actually read.
 

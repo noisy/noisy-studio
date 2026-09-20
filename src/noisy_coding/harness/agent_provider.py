@@ -3,12 +3,14 @@ from __future__ import annotations
 
 from noisy_coding.harness.claude.journal import Journal
 from noisy_coding.harness.claude.socket_delivery import SocketDelivery
+from noisy_coding.harness.claude.socket_wake import SocketWake
+from noisy_coding.harness import hook_runtime
 
 # Deliberate rollback: change only this choice, then restart/re-register sessions.
-CLAUDE_DELIVERY = "socket"
+CLAUDE_DELIVERY = "hook-wake"
 
 from noisy_coding.harness.provider import (
-    Availability, ProviderCapabilities, Receipt, Registration, Speech, provider_name,
+    Availability, ProviderCapabilities, Receipt, Registration, Speech, WakeResult, provider_name,
 )
 
 
@@ -16,11 +18,14 @@ class HookDelivery:
     """Pull delivery: the core keeps speech queued until a valid hook picks it up."""
     allows_hook_pickup = True
 
-    def __init__(self, registry, journal=None):
+    def __init__(self, registry, journal=None, waker=None):
         self._registry = registry
         self.journal = journal
+        self.waker = waker
 
     def attach(self, registration: Registration) -> Availability:
+        if self.waker:
+            self.waker.attach(registration)
         return self.availability(registration.conversation)
 
     def submit(self, speech: Speech) -> Receipt:
@@ -37,6 +42,16 @@ class HookDelivery:
     def acknowledge(self, conversation, message_ids):
         return self.journal.acknowledge(conversation, message_ids) if self.journal else []
 
+    def complete_hook_pickup(self, speeches):
+        if self.journal:
+            self.journal.record(speeches, 'confirmed', 'handed to the receiving hook')
+
+    def wake(self, conversation):
+        return self.waker.wake(conversation) if self.waker else WakeResult('unavailable', 'independent wake-up is unsupported')
+
+    def accept_wake(self, conversation, prompt):
+        return self.waker.accept_wake(conversation, prompt) if self.waker else False
+
     def cancel(self, speech):
         return self.journal.cancel(speech) if self.journal else True
 
@@ -47,13 +62,24 @@ class HookDelivery:
                     record_receipt(speech, receipt)
                 else:
                     (restore or record_receipt)(speech, receipt)
+        if self.waker:
+            self.waker.start(record_receipt, recording)
+
+    def stop(self):
+        if self.waker:
+            self.waker.stop()
 
     def observe(self, events) -> None:
-        # The normalized registry already records lifecycle events.
-        pass
+        if self.waker:
+            self.waker.observe(events)
 
     def availability(self, conversation: str) -> Availability:
-        return self._registry.availability(conversation)
+        registered = self._registry.get(conversation)
+        capabilities = self._registry._capabilities.get(registered.harness) if registered else None
+        hooks = hook_runtime.availability(registered, capabilities, self._registry._clock())
+        if hooks.ready or not self.waker or not registered or registered.ended:
+            return hooks
+        return self.waker.availability(conversation)
 
 
 class AgentProvider:
@@ -88,6 +114,19 @@ class AgentProvider:
         if prepare:
             prepare(speeches)
 
+    def complete_hook_pickup(self, speeches):
+        complete = getattr(self._implementation, 'complete_hook_pickup', None)
+        if complete:
+            complete(speeches)
+
+    def wake(self, conversation: str) -> WakeResult:
+        wake = getattr(self._implementation, 'wake', None)
+        return wake(conversation) if wake else WakeResult('unavailable', 'independent wake-up is unsupported')
+
+    def accept_wake(self, conversation, prompt):
+        accept = getattr(self._implementation, 'accept_wake', None)
+        return accept(conversation, prompt) if accept else False
+
     def cancel(self, speech: Speech) -> bool:
         cancel = getattr(self._implementation, 'cancel', None)
         return cancel(speech) if cancel else True
@@ -110,9 +149,13 @@ class AgentProviders:
         capabilities = ProviderCapabilities(True, True, True, 'none')
         journal_path = registry._path.parent / 'claude-delivery.sqlite3' if registry._path else None
         journal = Journal(journal_path)
-        claude_delivery = SocketDelivery(journal) if CLAUDE_DELIVERY == 'socket' else HookDelivery(registry, journal)
+        def can_wake(key):
+            conversation = registry.get(key)
+            return conversation is not None and not conversation.hidden and not conversation.ended
+        waker = SocketWake(journal, can_wake=can_wake) if CLAUDE_DELIVERY == 'hook-wake' else None
+        claude_delivery = SocketDelivery(journal) if CLAUDE_DELIVERY == 'socket' else HookDelivery(registry, journal, waker)
         self._providers = providers if providers is not None else {
-            'claude': AgentProvider('claude', 'Claude Code', claude_delivery, ProviderCapabilities(True, True, True, 'application')),
+            'claude': AgentProvider('claude', 'Claude Code', claude_delivery, ProviderCapabilities(True, True, True, 'transport')),
             'codex': AgentProvider('codex', 'Codex', HookDelivery(registry), capabilities),
         }
         self._registry = registry

@@ -41,6 +41,12 @@ class Availability:
 
 
 @dataclass(frozen=True)
+class WakeResult:
+    state: Literal['requested', 'pending', 'unavailable', 'uncertain']
+    detail: str = ''
+
+
+@dataclass(frozen=True)
 class ProviderCapabilities:
     idle_wake: bool
     active_turn_delivery: bool
@@ -66,6 +72,7 @@ class Provider(Protocol):
     def submit(self, speech: Speech) -> Receipt: ...
     def observe(self, events: tuple[Event, ...]) -> None: ...
     def availability(self, conversation: str) -> Availability: ...
+    def wake(self, conversation: str) -> WakeResult: ...
 
 
 ALIASES = {'claude-hooks': 'claude', 'codex-hooks': 'codex'}

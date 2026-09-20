@@ -1,104 +1,65 @@
-# Claude inbox delivery
+# Claude hook delivery with socket wake-up
 
-Claude remains one provider with one conversation key, tab, character and
-outgoing speech identity. Its private default delivery implementation is the
-session inbox. Codex keeps its existing hook delivery.
+Claude remains one provider, conversation, character and tab. **Hooks are the
+only consumer of actual speech.** The socket is a wake-up mechanism, not a second
+speech-delivery path. Codex keeps its existing hook implementation.
 
-## Registration and lifecycle
+## Normal delivery
 
-The updated Claude hook reads `CLAUDE_CODE_MESSAGING_SOCKET` from its inherited
-environment on SessionStart and UserPromptSubmit and sends it privately with the
-hook payload's full session ID. No socket path is derived from an ID. Participant
-hooks cannot replace the parent's endpoint. Other hooks still report activity,
-turn completion and participant lifecycle, and inject trusted outgoing speech
-identity. SessionEnd removes the endpoint.
+The daemon queues completed utterances for their original recipient. Existing
+PostToolUse and SessionStart/Stop listeners pick them up using the established
+hook flow, including the listener's continuation grouping. The dashboard marks
+speech delivered at hook pickup, as before. This means handed to the integration,
+not proof that the model read it or completed the requested work.
 
-Endpoints are held only in memory and are never included in dashboard snapshots.
-After a daemon restart, an already-idle session has to run an updated hook again:
-**type a message in that Claude session, or restart/resume it**. A new session
-registers at startup. Update app and plugin together to get the new bundled hook.
-A session without an endpoint is shown as requiring registration. No other tab,
-same-directory session or process is substituted.
+If speech remains queued after the 2-second quiet window plus a 1-second pickup
+allowance, the provider requests a socket wake-up. Recording extends that window
+up to the existing 20-second continuation cap. The control message contains only
+a short wake token; it never contains the speech or a receipt instruction.
 
-## Delivery and visible outcomes
+Claude Code fires UserPromptSubmit for an admitted socket prompt. The hook sends
+that prompt to the daemon, which matches the exact stored wake token and canonical
+session, and drains speech through the same queue path. It returns the actual
+speech as additional context. If another hook already consumed it, or it was
+cancelled, the hook blocks the empty wake without starting another model response.
+Ordinary user prompts and wakes belonging to another session are not intercepted.
 
-Completed speech is grouped per original recipient and in original order. The
-normal continuation window is 2 seconds; recording extends it up to a 20-second
-cap. The sender opens a local Unix connection only when the group is ready and
-bounds connect/write operations. The frame includes the exact native session ID
-and describes the text as user speech transcribed and delivered by Noisy Studio.
-Claude presents this as peer input; our wording does not override host permissions.
+No model receipt tool is advertised. Actual speech has no receipt-ID suffix and
+there are no acknowledgement instructions at registration or on each message.
+Previously cached receipt tools remain compatible with the old HTTP endpoint.
 
-The compact content prefix is `[VOICE · Noisy Studio transcript]`. This names
-the actual source without repeating a long explanation on every message.
-App-generated character notifications keep a separate `[NOISY STUDIO]` prefix.
-Claude Code adds its own outer "another Claude session" envelope; Noisy Studio
-does not supply or control that text. The currently documented inbox path still
-applies peer-message policy, including to scripts and hooks. No documented
-alternate message shape that changes this envelope was found in the
-[Claude Code messaging reference](https://code.claude.com/docs/en/cross-session-messaging).
-Do not impersonate a keyboard prompt or alter inbound controls to hide the wrapper.
+## Registration, failure and restart
 
-Each group includes stable receipt IDs and asks the receiving agent to call
-`acknowledge_delivery` after reading. The trusted PreToolUse integration supplies
-the receiving session identity; the daemon matches that identity and the IDs
-against attempted messages in its durable journal. This is an explicit agent
-acknowledgement, not a native host receipt or proof of completed work. A general
-reply or later hook activity is not used as confirmation. Missing or failed tool
-calls leave the outcome unknown. Host permission rules remain unchanged.
+SessionStart/UserPromptSubmit register the inherited socket endpoint and full
+native session ID privately. Subagent hooks cannot replace parent registration.
+No path is guessed from a UUID, cwd or another tab. SessionEnd removes the endpoint.
 
-SessionStart/UserPromptSubmit supply the receipt convention through integration
-context. Putting that instruction only in the peer message was insufficient in
-an ordinary-speech live check: Claude could answer without acknowledging it.
-Per-message content now includes IDs only, without repeating the full convention.
+Endpoints remain in memory. After a daemon restart, type a message in the target
+session or restart/resume it to register again. Updated hook scripts are required
+for wake pickup; update the integration together with the daemon. Existing hook
+listeners can continue delivering speech even when socket wake is unavailable.
 
-**Upgrade existing sessions:** reload/reconnect the Noisy Studio MCP server, or
-start a fresh Claude session using the updated integration, so the new tool is
-available. Updating only the daemon cannot replace an already-running MCP tool
-server. Historical messages without receipt IDs remain unknown; do not resend
-them merely to obtain a receipt. No extra acknowledgement is spoken aloud.
+The journal records each wake before socket I/O and permits only one pending
+wake per session. Daemon restart does not blindly repeat an ambiguous write.
+An explicit session restart allows a new control wake; old controls remain
+recognizable so a late arrival can be handled without duplicating speech.
+Actual queue pickup and cancellation remain atomic in the core. Completed hook
+pickups are journaled so restart does not put already-delivered speech back into
+the queue. A journal failure after pickup leaves its pre-pickup claim, preventing
+replay. Hidden or ended sessions are not woken.
 
-- **Queued:** waiting for the continuation window or a usable registration.
-- **Sent, unconfirmed:** the socket write completed. This does not establish that
-  Claude admitted, read or acted on it; host policy may hold or refuse it.
-- **Delivery unknown:** 60 seconds after a completed write, the status settles
-  here if no agent acknowledgement has arrived. This is not a failure
-  verdict: check the receiving session before deciding to resend. The deadline
-  survives daemon restart. Older journal entries without a write timestamp settle
-  immediately. Neither timeout nor restart triggers a resend or permits recall.
-- **Uncertain, not retried:** a write failed after connection, or the daemon stopped
-  during an attempt. The message may already have arrived.
-- **Unavailable:** no endpoint, a closed endpoint, or a known connection failure
-  before writing. Explicit re-registration can retry that known pre-write failure.
-- **Rejected:** local target validation failed, or the message was no longer
-  eligible before writing. A wrong target rejected by the host cannot be inferred
-  from a successful raw write; it becomes unknown on our side.
-- **Confirmed:** the receiving agent called `acknowledge_delivery` for this exact
-  message in this session. Late or repeated acknowledgements are safe, including
-  after restart or after the status became unknown. A socket completion arriving
-  after acknowledgement cannot downgrade the confirmed state. Queued, cancelled
-  and wrong-session messages cannot be confirmed. This does not assert completion
-  of the user's requested work or require echoing the user's words.
+A socket write never marks speech delivered. A refused/held wake leaves speech
+queued for a hook; a failed connection leaves it queued and reports the problem.
+Host inbound controls are unchanged. Claude's peer envelope is host-owned.
 
-The private `claude-delivery.sqlite3` journal in the selected instance's config
-folder commits an attempt before I/O. Restart restores pending speech even when
-the periodic history save lagged. Written/uncertain entries are never automatically
-replayed. Cancellation is durable and only succeeds before an attempt is claimed.
-No automatic hook fallback, blind retries or exactly-once execution is promised.
+Historical messages already sent by the earlier direct-socket implementation
+are not requeued: they may already have caused work. Their old unknown status
+cannot be resolved by sending them again.
 
-## Deliberate rollback
+## Internal selection
 
-Change `CLAUDE_DELIVERY` from `"socket"` to `"hooks"` in
-`src/noisy_coding/harness/agent_provider.py`, rebuild if packaged, then restart the
-daemon gracefully. Existing sessions must run a fresh SessionStart or Stop hook
-(restart/resume the session or complete a typed turn) to create a listener. The
-retained async hook registrations have sufficient timeout for this path; in
-socket mode the same processes return promptly without starting listeners.
-
-The provider identity and session key stay unchanged. The journal also records
-hook pickup attempts during rollback, preventing later socket activation from
-replaying them. Previously sent/uncertain speech remains held for inspection;
-switching implementations is not permission to resend it.
-
-Do not change inbound controls to conceal a held/refused message, infer a session
-from cwd, or expose endpoint/token/configuration values while troubleshooting.
+`CLAUDE_DELIVERY = "hook-wake"` in `harness/agent_provider.py` is the default.
+`"hooks"` disables independent socket wake while retaining the original hook flow.
+The earlier `"socket"` implementation is retained for comparison/regression
+coverage, not used for normal delivery. There is no transport settings UI or
+automatic switch to direct-socket speech delivery.

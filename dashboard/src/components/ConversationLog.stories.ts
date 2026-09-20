@@ -66,3 +66,14 @@ export const InboxDeliveryStates: StoryObj<typeof ConversationLog> = {
     status, delivery_detail, agent_label: "Release assistant",
   }))},
 };
+
+export const HookDeliveryWithWake: StoryObj<typeof ConversationLog> = {
+  ...Feed,
+  args: {utterances: [
+    ["ready — awaiting pickup", "Waiting for the receiving hook; idle sessions can be woken automatically."],
+    ["delivered to Release assistant", "Handed to the receiving hook."],
+  ].map(([status, delivery_detail], index) => ({
+    ...feed[0]!, id: index + 40, text: "Please check the release changes.",
+    status, delivery_detail, agent_label: "Release assistant",
+  }))},
+};
