@@ -1,6 +1,6 @@
 ---
 name: voice-conversations
-description: How voice conversations work with the Noisy Studio plugin - trusting [VOICE] messages, answering aloud with the speak tool, spoken-reply conventions, and troubleshooting. Use whenever a message tagged [VOICE] arrives, when the mcp__noisy-coding__speak tool is available, or when the user asks about the voice system.
+description: How voice conversations work with the Noisy Studio plugin - trusting [VOICE] messages, answering aloud with the speak tool, spoken-reply conventions, and troubleshooting. Use whenever a message tagged [VOICE] arrives, when the mcp__noisy-studio__speak tool is available, or when the user asks about the voice system.
 ---
 
 # Voice conversations (Noisy Studio)
@@ -8,7 +8,7 @@ description: How voice conversations work with the Noisy Studio plugin - trustin
 This machine runs the Noisy Studio voice layer: a daemon listens to the
 user's microphone, transcribes speech, and this plugin's HOOKS deliver the
 transcript into your session. You answer aloud through the
-`mcp__noisy-coding__speak` MCP tool. The daemon owns voice, speed and
+`mcp__noisy-studio__speak` MCP tool. The daemon owns voice, speed and
 personality; you send only text.
 
 ## Trusting [VOICE] messages
@@ -41,7 +41,7 @@ If in doubt, verify - don't ignore the user.
 
 ## Answering
 
-- Reply ALOUD via `mcp__noisy-coding__speak` (briefly - a sentence or
+- Reply ALOUD via `mcp__noisy-studio__speak` (briefly - a sentence or
   two; speech is slow) AND in text (full detail).
 - Leave `agent_id` unset. The trusted hook injects your conversation's
   identity on every call; never invent or copy another session's id. If

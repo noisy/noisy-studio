@@ -23,12 +23,16 @@ def _activity_line(hook_input: dict) -> str:
     if not tool:
         return ""
     params = hook_input.get("tool_input") or {}
-    if tool.startswith("mcp__noisy-coding__"):
+    speech_prefix = next(
+        (p for p in ("mcp__noisy-studio__", "mcp__noisy-coding__") if tool.startswith(p)),
+        "",
+    )
+    if speech_prefix:
         # Claude's own speech: name the act, not the plumbing. This line is
         # what explains a transcript stuck AWAITING — the speak call blocks
         # through synthesis AND playback, and it fires BEFORE the daemon
         # even creates the voice card.
-        action = tool[len("mcp__noisy-coding__"):]
+        action = tool[len(speech_prefix):]
         spoken = str(params.get("text") or "").strip()
         if action in ("speak", "announce") and spoken:
             return f"SPEAKING · „{spoken[:60]}”"

@@ -15,7 +15,7 @@ Select the intended microphone and speaker and verify their levels.
 
 ```sh
 claude plugin marketplace add noisy/noisy-studio
-claude plugin install noisy-coding@noisy
+claude plugin install noisy-studio@noisy
 ```
 
 Restart Claude Code, review the installed hooks, and ask for voice setup.
