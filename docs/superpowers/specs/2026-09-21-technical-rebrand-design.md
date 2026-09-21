@@ -1,6 +1,6 @@
 # Independent technical rebrand on main
 
-Status: proposed migration design, awaiting review. No runtime changes yet.
+Status: approved by Krzysztof on 2026-09-21; implementation in progress.
 
 ## Goal and evidence
 
