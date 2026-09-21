@@ -77,7 +77,7 @@ automatic switch to direct-socket speech delivery.
 
 ## Restart recovery evidence (#136)
 
-On 2026-09-21, an isolated Claude Code session remained open while its independent
+On 2026-09-21, an isolated Claude Code 2.1.278/macOS stream-JSON session remained open while its independent
 HTTP daemon process was stopped and replaced on the same port/config directory.
 Voice queued after restart produced the requested marker reply in that same session
 without typed input or a waiting Stop hook. A second daemon restart did not produce

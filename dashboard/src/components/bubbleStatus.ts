@@ -2,7 +2,7 @@
 
 import { statusToState, type ClaudeState, type Role, type UserState } from "../machines/chat";
 
-export type StatusKind = "done" | "work" | "rec" | "spoken" | "fail" | "off";
+export type StatusKind = "done" | "work" | "rec" | "spoken" | "fail" | "warn" | "off";
 
 export interface StatusChip {
   kind: StatusKind;
@@ -20,7 +20,7 @@ const USER_CHIPS: Record<UserState, StatusChip> = {
   sent: { kind: "off", label: "◌ SENT · UNCONFIRMED" },
   unknown: { kind: "off", label: "? DELIVERY UNKNOWN" },
   uncertain: { kind: "fail", label: "! UNCERTAIN · NOT RETRIED" },
-  unavailable: { kind: "fail", label: "! ACTION NEEDED" },
+  unavailable: { kind: "warn", label: "! ACTION NEEDED" },
   rejected: { kind: "fail", label: "✕ REJECTED" },
   accepted: { kind: "off", label: "◌ ACCEPTED · UNCONFIRMED" },
   confirmed: { kind: "done", label: "✓ CONFIRMED" },

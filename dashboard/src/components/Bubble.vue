@@ -139,12 +139,13 @@ const tagOf = (kind: keyof typeof TAGS) => TAGS[kind];
 .st.rec { color:var(--amber); }
 .st.spoken { color:var(--violet); }
 .st.fail { color:var(--red); }
+.st.warn { color:var(--warning); background:color-mix(in srgb, var(--warning) 12%, transparent); }
 .replay, .cancel { color:var(--muted); background:transparent; border:1px solid var(--line); font-size:12px; padding:3px 7px; min-height:28px; }
 .replay:hover, .cancel:hover { color:var(--ink); background:var(--surface-hover); border-color:var(--line-strong); }
 .replay.playing { color:var(--amber); }
 .replay.skip:hover, .cancel:hover { color:var(--red); }
 .tm { margin-left:auto; font-size:10px; color:var(--muted); font-variant-numeric:tabular-nums; }
-.delivery-notice { border:1px solid var(--accent-border); border-left:3px solid var(--amber); border-radius:6px; padding:10px 12px; margin:8px 0 12px; color:var(--ink); font:13px/1.5 var(--sans); overflow-wrap:anywhere; }
+.delivery-notice { border:1px solid color-mix(in srgb, var(--warning) 65%, transparent); border-left:3px solid var(--warning); background:color-mix(in srgb, var(--warning) 6%, transparent); border-radius:6px; padding:10px 12px; margin:8px 0 12px; color:var(--ink); font:13px/1.5 var(--sans); overflow-wrap:anywhere; }
 .txt { font:14px/1.65 var(--sans); color:var(--ink); overflow-wrap:anywhere; }
 /* Paragraphs and lists now carry the spacing, so pre-wrap would double it.
    Line breaks inside a paragraph are still honoured. */
