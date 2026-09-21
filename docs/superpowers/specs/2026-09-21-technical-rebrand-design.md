@@ -1,34 +1,11 @@
-# Independent technical rebrand on main
+# Independent V3 technical rebrand
 
-Status: approved by Krzysztof on 2026-09-21; implementation in progress.
+Approved by Krzysztof on 2026-09-21, then revised during implementation: **V3 may break compatibility. Provide an agent-friendly upgrade guide instead of maintaining old-name aliases or automatic migrations.** This supersedes the initial compatibility proposal and its first implementation commit.
 
-## Goal and evidence
+Make noisy-studio/noisy_studio/NOISY_STUDIO canonical throughout source, integrations, packaging, scripts, tests and current documentation. Independently inspect current main; do not apply conflicted PR #90, which includes obsolete Docker work. Work locally on main with coherent verified commits; do not push or publish.
 
-Make Noisy Studio the canonical product and technical identity, independently of PR #90. Work on main in small local commits; do not push, publish, or modify host integration configuration. PR #90 is open, conflicting against v3-desktop, and includes obsolete Docker work. Do not apply its patch.
+No Python alias package, legacy CLI/environment fallback, old MCP-name support, or automatic config/profile migration remains. New app bundle IDs and Electron profiles use Studio names; signed macOS upgrade/permissions require release validation. Keep the existing engine identity, ports and website domain. Data is not deleted or silently merged. Existing installations follow docs/rebranding.md to back up and explicitly copy their correct store, or select it with the new environment override. Dev/production must stay isolated.
 
-Current main already uses noisy-studio in the Claude/Codex plugin manifests and Claude marketplace. Remaining identities include the Python distribution/import package, CLI entry points, engine executable, environment prefix, an agent marketplace manifest, browser preference keys, config paths, and desktop identity. The bundled engine already has the Noisy Studio name and pl.noisy.studio.engine identifier. The desktop shell still has a legacy bundle identifier. Current desktop code and documentation also disagree on the default config location: noisy-coding-app versus noisy-coding. Resolve this from actual launch paths and tests rather than assuming the documentation is authoritative.
+The active dev instance must retain its current data throughout development. Vite defaults to 7765 so renaming an override cannot reconnect to the old default port. Do not restart until new code, package and frozen protocol checks pass. Use the postponable 60-second shutdown and explicitly select the existing dev store for the first renamed launch. Current host integration configuration is not edited while on stream; reconnection to renamed MCP tools is a documented upgrade step.
 
-## Options
-
-1. Recommended: canonical rename with bounded compatibility. New code, installs, writes, examples, and build artifacts use noisy-studio. Old spellings survive only where required to recognize existing installations, migrate data, or keep existing integrations connected. Inventory and test each exception.
-2. Hard cutover with no old strings: removes compatibility but breaks old entry points, environment overrides, settings discovery, and hook registrations. Conflicts with the requirement to avoid breakage.
-3. Cosmetic rename only: lowest migration risk but leaves the requested technical rebrand unfinished.
-
-## Proposed boundaries
-
-- Rename the distribution and source package to noisy-studio/noisy_studio together with all imports, dynamic imports, metadata lookups, build paths, tests, and CLI consumers. New CLI names are canonical; retain old entry points as explicit upgrade aliases. Check whether installed source MCP processes need an import compatibility shim before moving the package.
-- Introduce one environment-resolution policy: an explicitly supplied NOISY_STUDIO_* value wins, including an empty value where meaningful; the matching old prefix is fallback only. Apply this to Python, standalone hooks, shell launchers, Vite, desktop startup, and spawned subprocesses. Never silently fall back to production when dev configuration is supplied.
-- Use new names for fresh config stores and preference keys. Existing stores must be detected without overwriting or silently combining independent histories. Explicit directory overrides remain authoritative. Inspect database/WAL handling and concurrent old-process access before choosing a migration mechanism. Keep the live dev store in place until its postponed restart; never move data under a running process. Preserve credentials, provider settings, conversations, voice ownership, registration recovery, and microphone settings.
-- Update canonical integration names and hook matching together. Recognize old MCP tool prefixes while sessions transition. Installer migration must update only owned registrations and prevent duplicate hooks. Do not edit the user's host configuration as part of repository implementation.
-- Rename the bundled executable and every consumer together, including signing/build scripts, shell discovery, release smoke checks, and desktop tests. Keep old installed-bundle discovery as a documented upgrade fallback where necessary.
-- Migrate renderer preference keys without losing accent/avatar/cue settings. New values take precedence when both names exist; migrate once rather than repeatedly restoring old values.
-- Preserve the existing macOS application identity until a separately verified signed upgrade can establish that renaming it preserves permissions and application identity. Document this as an OS compatibility exception, not an incomplete text replacement. The already renamed engine identity stays unchanged.
-- Update current documentation, repository links, package/lockfile names, skills, and examples. Inventory historical documents and media separately; do not falsify old commit IDs, issue text, or recorded history. Do not rename the user's checkout or touch the unrelated untracked maintenance script.
-
-## Verification and rollout
-
-Start with a tracked-file inventory and baseline checks. Implement independently in coherent stages: compatibility foundations, Python/build rename, integration and launcher changes, preference migration, documentation and residue audit. Each stage must be functional and checked before a local commit.
-
-Test old-only/new-only/conflicting environment settings, fresh and existing stores, dev/production separation, migration conflicts and repeated startup, old/new MCP identity recognition, installer idempotence, and preferences. Verify actual package installation and CLI entry points; run Python unit/harness suites, frontend and desktop checks/builds, then build a frozen engine and exercise real MCP/hook protocols. Audit remaining old-name matches against the explicit compatibility inventory.
-
-Do not claim macOS signing/permission preservation from unit tests. Report any signed-install upgrade validation still required before release. Only after the code and packaging checks pass, use the 60-second postponable dev restart, verify the exact config store, Jabra microphone, existing conversations, dashboard connection, and spoken round trip. No push or public PR/issue update without authorization.
+Validation covers Python unit/harness contracts, actual distribution/build metadata and CLI names, frozen MCP/hook protocols, frontend and desktop checks/builds, source residue audit, and live dev UI/history/microphone/voice. Old spellings may remain in the upgrade guide, git history and historical media; every active implementation reference must be removed. Do not alter unrelated untracked files or the user's checkout name.

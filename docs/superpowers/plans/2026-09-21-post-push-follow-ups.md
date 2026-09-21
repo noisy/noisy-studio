@@ -5,6 +5,8 @@ Publish the contributor reply only after the relevant implementation is on remot
 
 ## Ticket checklist
 
+- [ ] PR #90 — after pushing the independently implemented V3 rename, explain that it supersedes the conflicted PR and link the manual upgrade guide. Do not merge or close the old PR yet.
+
 - [ ] #99 — native audio cleanup: after pushing, link the implementation and update the issue.
 - [ ] PR #103 — post the thank-you draft below after pushing; agree its final disposition with Krzysztof.
 - [x] Confirm the X profile for the invitation: https://x.com/realnoisycoder (provided by Krzysztof).

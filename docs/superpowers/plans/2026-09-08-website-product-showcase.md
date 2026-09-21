@@ -31,11 +31,11 @@ Keep Noisy Studio branding, synthetic screenshots and disabled live microphone d
 
 ## 4. Final verification
 
-- [x] Build root and PAGES_BASE=/noisy-coding/ variants and inspect image requests.
+- [x] Build root and PAGES_BASE=/noisy-studio/ variants and inspect image requests.
 - [x] Inspect page at 1440, 1280, 768 and 390 CSS pixels; resolve overflow and contrast issues.
 - [x] Run relevant dashboard tests and inspect browser errors.
 - [x] Record validation, push branch and prepare a PR against v3-desktop. Do not merge or deploy.
 
 ## Verification — 2026-09-08
 
-Website root and /noisy-coding/ builds pass. The matching-base production preview renders and loads all 13 image elements; installation anchor works and no browser errors were recorded. Responsive layouts inspected at 390 and 768 CSS px, desktop initial render at 1280, and width checked at 1440; no horizontal document overflow. Character preset selection and keyboard Speed adjustment persist as a custom character. FAQ expands. Reduced-motion overrides reviewed in CSS; OS preference was not changed. All 219 dashboard tests pass; Storybook production build passes. Screenshot shell syntax check passes; captures for this change used browser tools rather than executing the headless capture script.
+Website root and /noisy-studio/ builds pass. The matching-base production preview renders and loads all 13 image elements; installation anchor works and no browser errors were recorded. Responsive layouts inspected at 390 and 768 CSS px, desktop initial render at 1280, and width checked at 1440; no horizontal document overflow. Character preset selection and keyboard Speed adjustment persist as a custom character. FAQ expands. Reduced-motion overrides reviewed in CSS; OS preference was not changed. All 219 dashboard tests pass; Storybook production build passes. Screenshot shell syntax check passes; captures for this change used browser tools rather than executing the headless capture script.

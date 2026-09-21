@@ -10,7 +10,7 @@ Claude. OpenAI speech providers, releases, and changes to the live stream
 configuration are outside this task.
 
 Work is isolated on `feat/codex-integration`, based on `v3-desktop` at
-`0a53f50`, in `../noisy-coding-codex`. Stream-day-6 Claude supervises design
+`0a53f50`, in `../noisy-studio-codex`. Stream-day-6 Claude supervises design
 and reviews the final diff before anything merges. The original checkout
 and its uncommitted changes belong to that session.
 

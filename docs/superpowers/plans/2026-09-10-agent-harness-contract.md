@@ -6,7 +6,7 @@ Analysis: `docs/agent-integration-analysis.md`. Baseline tag:
 green test run and one local commit; nothing is pushed.
 
 ## Phase 1 - the contract, no daemon changes
-- `src/noisy_coding/harness/base.py`, `__init__.py` (REGISTRY),
+- `src/noisy_studio/harness/base.py`, `__init__.py` (REGISTRY),
   `claude_hooks/adapter.py`, `codex_hooks/adapter.py`, `fake/adapter.py`.
 - Fixtures: `tests/fixtures/harness/claude-hooks/*.jsonl` from the
   2026-09-10 experiment; `codex-hooks/*.jsonl` synthesised from the
@@ -16,7 +16,7 @@ green test run and one local commit; nothing is pushed.
 - Commit: "Agent-harness contract: adapters for Claude and Codex hooks".
 
 ## Phase 2 - ConversationRegistry, in-process
-- `src/noisy_coding/listener/conversations.py` with alias table, order,
+- `src/noisy_studio/listener/conversations.py` with alias table, order,
   listener lease, status, persistence (injectable clock and path).
 - `tests/harness/test_conversations.py` - the ten scenarios via
   `FakeSession`.
@@ -45,7 +45,7 @@ green test run and one local commit; nothing is pushed.
 
 ## Phase 6 - remove the obsolete
 - `hooks/exec.sh`, `hooks/mcp_exec.sh`, Docker hook registration paths,
-  `sessions.json` writers/readers, `NOISY_CODING_CONFIG_DIR` special
+  `sessions.json` writers/readers, `NOISY_STUDIO_CONFIG_DIR` special
   cases that only served dev-vs-prod, `docs/hooks.md` rewrite.
 - Commit: "Drop Docker hook plumbing and cwd-based identity".
 

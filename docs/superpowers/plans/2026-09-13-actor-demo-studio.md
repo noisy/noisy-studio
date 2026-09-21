@@ -9,4 +9,4 @@ Approved design: a standalone /demo-studio/ page shipped in the website build, u
 
 Recording failures must preserve any captured data. Space only advances while awaiting the actor and never while editing a form. Agent playback must finish before the next actor prompt. Cancelled runs must not resume from outstanding timers. Original media and timing data are separate downloads, using one take name.
 
-Validation: five Node tests pass; production website builds with PAGES_BASE=/noisy-coding/. Browser rehearsal verified real companion rendering, Thinking/Updating search, Lux playback, next prompt and Space control. Physical camera/microphone capture requires a user device check; media lifecycle was tested with a fake recorder.
+Validation: five Node tests pass; production website builds with PAGES_BASE=/noisy-studio/. Browser rehearsal verified real companion rendering, Thinking/Updating search, Lux playback, next prompt and Space control. Physical camera/microphone capture requires a user device check; media lifecycle was tested with a fake recorder.

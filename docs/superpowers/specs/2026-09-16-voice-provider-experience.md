@@ -2,7 +2,7 @@
 
 Status: implemented and regression-tested; broader empirical validation remains incomplete. See the completion audit in ../plans/2026-09-16-speech-completion-audit.md.
 Date: 2026-09-16. Baseline: origin/v3-desktop, 789fe39 (v3.0.0-alpha.9).
-Worktree: noisy-coding-provider-experience. Branch: codex/voice-provider-redesign.
+Worktree: noisy-studio-provider-experience. Branch: codex/voice-provider-redesign.
 
 ## Product decision
 

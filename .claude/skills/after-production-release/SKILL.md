@@ -23,7 +23,7 @@ wait for its port to free. Respect cancellation.
 
 ## Upgrading past the plugin rename (#122)
 
-The plugin is `noisy-studio`. It was `noisy-coding` until 3.0, and an
+The plugin is `noisy-studio`. It was `noisy-studio` until 3.0, and an
 existing install does **not** rename itself.
 
 **Uninstall the old one before installing the new one.** Two registrations
@@ -31,21 +31,21 @@ means two sets of hooks on every event - duplicated activity lines,
 duplicated listeners, and speech delivered twice.
 
 ```sh
-claude plugin uninstall noisy-coding@noisy
+claude plugin uninstall noisy-studio@noisy
 claude plugin install noisy-studio@noisy
 ```
 
 Codex, same shape:
 
 ```sh
-codex plugin remove noisy-coding@noisy-coding
+codex plugin remove noisy-studio@noisy-studio
 codex plugin add noisy-studio@noisy-studio
 ```
 
 A user who skips the uninstall sees the agent answer twice and has no
 obvious reason why, so say it in the release notes rather than only here.
 
-The daemon accepts **both** MCP tool prefixes (`mcp__noisy-coding__speak`
+The daemon accepts **both** MCP tool prefixes (`mcp__noisy-studio__speak`
 and `mcp__noisy-studio__speak`) so a stale install keeps its voice until
 the user gets round to it. That tolerance is deliberate and should outlive
 one release, not be cleaned up immediately.

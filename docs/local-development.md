@@ -1,7 +1,7 @@
 # Local development
 
-The installed app owns 9765/9766 and `~/.config/noisy-coding`. Development uses
-7765/7766 and `~/.config/noisy-coding-dev`. Never share configuration folders
+The installed app owns 9765/9766 and `~/.config/noisy-studio`. Development uses
+7765/7766 and `~/.config/noisy-studio-dev`. Never share configuration folders
 between running instances. Check the dev launcher's startup line before
 interpreting persisted state. Do not print credentials or private configuration.
 
@@ -12,14 +12,14 @@ scripts/dev_daemon.sh
 
 The launcher builds a missing dashboard and, on first use only, seeds provider
 and tuning settings into a separate dev folder. Conversation history stays
-isolated. Set `NOISY_CODING_DEV_CONFIG_DIR` for a different dev folder.
+isolated. Set `NOISY_STUDIO_DEV_CONFIG_DIR` for a different dev folder.
 
 ## Dashboard
 
 ```sh
 cd dashboard
 npm ci
-NOISY_CODING_DAEMON_URL=http://127.0.0.1:7765 npm run dev
+NOISY_STUDIO_DAEMON_URL=http://127.0.0.1:7765 npm run dev
 ```
 
 Open port 5173 for hot reload. New backend routes must be added to
@@ -29,8 +29,8 @@ to update the daemon-served dashboard.
 
 ## Integrations
 
-For a source Claude MCP process, set `NOISY_CODING_LISTENER_PORT=7765` and
-`NOISY_CODING_NO_AUTOSPAWN=1`, then run `uv run noisy-coding`. Source hooks use
+For a source Claude MCP process, set `NOISY_STUDIO_LISTENER_PORT=7765` and
+`NOISY_STUDIO_NO_AUTOSPAWN=1`, then run `uv run noisy-studio-mcp`. Source hooks use
 `uv run python hooks/claude_hook.py` with the same port. Configure one hook set
 per session; duplicate hooks can consume each other's queued messages.
 Do not edit private host configuration while on stream.

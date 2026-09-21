@@ -1,6 +1,6 @@
 # Actor Demo Studio
 
-The website build includes `/demo-studio/` (under `/noisy-coding/` on GitHub Pages). Start the website Vite server and open that path locally. It shares the production Companion and the existing Demo Studio scenario scripts and voice assets.
+The website build includes `/demo-studio/` (under `/noisy-studio/` on GitHub Pages). Start the website Vite server and open that path locally. It shares the production Companion and the existing Demo Studio scenario scripts and voice assets.
 
 Rehearse requires no camera or microphone. Record captures the browser camera and microphone as a reference alongside an external camera recording. Use headphones. The external camera is started separately; match its audio to the reference recording during editing. Clap once or use a clapperboard in view of both cameras after starting both recordings. An optional sync-marker records a named timestamp alongside that cue.
 

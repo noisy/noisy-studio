@@ -13,7 +13,7 @@ config-dir session, not just the dev one.
 The native-app installer wrote `~/.claude/noisy-app/exec.sh`, registered
 globally in `~/.claude/settings.json`. That script hardcodes:
 
-    REPO="$HOME/Developer/noisy-coding"
+    REPO="$HOME/Developer/noisy-studio"
     PY="$REPO/.venv/bin/python3"
     ... "$PY" "$REPO/hooks/$SCRIPT"
 
@@ -23,7 +23,7 @@ or erroring script exits non-zero (a missing file is exit 2), which Claude
 Code treats as a tool-blocking hook result - in EVERY session whose global
 settings point at this exec.sh, whatever its config dir.
 
-**A different `NOISY_CODING_CONFIG_DIR` does not isolate this.** The config
+**A different `NOISY_STUDIO_CONFIG_DIR` does not isolate this.** The config
 dir separates the daemon's state/settings; it does not change which hook
 command Claude runs. Hook isolation is per `settings.json`, and the global
 one is shared.

@@ -5,7 +5,7 @@ Voice clips for the agent lines in `Synthetic Screenshots/Crew`
 
 Generated with the product's own TTS path: the xAI/Grok batch TTS API
 (`POST https://api.x.ai/v1/tts`, the same endpoint
-`src/noisy_coding/providers/grok.py` calls), using the same voice ids the
+`src/noisy_studio/providers/grok.py` calls), using the same voice ids the
 daemon speaks with. So these are the real agent voices, not stand-ins.
 
 | file | voice | line |

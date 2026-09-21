@@ -1,6 +1,6 @@
 # Demo agent persona brief
 
-System-prompt-style brief for the live web demo agent on noisy-coding.dev.
+System-prompt-style brief for the live web demo agent on noisy-studio.dev.
 This ships to the real-time Grok (xAI) voice model in phase 2. The scripted
 phase-1 demo in `TryLiveSection.vue` follows the same persona.
 

@@ -22,7 +22,7 @@ Restart Claude Code, review the installed hooks, and ask for voice setup.
 The plugin runs MCP and lifecycle hooks through the app's bundled executable;
 no host Python or uv is needed. The app must be running on port 9765.
 `NOISY_STUDIO_ENGINE` can explicitly select another engine for development;
-`NOISY_CODING_LISTENER_PORT` selects its daemon endpoint. These integration
+`NOISY_STUDIO_LISTENER_PORT` selects its daemon endpoint. These integration
 processes never start another audio daemon.
 
 Ask the agent to speak, answer aloud, and confirm both messages appear under

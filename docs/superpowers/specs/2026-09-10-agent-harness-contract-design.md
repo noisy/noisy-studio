@@ -37,14 +37,14 @@ hooks/                      thin clients: read stdin, POST raw payload, print
   codex_hook.py
   _client.py                  HTTP helpers, fail-open rules
 
-src/noisy_coding/harness/    the contract (pure Python, no daemon imports)
+src/noisy_studio/harness/    the contract (pure Python, no daemon imports)
   base.py                     dataclasses + Harness protocol + errors
   __init__.py                 REGISTRY: name -> factory; names(); get()
   claude_hooks/adapter.py     Claude Code hook payloads -> contract
   codex_hooks/adapter.py      Codex hook payloads -> contract
   fake/adapter.py             scriptable harness + session driver for tests
 
-src/noisy_coding/listener/
+src/noisy_studio/listener/
   conversations.py            ConversationRegistry (keys, aliases, order,
                               listener state, persistence)
   http_api.py                 /harness/event, /harness/listener; /speak and
@@ -130,7 +130,7 @@ Aliases = `{session_id}`. Title = last `customTitle` in the transcript
 present -> participant events, `may_drain=False`, and no `/register` of a
 new tab. `hook_event_name` mapping: SessionStart -> session_started
 (`listener="start"`), UserPromptSubmit -> turn_started, PreToolUse ->
-activity (+ `speech_identity` for `mcp__noisy-coding*__speak|announce|
+activity (+ `speech_identity` for `mcp__noisy-studio*__speak|announce|
 change_voice|set_speaker_style`), PostToolUse -> activity("THINKING…")
 (+ `may_drain`), Stop -> turn_ended (`listener="start"`), SubagentStart/
 Stop -> participant_*. Capabilities: `wake="long_poll"`, `max_idle_seconds`
@@ -212,9 +212,9 @@ PostToolUse, Stop, SubagentStart, SubagentStop registered in
 `hooks/hooks.json` and by `hooks/install.py`; SessionStart and Stop with
 `asyncRewake` and a timeout of `max_idle_seconds + 30`.
 
-The MCP server drops `_cwd_agent`, `NOISY_CODING_AGENT_NAME` and
+The MCP server drops `_cwd_agent`, `NOISY_STUDIO_AGENT_NAME` and
 `_register_agent`; `agent_id` becomes required for identity-sensitive
-tools on every harness (today's Codex behaviour, `NOISY_CODING_REQUIRE_AGENT_ID`
+tools on every harness (today's Codex behaviour, `NOISY_STUDIO_REQUIRE_AGENT_ID`
 becomes the only mode).
 
 ## Testing - atomic, in this order

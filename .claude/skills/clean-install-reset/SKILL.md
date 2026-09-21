@@ -12,8 +12,8 @@ approval for those concrete paths and data; explain what will be lost first.
 
 Before any approved reset, gracefully close the affected instance and preserve
 a backup of its configuration without printing its contents. Production uses
-`~/.config/noisy-coding`; the standard dev launcher uses
-`~/.config/noisy-coding-dev`. Do not reset both by inference. Do not remove
+`~/.config/noisy-studio`; the standard dev launcher uses
+`~/.config/noisy-studio-dev`. Do not reset both by inference. Do not remove
 session state or lock files while an instance is running.
 
 Reinstall the native app from an appropriate signed release, update the host

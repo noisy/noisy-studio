@@ -1,6 +1,6 @@
 # Interface redesign verification — 5 September 2026
 
-Worktree: `/Users/krzysztofszumny/Developer/noisy-coding-redesign`
+Worktree: `/Users/krzysztofszumny/Developer/noisy-studio-redesign`
 
 Branch: `feat/interface-redesign`, based on `890dfc6`.
 

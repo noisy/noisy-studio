@@ -20,7 +20,7 @@ claude plugin install noisy-studio@noisy
 
 Restart Claude Code and ask it to set up Noisy Studio voice. Keep the app and
 plugin versions together: the plugin launches the engine bundled with the app.
-The internal plugin name remains `noisy-coding` for compatibility.
+The internal plugin name remains `noisy-studio` for compatibility.
 
 [Installation and troubleshooting](docs/INSTALL.md) covers permissions,
 providers, updates, and a spoken round trip. The [Codex preview](docs/codex.md)
@@ -43,3 +43,7 @@ settings. See [desktop packaging](docs/desktop-app.md) for signed app builds.
 
 API credentials belong in the app's provider settings, never in chat or source.
 Offline providers download their models on first use and then run locally.
+
+## Upgrading to the V3 technical names
+
+V3 uses `noisy-studio` throughout packages, commands and integrations. Older installations need an explicit upgrade; see the [agent-friendly upgrade and rollback guide](docs/rebranding.md) before replacing an existing installation.

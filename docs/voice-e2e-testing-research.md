@@ -23,7 +23,7 @@ audio - with no human present.
 
 ## What the architecture already gives us
 
-Reading `src/noisy_coding/`, there are four natural seams. This is the most
+Reading `src/noisy_studio/`, there are four natural seams. This is the most
 important finding: we do not need microphones or speakers to drive the
 system end to end.
 

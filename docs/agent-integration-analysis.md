@@ -30,7 +30,7 @@ to the daemon on every call; PostToolUse also GETs `/drain` and injects
 voice as `additionalContext`; Stop polls `/drain` every 0.5 s for up to
 `REWAKE_WAIT_SECONDS=3600` under `asyncRewake`, exits 2 to wake the agent
 or exits 0 silently on timeout (`hooks/stop.py:28,130-164`). The MCP
-server (`src/noisy_coding/server.py`) is a thin messenger for `speak`;
+server (`src/noisy_studio/server.py`) is a thin messenger for `speak`;
 it resolves its identity separately from the hooks. The dashboard tab ==
 the flat `agent` string; liveness is inferred from heartbeats
 (`AGENT_OFFLINE_AFTER_SECONDS=180`, `state.py:38`).
@@ -38,13 +38,13 @@ the flat `agent` string; liveness is inferred from heartbeats
 ## 3. Root causes (not symptoms)
 
 ### R1. Identity is inferred, twice, from different sources
-- Hooks: `NOISY_CODING_AGENT_NAME` -> stdin `session_id` -> `"default"`
+- Hooks: `NOISY_STUDIO_AGENT_NAME` -> stdin `session_id` -> `"default"`
   (`hooks/_agent_identity.py:60-62`).
-- MCP: `NOISY_CODING_AGENT_NAME` -> env `CLAUDE_CODE_SESSION_ID` -> cwd map
+- MCP: `NOISY_STUDIO_AGENT_NAME` -> env `CLAUDE_CODE_SESSION_ID` -> cwd map
   (`server.py:34-52`).
 - The cwd map (`sessions.json`) is one entry per directory, last writer
   wins; two sessions in one repo overwrite each other.
-- `_agent_identity.MAP_FILE` ignores `NOISY_CODING_CONFIG_DIR`
+- `_agent_identity.MAP_FILE` ignores `NOISY_STUDIO_CONFIG_DIR`
   (`_agent_identity.py:20` vs `config_dir.py:15`): hook and MCP can read
   different files.
 - Docker: hook cwd is the host path, MCP cwd is `/app`; the only link is
@@ -143,9 +143,9 @@ daemon must know which it has.
 
 ## 5. Proposed shape: an agent-harness provider layer
 
-Mirror `src/noisy_coding/providers/` (TTS/STT `Protocol`s, lazy registry,
+Mirror `src/noisy_studio/providers/` (TTS/STT `Protocol`s, lazy registry,
 explicit capabilities, invariants stated in `base.py`). New package
-`src/noisy_coding/harness/` (name open):
+`src/noisy_studio/harness/` (name open):
 
 ```
 harness/
@@ -210,7 +210,7 @@ no microphone.
 7. Idle 61 min -> either still wakeable (push) or the tab visibly says
    "not listening" (long-poll); never silent.
 8. Message addressed to tab A -> tab B never sees it; receipt names A.
-9. `NOISY_CODING_CONFIG_DIR` set -> hooks and MCP agree.
+9. `NOISY_STUDIO_CONFIG_DIR` set -> hooks and MCP agree.
 10. Docker: host cwd vs container cwd -> identity still matches.
 
 ## 7. Sequencing proposal for 3.0
@@ -224,7 +224,7 @@ no microphone.
    behaviour change, tests become the spec.
 3. **Channel push adapter** (experiment first, half a day): Python MCP
    server declares `claude/channel`, daemon pushes voice through it; test
-   with `--dangerously-load-development-channels server:noisy-coding-dev`.
+   with `--dangerously-load-development-channels server:noisy-studio-dev`.
    If it works, the Stop long-poll becomes the fallback, not the core.
    Blocker for end users: allowlist during preview -> track, and ask
    Anthropic about listing the plugin.
@@ -307,17 +307,17 @@ Order agreed: F9 -> E1..E6 as first scenarios -> F1..F5.
 
 ## 12. Assumptions the code still protects that are obsolete (CONFIRMED by Krzysztof 2026-09-10 - drop all five)
 
-1. **Separate config dir for dev vs prod** (`NOISY_CODING_CONFIG_DIR`, E3) -
+1. **Separate config dir for dev vs prod** (`NOISY_STUDIO_CONFIG_DIR`, E3) -
    Krzysztof 2026-09-10: nice if cheap, not important; he uses two Claude
    profiles anyway. Demote E3.
-2. **Identity per config** (`NOISY_CODING_AGENT_NAME` work/personal,
+2. **Identity per config** (`NOISY_STUDIO_AGENT_NAME` work/personal,
    TODO.md 2026-07-09) - superseded by identity per session. Candidate for
    removal.
 3. **cwd -> agent map as MCP fallback identity** (`sessions.json`) - the
    source of the two-sessions-one-repo collision. Unnecessary if identity is
    injected per call: the Codex path already does `PreToolUse ->
    updatedInput.agent_id` (`hooks/codex.py:72-75`, enforced by
-   `NOISY_CODING_REQUIRE_AGENT_ID`). Claude Code PreToolUse supports
+   `NOISY_STUDIO_REQUIRE_AGENT_ID`). Claude Code PreToolUse supports
    `updatedInput` too, so the MCP server can stop resolving identity at all.
    This alone removes most of R1.
 4. **Docker as the flagship install path** - DECIDED 2026-09-10: 3.0 drops
@@ -339,7 +339,7 @@ together - exactly the observed symptom. `async: true` Stop hooks cannot
 continue the turn (exit 2 ignored). So for `codex-hooks` the only lever is
 the length of the synchronous window (default now 30 s), plus the `deaf`
 state on the tab. A real fix needs either an upstream hook at enqueue
-time or a noisy-coding-owned app-server client (`codex --remote`).
+time or a noisy-studio-owned app-server client (`codex --remote`).
 
 ### U1 resolved: no hidden hook-timeout cap (experiment, 2026-09-10)
 
@@ -379,7 +379,7 @@ extend or sibling it. Part of the phase-5 dashboard wiring.
 ### Ops lesson: launch the dev daemon only through scripts/dev_daemon.sh
 
 A hand-launched dev daemon (2026-09-10 16:00) came up WITHOUT
-NOISY_CODING_CONFIG_DIR, so it ran on the production config dir: an empty
+NOISY_STUDIO_CONFIG_DIR, so it ran on the production config dir: an empty
 registry, "all tabs gone", and a stray conversations.json written into
 the production dir. The script sets port AND config dir together; never
 start the daemon by hand with an ad-hoc env.

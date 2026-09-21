@@ -4,7 +4,7 @@ The Settings → Speech screen consumes backend metadata; it does not know provi
 
 ## Extension points
 
-1. Implement the applicable `STTProvider` / `TTSProvider` protocol in `src/noisy_coding/providers/base.py`. Constructors capture provider options without loading weights. Capture voice bindings and include synthesis-relevant options in `cache_identity`; preserve the returned audio content type. Translate provider failures into `STTError` / `TTSError`.
+1. Implement the applicable `STTProvider` / `TTSProvider` protocol in `src/noisy_studio/providers/base.py`. Constructors capture provider options without loading weights. Capture voice bindings and include synthesis-relevant options in `cache_identity`; preserve the returned audio content type. Translate provider failures into `STTError` / `TTSError`.
 2. Add lazy factories to `_STT_FACTORIES` / `_TTS_FACTORIES` in `providers/__init__.py`. Options are read from that provider's namespace. Local retains its legacy file location for compatibility.
 3. Register an `EngineAdapter` in `providers/engine_registry.py`. Supply choices, draft options, readiness, voices, preparation, active choice and language validation. Optional `active_voice_labels` handles legacy runtime mapping; otherwise labels use the saved voice bindings. Catalog construction must not download or load models.
 4. Add credential/setup support to the existing provider manifest and credential store if needed. A choice may declare `setup_action: "system-settings"` only when that screen can resolve its setup requirement. Never include credentials in catalog responses or cache identities.

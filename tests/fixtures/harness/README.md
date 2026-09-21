@@ -1,6 +1,6 @@
 # Harness payload fixtures
 
-One directory per registry entry (`noisy_coding.harness.names()`), one
+One directory per registry entry (`noisy_studio.harness.names()`), one
 JSONL file per scenario, one raw hook payload per line, in the order the
 agent system sent them. `tests/harness/test_contract.py` requires
 `session.jsonl`, `resume.jsonl` and `title.jsonl`; `participant.jsonl`
@@ -9,7 +9,7 @@ agent system has subagents.
 
 - `claude-hooks/` - recorded 2026-09-10 from Claude Code 2.1.267 with
   `claude --bg` (see docs/agent-integration-analysis.md §10). Paths were
-  shortened; ids are verbatim. The `mcp__noisy-coding__speak` PreToolUse
+  shortened; ids are verbatim. The `mcp__noisy-studio__speak` PreToolUse
   row in `session.jsonl` and the `resume.jsonl` / `title.jsonl` files are
   synthesised from the recorded shape.
 - `codex-hooks/` - synthesised from the shape asserted by the existing

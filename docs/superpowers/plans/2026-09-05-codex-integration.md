@@ -17,7 +17,7 @@ identity per MCP call and loads one endpoint configuration for both directions.
 
 ### Task 1: Per-call identity and shared lifecycle adapter
 
-Files: `src/noisy_coding/server.py`, `hooks/codex.py`,
+Files: `src/noisy_studio/server.py`, `hooks/codex.py`,
 `hooks/_codex_config.py`, `hooks/_agent_identity.py`,
 `tests/unit/test_codex_hooks.py`, `tests/unit/test_server_identity.py`.
 

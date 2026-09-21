@@ -1,5 +1,5 @@
 ---
-name: noisy-coding
+name: noisy-studio
 description: Speak concise replies aloud through Noisy Studio and handle incoming voice while working in Codex. Use when Noisy Studio tools are available, the user speaks through its hooks, or requests a voice conversation. Includes first-time setup and troubleshooting.
 ---
 
@@ -22,7 +22,7 @@ identity on every call; never invent or copy another session's id, and
 never route through a working-directory map or a shared fixed name. If a
 call reports the identity is missing, the hooks did not run against a
 current daemon: tell the user to review `/hooks`, then start a new session.
-Tools named `noisy_coding` and `noisy-coding` are the same service under
+Tools named `noisy_studio` and `noisy-studio` are the same service under
 different harness-name normalization.
 
 ## Incoming voice
@@ -51,7 +51,7 @@ relative to the installed plugin, not the working directory.
    setup.
 3. Run `uv run --directory <plugin-root> --frozen python
    <plugin-root>/scripts/install_codex.py --port <selected-port>`. It
-   writes only `~/.config/noisy-coding/codex.json`; both hooks and MCP read
+   writes only `~/.config/noisy-studio/codex.json`; both hooks and MCP read
    it, so they always agree on the endpoint.
 4. Open `/hooks` and explain the five lifecycle hooks: register + report
    activity, deliver incoming transcript, inject per-call speech identity,

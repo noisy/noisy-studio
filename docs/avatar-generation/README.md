@@ -1,6 +1,6 @@
 # Voice avatar families
 
-Eight generated families cover the complete 28-voice `SUBAGENT_VOICE_POOL` in `src/noisy_coding/listener/http_api.py`:
+Eight generated families cover the complete 28-voice `SUBAGENT_VOICE_POOL` in `src/noisy_studio/listener/http_api.py`:
 
 - `editorial`: illustrated people
 - `matte`: softly sculpted people
@@ -11,7 +11,7 @@ Eight generated families cover the complete 28-voice `SUBAGENT_VOICE_POOL` in `s
 - `robots`: original robot personalities with science-fiction nods
 - `agents`: Matrix-inspired black suits and sunglasses, using the human voice identities
 
-The coverage audit includes [issue #44](https://github.com/noisy/noisy-coding/issues/44): Aurora and Liora were in the backend pool but absent from the frontend voice picker and old sprite mapping. Both are included in every new family. The pool and frontend catalog must match; `catalog.spec.ts` checks this independently of the hand-maintained artwork order. Other provider-specific or future unknown voices display a readable monogram and a development warning instead of disappearing.
+The coverage audit includes [issue #44](https://github.com/noisy/noisy-studio/issues/44): Aurora and Liora were in the backend pool but absent from the frontend voice picker and old sprite mapping. Both are included in every new family. The pool and frontend catalog must match; `catalog.spec.ts` checks this independently of the hand-maintained artwork order. Other provider-specific or future unknown voices display a readable monogram and a development warning instead of disappearing.
 
 ## Assets and exact generation input
 
@@ -19,7 +19,7 @@ These images were generated with the built-in `image_gen` tool, not the fallback
 
 The production PNGs live in `dashboard/src/assets/voice-avatars/`. Each sheet uses six columns and five rows. Cell indices are **zero-based**, row-major; the canonical ordering is `dashboard/src/avatars/voice-order.json`. Aurora and Liora occupy cells 26 and 27. Cells 28 and 29 are spare. Do not alphabetically reorder the artwork manifest: that would silently give existing voices different identities.
 
-`VoiceAvatar.vue` clips the selected cell in CSS. Actual row and per-row column boundaries are recorded in `dashboard/src/avatars/crop-metadata.json` because generated grids are not pixel-perfect. Re-measure those boundaries when an atlas changes, then inspect every row for adjacent-art bleed. It retains the original generated image, including any alpha, without destructive cropping. The same component is used by the dashboard, voice picker, conversation bubbles and companion. The selected family is saved in `noisy-coding.avatar-set` in localStorage, shared across same-origin windows. It is a device/browser preference, not an account preference. Separate origins have separate preferences. The generated sheets are explicit Vite assets, so `/next/` deployments and the website resolve them correctly.
+`VoiceAvatar.vue` clips the selected cell in CSS. Actual row and per-row column boundaries are recorded in `dashboard/src/avatars/crop-metadata.json` because generated grids are not pixel-perfect. Re-measure those boundaries when an atlas changes, then inspect every row for adjacent-art bleed. It retains the original generated image, including any alpha, without destructive cropping. The same component is used by the dashboard, voice picker, conversation bubbles and companion. The selected family is saved in `noisy-studio.avatar-set` in localStorage, shared across same-origin windows. It is a device/browser preference, not an account preference. Separate origins have separate preferences. The generated sheets are explicit Vite assets, so `/next/` deployments and the website resolve them correctly.
 
 ## Adding another voice
 

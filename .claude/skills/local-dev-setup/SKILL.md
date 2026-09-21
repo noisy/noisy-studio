@@ -9,16 +9,16 @@ Read `docs/local-development.md` and any stream-specific handoff supplied by
 the user. The source checkout serves the live dev instance, so treat restarts
 as visible interruptions.
 
-- Production app: HTTP 9765, WebSocket 9766, `~/.config/noisy-coding`.
-- Dev launcher: HTTP 7765, WebSocket 7766, `~/.config/noisy-coding-dev`.
-- Vite: 5173, explicitly set `NOISY_CODING_DAEMON_URL=http://127.0.0.1:7765`.
+- Production app: HTTP 9765, WebSocket 9766, `~/.config/noisy-studio`.
+- Dev launcher: HTTP 7765, WebSocket 7766, `~/.config/noisy-studio-dev`.
+- Vite: 5173, explicitly set `NOISY_STUDIO_DAEMON_URL=http://127.0.0.1:7765`.
 
 Run `uv sync`, then `scripts/dev_daemon.sh`. Check the printed config location;
 never let concurrent daemons share a configuration folder. First launch seeds
 provider/tuning settings but not conversation history.
 
 Point hooks and MCP at the same explicit dev port. Source MCP should set
-`NOISY_CODING_NO_AUTOSPAWN=1`. Do not install duplicate hook sets. Add new API
+`NOISY_STUDIO_NO_AUTOSPAWN=1`. Do not install duplicate hook sets. Add new API
 routes to Vite's `DAEMON_PATHS` and restart Vite after configuration changes.
 
 Before restarting, announce it and request `POST /shutdown` with
@@ -37,10 +37,10 @@ The settings panel can only *replace* a key, never remove one, so the
 Clear it on disk instead.
 
 **Dev instance only.** Production credentials live in
-`~/.config/noisy-coding/credentials.json` and are not part of this.
+`~/.config/noisy-studio/credentials.json` and are not part of this.
 
 ```sh
-F=~/.config/noisy-coding-dev/credentials.json
+F=~/.config/noisy-studio-dev/credentials.json
 cp -p "$F" /tmp/creds-dev-backup-$(date +%s).json   # take one even if a copy exists
 python3 -c "
 import json,sys

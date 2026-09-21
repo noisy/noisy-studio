@@ -39,7 +39,7 @@ Do not work around it with a fixed name or a cwd map.
 
 1. The daemon must run the **new** code (it exposes `/harness/event`).
    Point this session at the intended port in
-   `~/.config/noisy-coding/codex.json` (the dev instance is **7765**);
+   `~/.config/noisy-studio/codex.json` (the dev instance is **7765**);
    `scripts/install_codex.py --port 7765` writes it.
 2. **Start a new Codex session** so the updated hooks and MCP server load -
    a session that was already running kept the old ones.

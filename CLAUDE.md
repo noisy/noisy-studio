@@ -1,7 +1,8 @@
 # Noisy Studio
 
-Native desktop voice coding app. Internal package and plugin names remain
-`noisy-coding`; user-facing copy says Noisy Studio.
+Native desktop voice coding app. Package, plugin, and command names use
+`noisy-studio`; Python imports use `noisy_studio`. V3 is a clean technical
+rename; see `docs/rebranding.md` for the manual upgrade guide.
 
 ## Development
 

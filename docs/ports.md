@@ -9,7 +9,7 @@
 Claude MCP uses stdio through the bundled engine; normal installation needs
 no separate MCP network port. Hooks and MCP must select the same daemon.
 The packaged integration defaults to 9765 and respects an explicit
-`NOISY_CODING_LISTENER_PORT`. The Codex preview stores its selected endpoint;
+`NOISY_STUDIO_LISTENER_PORT`. The Codex preview stores its selected endpoint;
 see [codex.md](codex.md). Do not scan ports and silently choose an instance.
 
 Direct source entry points retain 8765 as a compatibility default. Prefer the
