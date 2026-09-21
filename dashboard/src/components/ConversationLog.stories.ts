@@ -92,8 +92,8 @@ export const ActionNeeded: StoryObj<typeof ConversationLog> = {
 };
 
 const microphoneHistory: Utterance[] = [
-  { ...feed[0]!, id: 80, role: "system", agent: "older", text: "MIC → Desk microphone", started_at: now - 120, committed_at: now - 120 },
-  { ...feed[0]!, id: 81, role: "system", agent: "older", text: "MIC → Headset", started_at: now - 60, committed_at: now - 60 },
+  { ...feed[0]!, id: 80, role: "system", detail: "", agent: "older", text: "MIC → Desk microphone", started_at: now - 120, committed_at: now - 120 },
+  { ...feed[0]!, id: 81, role: "system", detail: "", agent: "older", text: "MIC → Headset", started_at: now - 60, committed_at: now - 60 },
   { ...feed[0]!, id: 82, agent: "newer", text: "This is a new conversation.", started_at: now, committed_at: now },
 ];
 export const NewConversationWithoutOldMicRows: StoryObj<typeof ConversationLog> = {
@@ -103,4 +103,12 @@ export const NewConversationWithoutOldMicRows: StoryObj<typeof ConversationLog> 
 export const ExistingConversationWithMicChanges: StoryObj<typeof ConversationLog> = {
   ...Feed,
   args: { utterances: conversationTimeline(microphoneHistory, "older", now - 180) },
+};
+
+export const BriefMicrophoneFlapping: StoryObj<typeof ConversationLog> = {
+  ...Feed,
+  args: { utterances: [
+    { ...microphoneHistory[0]!, text: "MIC → system default (waiting for ‘Headset’)", detail: "×3" },
+    { ...microphoneHistory[1]!, detail: "×3" },
+  ] },
 };
