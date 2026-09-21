@@ -1,5 +1,6 @@
 """Live dashboard snapshots; this WebSocket never carries audio."""
 from __future__ import annotations
+from noisy_coding import environment
 import json
 import os
 import threading
@@ -78,7 +79,7 @@ class StateStream:
         from websockets.sync.server import serve
 
         # Same bind rule as the HTTP API: loopback by default, explicitly overridable.
-        host = os.environ.get("NOISY_CODING_BIND", "127.0.0.1")
+        host = environment.get("NOISY_CODING_BIND", "127.0.0.1")
         with serve(self._handle, host, port) as server:
             server.serve_forever()
 

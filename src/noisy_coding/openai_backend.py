@@ -12,6 +12,7 @@ playback queue and STT loop stay untouched.
 STATUS: work in progress.
 """
 
+from noisy_coding import environment
 import os
 
 import httpx
@@ -23,7 +24,7 @@ STT_MODEL = "gpt-4o-transcribe"
 
 
 def _api_key() -> str:
-    key = os.environ.get("OPENAI_API_KEY")
+    key = environment.get("OPENAI_API_KEY")
     if not key:
         raise RuntimeError("OPENAI_API_KEY is not set")
     return key

@@ -12,6 +12,7 @@ stt.transcribe, the streaming handshakes), so a green check means that
 feature actually works — not that some unrelated endpoint answered.
 """
 
+from noisy_coding import environment
 import asyncio
 import os
 import time
@@ -98,8 +99,8 @@ async def _check_voices() -> None:
 
 async def _check_billing() -> None:
     """Credits display (only when a management key/team id is configured)."""
-    url = BILLING_URL_TEMPLATE.format(team_id=os.environ[TEAM_ID_ENV_VAR])
-    headers = {"Authorization": f"Bearer {os.environ[MANAGEMENT_KEY_ENV_VAR]}"}
+    url = BILLING_URL_TEMPLATE.format(team_id=environment.get(TEAM_ID_ENV_VAR))
+    headers = {"Authorization": f"Bearer {environment.get(MANAGEMENT_KEY_ENV_VAR)}"}
     async with httpx.AsyncClient(timeout=CHECK_TIMEOUT_SECONDS) as client:
         response = await client.get(url, headers=headers)
     if response.status_code != httpx.codes.OK:
@@ -131,7 +132,7 @@ async def run_checks(on_progress: ProgressCallback | None = None) -> dict[str, d
     human can actually follow (MIN_CHECK_SECONDS each).
     """
     checks = dict(CHECKS)
-    if os.environ.get(MANAGEMENT_KEY_ENV_VAR) and os.environ.get(TEAM_ID_ENV_VAR):
+    if environment.get(MANAGEMENT_KEY_ENV_VAR) and environment.get(TEAM_ID_ENV_VAR):
         checks["billing"] = _check_billing
 
     results: dict[str, dict] = {name: {"pending": True} for name in checks}

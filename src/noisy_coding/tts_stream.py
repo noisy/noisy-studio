@@ -5,6 +5,7 @@ returned audio.delta chunks straight into a player process (ffmpeg/mpv or
 afplay via a temp file) so playback starts before synthesis finishes.
 """
 
+from noisy_coding import environment
 import asyncio
 import base64
 import json
@@ -167,5 +168,5 @@ async def speak_streaming(
 def streaming_available() -> bool:
     """True if a stdin-streaming player exists (else we buffer-and-play)."""
     return _stream_player_command() is not None or bool(
-        os.environ.get("NOISY_CODING_ALLOW_BUFFERED_STREAM")
+        environment.get("NOISY_CODING_ALLOW_BUFFERED_STREAM")
     )

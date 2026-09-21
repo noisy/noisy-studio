@@ -1,12 +1,13 @@
 """Shared, stdlib-only settings for the Codex hooks and MCP launcher."""
 
+import _environment as environment
 import json
 import os
 from pathlib import Path
 
 
 def config_path():
-    return Path(os.environ.get("NOISY_CODING_CODEX_CONFIG") or
+    return Path(environment.get("NOISY_CODING_CODEX_CONFIG") or
                 Path.home() / ".config/noisy-coding/codex.json").expanduser()
 
 
@@ -15,7 +16,7 @@ def configure():
     settings = json.loads(path.read_text()) if path.exists() else {}
     if not isinstance(settings, dict):
         raise ValueError("Codex settings must be a JSON object")
-    port = int(os.environ.get("NOISY_CODING_LISTENER_PORT") or settings.get("port", 8765))
+    port = int(environment.get("NOISY_CODING_LISTENER_PORT") or settings.get("port", 8765))
     seconds = float(settings.get("listen_seconds", 3600))
     if not 1 <= port <= 65535 or not 0 <= seconds <= 3600:
         raise ValueError("port must be 1–65535 and listen_seconds 0–3600")

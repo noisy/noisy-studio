@@ -1,5 +1,6 @@
 """Adapt Codex lifecycle input to the shared hooks; never infer a cwd identity."""
 
+import _environment as environment
 import io
 import json
 import os
@@ -24,7 +25,7 @@ SCRIPTS = {
 
 def warn(message, block=False):
     try:
-        port = os.environ.get("NOISY_CODING_LISTENER_PORT", "8765")
+        port = environment.get("NOISY_CODING_LISTENER_PORT", "8765")
         request = urllib.request.Request(
             f"http://127.0.0.1:{port}/event",
             data=json.dumps({"kind": "voice_identity_error", "detail": message}).encode(),

@@ -6,6 +6,7 @@ just forwards speak/announce requests over localhost HTTP — so a stale
 server process left behind by an MCP reconnect can't talk over anyone.
 """
 
+from noisy_coding import environment
 import asyncio
 import os
 import socket
@@ -45,7 +46,7 @@ async def _identity_error(agent_id: str | None) -> str | None:
         "for this call. Check that the hooks are registered (/hooks) and that this session "
         "started after they were installed; a restart of the session usually fixes it."
     )
-    port = os.environ.get(LISTENER_PORT_ENV_VAR, "8765")
+    port = environment.get(LISTENER_PORT_ENV_VAR, "8765")
     try:
         async with httpx.AsyncClient(timeout=1.0) as client:
             await client.post(f"http://127.0.0.1:{port}/event", json={"kind": "voice_identity_error", "detail": message})
@@ -63,7 +64,7 @@ async def _daemon_speak(body: dict, agent_id: str | None = None) -> dict | None:
     error = await _identity_error(agent_id)
     if error:
         return {"error": error}
-    port = os.environ.get(LISTENER_PORT_ENV_VAR, "8765")
+    port = environment.get(LISTENER_PORT_ENV_VAR, "8765")
     body = dict(body)
     body["agent"] = agent_id.strip()
     timeout = httpx.Timeout(SPEAK_TIMEOUT_SECONDS, connect=2.0)
@@ -100,7 +101,7 @@ async def acknowledge_delivery(message_ids: list[str], agent_id: str | None = No
     error = await _identity_error(agent_id)
     if error:
         return error
-    port = os.environ.get(LISTENER_PORT_ENV_VAR, "8765")
+    port = environment.get(LISTENER_PORT_ENV_VAR, "8765")
     try:
         async with httpx.AsyncClient(timeout=3.0) as client:
             response = await client.post(f"http://127.0.0.1:{port}/delivery/acknowledge",
@@ -193,7 +194,7 @@ async def change_voice(voice_id: str, speaker: str = "", agent_id: str | None = 
     error = await _identity_error(agent_id)
     if error:
         return error
-    port = os.environ.get(LISTENER_PORT_ENV_VAR, "8765")
+    port = environment.get(LISTENER_PORT_ENV_VAR, "8765")
     body: dict = {"voice_id": voice_id}
     if speaker.strip():
         body["speaker"] = speaker.strip()
@@ -233,7 +234,7 @@ async def set_speaker_style(speaker: str, color: str = "", label: str = "") -> s
         color: One of default/normal/green/purple/red, or "" to leave as is.
         label: The bubble title to show, "" to leave as is, "-" to clear.
     """
-    port = os.environ.get(LISTENER_PORT_ENV_VAR, "8765")
+    port = environment.get(LISTENER_PORT_ENV_VAR, "8765")
     body: dict = {"speaker": speaker.strip()}
     if color.strip():
         body["color"] = color.strip().lower()
@@ -281,9 +282,9 @@ def _ensure_daemon() -> None:
     place without touching the server. Set NOISY_CODING_NO_AUTOSPAWN=1 to opt
     out (e.g. to always manage the daemon by hand).
     """
-    if os.environ.get("NOISY_CODING_NO_AUTOSPAWN"):
+    if environment.get("NOISY_CODING_NO_AUTOSPAWN"):
         return
-    port = int(os.environ.get(LISTENER_PORT_ENV_VAR, "8765"))
+    port = int(environment.get(LISTENER_PORT_ENV_VAR, "8765"))
     if _daemon_running(port):
         return  # adopt the existing daemon
     try:
@@ -307,9 +308,9 @@ def main() -> None:
     # stdio (default): Claude Code launches this process per session.
     # http: optional standalone source transport — a client connects
     # with `claude mcp add --transport http http://host:8767/mcp`.
-    if os.environ.get("NOISY_CODING_MCP_TRANSPORT", "stdio") == "http":
-        mcp.settings.host = os.environ.get("NOISY_CODING_MCP_BIND", "127.0.0.1")
-        mcp.settings.port = int(os.environ.get("NOISY_CODING_MCP_PORT", "8767"))
+    if environment.get("NOISY_CODING_MCP_TRANSPORT", "stdio") == "http":
+        mcp.settings.host = environment.get("NOISY_CODING_MCP_BIND", "127.0.0.1")
+        mcp.settings.port = int(environment.get("NOISY_CODING_MCP_PORT", "8767"))
         mcp.run(transport="streamable-http")
     else:
         mcp.run()

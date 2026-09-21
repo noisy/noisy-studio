@@ -4,6 +4,7 @@ Run with: noisy-coding-listener
 The Claude Code hooks poll GET /drain on the HTTP API to pick up transcripts.
 """
 
+from noisy_coding import environment
 import os
 import queue
 import sys
@@ -164,8 +165,8 @@ def _history_saver(state: ListenerState) -> None:
 
 def _poll_credits(state: ListenerState) -> None:
     """Refresh the team's remaining prepaid credits once a minute."""
-    management_key = os.environ[MANAGEMENT_KEY_ENV_VAR]
-    team_id = os.environ[TEAM_ID_ENV_VAR]
+    management_key = environment.get(MANAGEMENT_KEY_ENV_VAR)
+    team_id = environment.get(TEAM_ID_ENV_VAR)
     url = f"https://management-api.x.ai/v1/billing/teams/{team_id}/prepaid/balance"
     while True:
         try:
@@ -425,13 +426,13 @@ def run(config: VadConfig | None = None) -> None:
     # grok-voice -> noisy-coding rename so the API key/settings/history survive.
     migrate_legacy_config_dir()
     config = config or VadConfig()
-    port = int(os.environ.get(PORT_ENV_VAR, str(DEFAULT_PORT)))
+    port = int(environment.get(PORT_ENV_VAR, str(DEFAULT_PORT)))
 
     state = ListenerState()
     state.microphone_sample.sample_rate = config.sample_rate
-    state.set_mode(os.environ.get(MODE_ENV_VAR, "live"))
-    state.set_language(os.environ.get(STT_LANGUAGE_ENV_VAR, ""))
-    state.set_input_device(os.environ.get(INPUT_DEVICE_ENV_VAR, ""))
+    state.set_mode(environment.get(MODE_ENV_VAR, "live"))
+    state.set_language(environment.get(STT_LANGUAGE_ENV_VAR, ""))
+    state.set_input_device(environment.get(INPUT_DEVICE_ENV_VAR, ""))
     load_saved_characters(state)
     # A voice a speaker earned is theirs across restarts too - the ledger is
     # only meaningful if it outlives the process that wrote it.
@@ -518,7 +519,7 @@ def run(config: VadConfig | None = None) -> None:
         # parent named in the environment is gone.
         import time as _time
 
-        parent = os.environ.get(PARENT_PID_ENV_VAR, "")
+        parent = environment.get(PARENT_PID_ENV_VAR, "")
         if not parent.isdigit():
             return
         while _parent_alive(int(parent)):
@@ -552,7 +553,7 @@ def run(config: VadConfig | None = None) -> None:
 
     threading.Thread(target=_shutdown_watcher, daemon=True).start()
     server = start_http_api(state, port)
-    if os.environ.get(MANAGEMENT_KEY_ENV_VAR) and os.environ.get(TEAM_ID_ENV_VAR):
+    if environment.get(MANAGEMENT_KEY_ENV_VAR) and environment.get(TEAM_ID_ENV_VAR):
         threading.Thread(target=_poll_credits, args=(state,), daemon=True).start()
     segmenter = UtteranceSegmenter(config)
     frames: queue.Queue[np.ndarray] = queue.Queue()

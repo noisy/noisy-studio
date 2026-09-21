@@ -6,6 +6,7 @@ Fails open (silent exit) whenever the listener daemon is not running.
 
 from __future__ import annotations
 
+import _environment as environment
 import json
 import os
 import sys
@@ -14,7 +15,7 @@ import urllib.request
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _agent_identity import identity  # noqa: E402
 
-PORT = os.environ.get("NOISY_CODING_LISTENER_PORT", "8765")
+PORT = environment.get("NOISY_CODING_LISTENER_PORT", "8765")
 
 
 def _activity_line(hook_input: dict) -> str:

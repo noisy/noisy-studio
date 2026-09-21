@@ -11,6 +11,7 @@ Rendered audio also lands in a bounded cache (see audio_cache): replaying
 a card reuses the bytes instead of paying Grok for the same clip again.
 """
 
+from noisy_coding import environment
 import asyncio
 import itertools
 import os
@@ -260,8 +261,8 @@ def resolve_options(
     POST /voice), which the user then sees on the dashboard.
     """
     character = state.character(agent)
-    voice = character.get("voice") or os.environ.get(DEFAULT_VOICE_ENV_VAR, FALLBACK_VOICE)
-    language = state.language or os.environ.get(DEFAULT_LANGUAGE_ENV_VAR) or "auto"
+    voice = character.get("voice") or environment.get(DEFAULT_VOICE_ENV_VAR, FALLBACK_VOICE)
+    language = state.language or environment.get(DEFAULT_LANGUAGE_ENV_VAR) or "auto"
     speed = float(character.get("speed") or 1.0)
     return voice, language, speed
 
@@ -351,7 +352,7 @@ def _tts_streaming(state: ListenerState, provider: providers.TTSProvider) -> boo
     """Whether to stream TTS: env override wins, else the daemon's tts_mode."""
     if not _streaming_available(state, provider):
         return False
-    if os.environ.get(TTS_MODE_ENV_VAR, "").lower() == "live":
+    if environment.get(TTS_MODE_ENV_VAR, "").lower() == "live":
         return True
     return state.tts_mode == "live"
 

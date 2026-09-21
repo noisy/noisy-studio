@@ -5,6 +5,7 @@ frames while the user talks, closed with audio.done when VAD closes.
 Partial transcripts arrive during speech via the on_partial callback.
 """
 
+from noisy_coding import environment
 import json
 import os
 import threading
@@ -46,7 +47,7 @@ class StreamingSession:
         query = f"sample_rate={sample_rate}&encoding=pcm&interim_results=true"
         if language:
             query += f"&language={language}"
-        if os.environ.get("NOISY_CODING_STT_DEBUG"):
+        if environment.get("NOISY_CODING_STT_DEBUG"):
             print(f"[stt-debug] connecting lang={language!r} query={query}", flush=True)
         # smart_turn > 0 asks the server for prosody/semantics-aware end-of-turn
         # detection; it flags speech_final when it judges the thought complete.
@@ -101,7 +102,7 @@ class StreamingSession:
                     continue
                 payload = json.loads(message)
                 kind = payload.get("type", "")
-                if os.environ.get("NOISY_CODING_STT_DEBUG"):
+                if environment.get("NOISY_CODING_STT_DEBUG"):
                     print(f"[stt-debug] {message}", flush=True)
                 if kind == "transcript.partial":
                     text = _extract_text(payload)

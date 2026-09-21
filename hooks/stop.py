@@ -11,6 +11,7 @@ Fails open (silent exit) whenever the listener daemon is not running.
 # runs on the system python3 (which may be 3.9, pre-PEP-604) as advertised.
 from __future__ import annotations
 
+import _environment as environment
 import fcntl
 import json
 import os
@@ -22,13 +23,13 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _agent_identity import identity  # noqa: E402
 
-PORT = os.environ.get("NOISY_CODING_LISTENER_PORT", "8765")
+PORT = environment.get("NOISY_CODING_LISTENER_PORT", "8765")
 BASE_URL = f"http://127.0.0.1:{PORT}"
 POLL_INTERVAL_SECONDS = 0.5
-REWAKE_WAIT_SECONDS = float(os.environ.get("NOISY_CODING_REWAKE_WAIT_SECONDS", "3600"))
+REWAKE_WAIT_SECONDS = float(environment.get("NOISY_CODING_REWAKE_WAIT_SECONDS", "3600"))
 # After speech arrives, keep listening this long for a continuation before
 # waking the model, so a longer musing isn't answered mid-thought.
-GRACE_SECONDS = float(os.environ.get("NOISY_CODING_REWAKE_GRACE_SECONDS", "2.0"))
+GRACE_SECONDS = float(environment.get("NOISY_CODING_REWAKE_GRACE_SECONDS", "2.0"))
 GRACE_CAP_SECONDS = 20.0
 
 # Per-session identity is resolved from stdin in main() and stored here so the

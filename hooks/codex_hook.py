@@ -9,6 +9,7 @@ the short one the user configured - the turn stays open while we listen.
 
 from __future__ import annotations
 
+import _environment as environment
 import json
 import os
 import sys
@@ -28,7 +29,7 @@ def main() -> None:
     payload = _hook_flow.read_payload()
     if not payload:
         return
-    listen_seconds = float(os.environ.get("NOISY_CODING_REWAKE_WAIT_SECONDS", "30"))
+    listen_seconds = float(environment.get("NOISY_CODING_REWAKE_WAIT_SECONDS", "30"))
     try:
         code = _hook_flow.run("codex-hooks", payload, listen_seconds=listen_seconds)
     except Exception:

@@ -8,6 +8,7 @@ mobile page and proxies /api/status and /api/active-agent to the daemon
 Run: uv run noisy-coding-mobile   (then: ngrok http 8770)
 """
 
+from noisy_coding import environment
 import os
 import urllib.error
 import urllib.request
@@ -15,8 +16,8 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 from noisy_coding.listener.mobile import MOBILE_HTML
 
-MOBILE_PORT = int(os.environ.get("NOISY_CODING_MOBILE_PORT", "8770"))
-DAEMON = f"http://127.0.0.1:{os.environ.get('NOISY_CODING_LISTENER_PORT', '8765')}"
+MOBILE_PORT = int(environment.get("NOISY_CODING_MOBILE_PORT", "8770"))
+DAEMON = f"http://127.0.0.1:{environment.get('NOISY_CODING_LISTENER_PORT', '8765')}"
 
 
 def _daemon_get(path: str) -> bytes:

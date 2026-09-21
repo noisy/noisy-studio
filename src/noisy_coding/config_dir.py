@@ -5,6 +5,7 @@ rewake locks) lives under CONFIG_DIR. Defining it once keeps the readers in
 sync and gives the rename a single place to migrate the old location from.
 """
 
+from noisy_coding import environment
 import os
 from pathlib import Path
 
@@ -13,7 +14,7 @@ from pathlib import Path
 # but also the settings, the history and the voice-claim ledger - and the
 # last writer wins. A sandbox for testing the desktop app wants its own.
 CONFIG_DIR = Path(
-    os.environ.get("NOISY_CODING_CONFIG_DIR")
+    environment.get("NOISY_CODING_CONFIG_DIR")
     or Path.home() / ".config" / "noisy-coding"
 ).expanduser()
 _LEGACY_CONFIG_DIR = Path.home() / ".config" / "grok-voice"

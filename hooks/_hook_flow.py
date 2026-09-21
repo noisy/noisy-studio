@@ -14,6 +14,7 @@ knows nothing about any of that. Stdlib only; python 3.9+.
 
 from __future__ import annotations
 
+import _environment as environment
 import json
 import os
 import sys
@@ -25,7 +26,7 @@ import _client
 POLL_INTERVAL_SECONDS = 0.5
 # After speech arrives, keep listening this long for a continuation before
 # waking the model, so a longer musing isn't answered mid-thought.
-GRACE_SECONDS = float(os.environ.get("NOISY_CODING_REWAKE_GRACE_SECONDS", "2.0"))
+GRACE_SECONDS = float(environment.get("NOISY_CODING_REWAKE_GRACE_SECONDS", "2.0"))
 GRACE_CAP_SECONDS = 20.0
 MAX_PREVIEW_CHARS = 220
 

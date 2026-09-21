@@ -1,5 +1,6 @@
 """Localhost HTTP API: transcript queue for the hooks + live dashboard."""
 
+from noisy_coding import environment
 import json
 import re
 import os
@@ -1488,7 +1489,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
 
 
 def start_http_api(state: ListenerState, port: int) -> ThreadingHTTPServer:
-    host = os.environ.get(BIND_ENV_VAR, "127.0.0.1")
+    host = environment.get(BIND_ENV_VAR, "127.0.0.1")
     server = ThreadingHTTPServer((host, port), _handler_class(state))
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
