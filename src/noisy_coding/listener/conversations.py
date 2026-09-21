@@ -297,6 +297,7 @@ class ConversationRegistry:
                 "participants": sorted(c.participants),
                 "last_activity": c.last_activity,
                 "last_event_at": c.last_event_at,
+                "created_at": c.created_at,
                 "listening_until": c.listener.expires_at if c.listener else None,
             }
         return out

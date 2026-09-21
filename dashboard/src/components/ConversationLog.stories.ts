@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/vue3";
 import type { Utterance } from "../types";
+import { conversationTimeline } from "../composables/conversationTimeline";
 import ConversationLog from "./ConversationLog.vue";
 
 const meta: Meta<typeof ConversationLog> = {
@@ -88,4 +89,18 @@ export const ActionNeeded: StoryObj<typeof ConversationLog> = {
     ...feed[0]!, id: index + 60, status: "unavailable — action needed", delivery_detail,
     text: "Please check the release changes.",
   })) },
+};
+
+const microphoneHistory: Utterance[] = [
+  { ...feed[0]!, id: 80, role: "system", agent: "older", text: "MIC → Desk microphone", started_at: now - 120, committed_at: now - 120 },
+  { ...feed[0]!, id: 81, role: "system", agent: "older", text: "MIC → Headset", started_at: now - 60, committed_at: now - 60 },
+  { ...feed[0]!, id: 82, agent: "newer", text: "This is a new conversation.", started_at: now, committed_at: now },
+];
+export const NewConversationWithoutOldMicRows: StoryObj<typeof ConversationLog> = {
+  ...Feed,
+  args: { utterances: conversationTimeline(microphoneHistory, "newer", now - 30) },
+};
+export const ExistingConversationWithMicChanges: StoryObj<typeof ConversationLog> = {
+  ...Feed,
+  args: { utterances: conversationTimeline(microphoneHistory, "older", now - 180) },
 };

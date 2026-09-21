@@ -14,6 +14,7 @@ export interface HotkeyState {
 }
 
 export interface DaemonStatus {
+  conversations?: Record<string, { created_at?: number }>;
   /** Named speakers whose bubbles carry a palette tint (twitch purple / youtube red). */
   speaker_colors?: Record<string, string>;
   /** Free bubble titles per speaker ("YouTube · nick", "Luna - chat agent"). */

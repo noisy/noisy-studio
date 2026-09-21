@@ -9,6 +9,8 @@ import { validStatusChange } from "../machines/chat";
 import type { Character, DaemonStatus, Utterance } from "../types";
 import { canonicalCharacter } from "../character";
 
+import { conversationTimeline } from "./conversationTimeline";
+
 const ERROR_LOG_SIZE = 20;
 
 export interface DaemonState {
@@ -116,8 +118,7 @@ function createDaemonState(pollMs: number): SharedDaemonState {
     const agent = viewedAgent.value ?? undefined;
     auditTransitions(all);
     allUtterances.value = all;
-    // System rows (mic switched, …) belong to every tab's timeline.
-    utterances.value = agent ? all.filter((u) => u.agent === agent || u.role === "system") : all;
+    utterances.value = conversationTimeline(all, agent, agent ? s.conversations?.[agent]?.created_at : undefined);
     utterancesFor.value = agent ?? null;
     if (agent !== lastCharacterAgent || character.value === null) {
       lastCharacterAgent = agent;
