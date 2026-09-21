@@ -105,3 +105,12 @@ def test_restart_does_not_restore_an_unusable_connection(connected, condition):
     assert provider.availability(SESSION).ready is False
     assert waker.wake(SESSION).state == 'unavailable'
     waker._send.assert_not_called()
+
+
+def test_speech_waiting_for_missing_registration_survives_another_restart(connected):
+    journal = connected.conversations.providers.get('claude')._implementation.journal
+    journal.forget_registration(SESSION)
+    restored, _, _ = restart(connected)
+    queue(restored)
+    again, _, _ = restart(restored)
+    assert [row['text'] for row in again.snapshot_transcripts()] == ['Please confirm recovery.']

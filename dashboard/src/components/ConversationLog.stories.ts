@@ -59,7 +59,7 @@ export const InboxDeliveryStates: StoryObj<typeof ConversationLog> = {
     ["delivery unknown", "No acknowledgement received from Claude. It may have arrived; check the session before resending. No automatic resend. Receipt support requires the updated Noisy Studio MCP tools."],
     ["sent — unconfirmed", "Written to the inbox; the host may hold or refuse it."],
     ["delivery uncertain — not retried", "The connection ended during the write. No automatic resend."],
-    ["unavailable — registration required", "Type once in this Claude session to register it again."],
+    ["unavailable — action needed", "Open this Claude conversation and type and send any message—for example, ‘hello’—to reconnect voice delivery. No special command is needed."],
     ["delivery rejected", "The registered endpoint could not be used."],
   ].map(([status, delivery_detail], index) => ({
     ...feed[0]!, id: index + 20, text: "Please check the release changes.",
@@ -76,4 +76,16 @@ export const HookDeliveryWithWake: StoryObj<typeof ConversationLog> = {
     ...feed[0]!, id: index + 40, text: "Please check the release changes.",
     status, delivery_detail, agent_label: "Release assistant",
   }))},
+};
+
+export const ActionNeeded: StoryObj<typeof ConversationLog> = {
+  ...Feed,
+  args: { utterances: [
+    "Open this Claude conversation and type and send any message—for example, ‘hello’—to reconnect voice delivery. No special command is needed.",
+    "Update the Noisy Studio integration in Claude, then resume this conversation to enable voice delivery.",
+    "Resume this conversation in your agent to continue receiving voice messages.",
+  ].map((delivery_detail, index) => ({
+    ...feed[0]!, id: index + 60, status: "unavailable — action needed", delivery_detail,
+    text: "Please check the release changes.",
+  })) },
 };

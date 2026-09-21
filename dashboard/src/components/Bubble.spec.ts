@@ -132,6 +132,19 @@ describe("UserBubble", () => {
     committed_at: 0,
   };
 
+  it("explains the required action above the transcript and removes it after delivery", async () => {
+    const explanation = "Type and send any message to reconnect. No special command is needed.";
+    const wrapper = mount(UserBubble, { props: { utterance: {
+      ...utterance, status: "unavailable — action needed", delivery_detail: explanation,
+    } } });
+    expect(wrapper.get(".st").text()).toBe("! ACTION NEEDED");
+    expect(wrapper.get(".delivery-notice").text()).toBe(explanation);
+    expect(wrapper.get(".delivery-notice").element.nextElementSibling).toBe(wrapper.get(".txt").element);
+    expect(wrapper.get(".mfoot").text()).not.toContain(explanation);
+    await wrapper.setProps({ utterance: { ...utterance, status: "delivered to Claude" } });
+    expect(wrapper.find(".delivery-notice").exists()).toBe(false);
+  });
+
   it("offers cancel only while awaiting Claude and emits the utterance", async () => {
     const awaiting = { ...utterance, status: "ready — awaiting pickup" };
     const wrapper = mount(UserBubble, { props: { utterance: awaiting } });

@@ -15,7 +15,7 @@ not proof that the model read it or completed the requested work.
 If speech remains queued after the 2-second quiet window plus a 1-second pickup
 allowance, the provider requests a socket wake-up. Recording extends that window
 up to the existing 20-second continuation cap. The control message contains only
-a short wake token; it never contains the speech or a receipt instruction.
+a short explanation and a wake token; it never contains the speech or a receipt instruction.
 
 Claude Code fires UserPromptSubmit for an admitted socket prompt. The hook sends
 that prompt to the daemon, which matches the exact stored wake token and canonical
@@ -34,10 +34,21 @@ SessionStart/UserPromptSubmit register the inherited socket endpoint and full
 native session ID privately. Subagent hooks cannot replace parent registration.
 No path is guessed from a UUID, cwd or another tab. SessionEnd removes the endpoint.
 
-Endpoints remain in memory. After a daemon restart, type a message in the target
-session or restart/resume it to register again. Updated hook scripts are required
-for wake pickup; update the integration together with the daemon. Existing hook
-listeners can continue delivering speech even when socket wake is unavailable.
+Connection registrations are saved in the private Claude delivery journal. After
+conversation history loads, the provider restores registrations only for visible,
+active Claude sessions with a matching native identity and supported hook version.
+Socket validation checks the saved path's type and owner; every send also carries
+the full target-session guard. No model turn starts merely because the daemon
+restarts: a wake is requested only when speech is queued.
+
+Older installs need one SessionStart/UserPromptSubmit event after upgrading before
+there is a saved endpoint to restore. Missing, invalid or stale connections require
+a fresh event. The UI shows ACTION NEEDED with an explanation above the transcript:
+type and send any ordinary message to reconnect, resume a closed conversation, or
+update the integration when its hooks are outdated. Existing hook listeners can
+continue delivering speech even when socket wake is unavailable. Connection paths
+stay out of the public conversation payload. Corrupt registration rows are ignored;
+the delivery journal itself is never discarded to work around corruption.
 
 The journal records each wake before socket I/O and permits only one pending
 wake per session. Daemon restart does not blindly repeat an ambiguous write.
@@ -63,3 +74,12 @@ cannot be resolved by sending them again.
 The earlier `"socket"` implementation is retained for comparison/regression
 coverage, not used for normal delivery. There is no transport settings UI or
 automatic switch to direct-socket speech delivery.
+
+## Restart recovery evidence (#136)
+
+On 2026-09-21, an isolated Claude Code session remained open while its independent
+HTTP daemon process was stopped and replaced on the same port/config directory.
+Voice queued after restart produced the requested marker reply in that same session
+without typed input or a waiting Stop hook. A second daemon restart did not produce
+another assistant turn or replay the delivered speech. The probe used isolated
+settings and no MCP servers; production and the live dev daemon were untouched.

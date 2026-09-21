@@ -34,7 +34,7 @@ def validate(endpoint: Endpoint) -> WriteResult | None:
         metadata = os.lstat(endpoint.path)
         if not stat.S_ISSOCK(metadata.st_mode) or metadata.st_uid != os.getuid():
             return WriteResult('rejected', 'inbox is not a socket owned by the current user')
-    except OSError:
+    except (OSError, ValueError):
         return WriteResult('unavailable', 'inbox endpoint is unavailable; re-register the session')
     return None
 

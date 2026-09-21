@@ -1066,7 +1066,7 @@ class ListenerState:
                 speech.utterance_id, delivery_state=receipt.state,
                 delivery_detail=receipt.detail,
                 status={"unknown": "delivery unknown", "sent": "sent — unconfirmed", "uncertain": "delivery uncertain — not retried",
-                        "unavailable": "unavailable — registration required", "rejected": "delivery rejected",
+                        "unavailable": "unavailable — action needed", "rejected": "delivery rejected",
                         "accepted": "accepted — awaiting confirmation", "confirmed": "delivery confirmed", "cancelled": "cancelled by you"}[receipt.state],
             )
 

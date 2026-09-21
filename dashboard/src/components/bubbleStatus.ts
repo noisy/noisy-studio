@@ -20,7 +20,7 @@ const USER_CHIPS: Record<UserState, StatusChip> = {
   sent: { kind: "off", label: "◌ SENT · UNCONFIRMED" },
   unknown: { kind: "off", label: "? DELIVERY UNKNOWN" },
   uncertain: { kind: "fail", label: "! UNCERTAIN · NOT RETRIED" },
-  unavailable: { kind: "fail", label: "! REGISTRATION REQUIRED" },
+  unavailable: { kind: "fail", label: "! ACTION NEEDED" },
   rejected: { kind: "fail", label: "✕ REJECTED" },
   accepted: { kind: "off", label: "◌ ACCEPTED · UNCONFIRMED" },
   confirmed: { kind: "done", label: "✓ CONFIRMED" },

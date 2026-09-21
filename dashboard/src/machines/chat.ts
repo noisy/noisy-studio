@@ -221,7 +221,7 @@ const USER_CANONICAL_STATUS: Record<UserState, string> = {
   ready: "ready — awaiting pickup",
   delivered: "delivered to Claude",
   unknown: "delivery unknown", sent: "sent — unconfirmed", uncertain: "delivery uncertain — not retried",
-  unavailable: "unavailable — registration required", rejected: "delivery rejected",
+  unavailable: "unavailable — action needed", rejected: "delivery rejected",
   accepted: "accepted — awaiting confirmation", confirmed: "delivery confirmed",
   empty: "empty — no speech",
   dropped: "dropped — too short",

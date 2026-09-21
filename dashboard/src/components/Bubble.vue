@@ -15,6 +15,7 @@ const props = withDefaults(
     time: string;
     cost?: string;
     detail?: string;
+    notice?: string;
     live?: boolean;
     pending?: boolean;
     replayable?: boolean;
@@ -37,6 +38,7 @@ const props = withDefaults(
   {
     cost: "—",
     detail: "",
+    notice: "",
     live: false,
     pending: false,
     replayable: false,
@@ -98,6 +100,7 @@ const tagOf = (kind: keyof typeof TAGS) => TAGS[kind];
       <span class="tm">{{ time }}</span>
     </div>
     <div v-if="compact" class="compact-label"><span>{{ who || (side === 'left' ? 'You' : 'Agent') }}</span><span v-if="statusLabel && statusKind !== 'done'" class="st" :class="statusKind">{{ statusLabel }}</span></div>
+    <div v-if="notice" class="delivery-notice" role="status">{{ notice }}</div>
     <div class="txt" :class="{ pending }">
       <template v-for="(b, bi) in blocks" :key="bi">
         <ul v-if="b.kind === 'ul'" class="md-ul">
@@ -141,6 +144,7 @@ const tagOf = (kind: keyof typeof TAGS) => TAGS[kind];
 .replay.playing { color:var(--amber); }
 .replay.skip:hover, .cancel:hover { color:var(--red); }
 .tm { margin-left:auto; font-size:10px; color:var(--muted); font-variant-numeric:tabular-nums; }
+.delivery-notice { border:1px solid var(--accent-border); border-left:3px solid var(--amber); border-radius:6px; padding:10px 12px; margin:8px 0 12px; color:var(--ink); font:13px/1.5 var(--sans); overflow-wrap:anywhere; }
 .txt { font:14px/1.65 var(--sans); color:var(--ink); overflow-wrap:anywhere; }
 /* Paragraphs and lists now carry the spacing, so pre-wrap would double it.
    Line breaks inside a paragraph are still honoured. */

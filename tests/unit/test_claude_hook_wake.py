@@ -171,5 +171,5 @@ def test_old_hook_is_not_sent_a_wake_it_cannot_consume(world):
     waker.tick(state.record_delivery)
 
     waker._send.assert_not_called()
-    assert 'Update Noisy Studio hooks' in waker.availability(SESSION).reason
+    assert 'Update the Noisy Studio integration' in waker.availability(SESSION).reason
     assert len(state.snapshot_transcripts()) == 1

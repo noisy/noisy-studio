@@ -64,10 +64,10 @@ class SocketWake:
         with self._lock:
             endpoint = self._endpoints.get(conversation)
             if conversation in self._unsupported:
-                return Availability(False, 'Update Noisy Studio hooks to enable socket wake-up', True)
+                return Availability(False, 'Update the Noisy Studio integration in Claude, then resume this conversation to enable voice delivery.', True)
         if endpoint and validate(endpoint) is None:
             return Availability(True, 'socket wake available; speech delivered by hooks')
-        return Availability(False, 'No hook listener; register the Claude session for wake-up', True)
+        return Availability(False, 'Open this Claude conversation and type and send any message—for example, “hello”—to reconnect voice delivery. No special command is needed.', True)
 
     def wake(self, conversation):
         with self._lock:
@@ -92,7 +92,8 @@ class SocketWake:
             if state == 'unavailable':
                 self._endpoints.pop(conversation, None)
                 self.journal.forget_registration(conversation)
-            return WakeResult(state, result.detail)
+            detail = self.availability(conversation).reason if state == 'unavailable' else result.detail
+            return WakeResult(state, detail)
 
     def accept_wake(self, conversation, prompt):
         return isinstance(prompt, str) and self.journal.accept_wake(conversation, prompt)
@@ -116,7 +117,7 @@ class SocketWake:
                 self._failures[conversation] = result.detail
                 for speech in speeches:
                     record_receipt(speech, Receipt(speech.utterance_id, conversation, 'unavailable',
-                        'Speech remains queued for hooks. ' + result.detail))
+                        'Your voice message is still queued. ' + result.detail))
 
     def start(self, record_receipt, recording):
         if self._worker:

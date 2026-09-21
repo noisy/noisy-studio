@@ -64,7 +64,7 @@ def test_unregistered_session_never_uses_another_sessions_transport(provider_wor
 
     result = provider.submit(Speech(8, 'session-3', 'hello', 124.0))
 
-    assert result == Receipt(8, 'session-3', 'unavailable', 'registration required')
+    assert result == Receipt(8, 'session-3', 'unavailable', 'Open this conversation in your agent and type and send any message to reconnect voice delivery. No special command is needed.')
     transport.submit.assert_not_called()
 
 

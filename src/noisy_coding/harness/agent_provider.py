@@ -108,7 +108,9 @@ class AgentProvider:
 
     def submit(self, speech: Speech) -> Receipt:
         if speech.conversation not in self._sessions:
-            return Receipt(speech.utterance_id, speech.conversation, 'unavailable', 'registration required')
+            if self.allows_hook_pickup:
+                self._implementation.submit(speech)  # Persist speech while waiting for reconnection.
+            return Receipt(speech.utterance_id, speech.conversation, 'unavailable', 'Open this conversation in your agent and type and send any message to reconnect voice delivery. No special command is needed.')
         return self._implementation.submit(speech)
 
     def prepare_hook_pickup(self, speeches):
@@ -142,7 +144,7 @@ class AgentProvider:
 
     def availability(self, conversation: str) -> Availability:
         if conversation not in self._sessions:
-            return Availability(False, 'registration required', True)
+            return Availability(False, 'Open this conversation in your agent and type and send any message to reconnect voice delivery. No special command is needed.', True)
         return self._implementation.availability(conversation)
 
 
@@ -200,6 +202,10 @@ class AgentProviders:
         return self.get(conversation.harness) if conversation else None
 
     def submit(self, speech: Speech) -> Receipt:
+        conversation = self._registry.get(speech.conversation)
+        if conversation and conversation.ended:
+            return Receipt(speech.utterance_id, speech.conversation, 'unavailable',
+                           'Resume this conversation in your agent to continue receiving voice messages.')
         provider = self.for_conversation(speech.conversation)
         if provider is None:
             return Receipt(speech.utterance_id, speech.conversation, 'unavailable', 'provider not registered')
