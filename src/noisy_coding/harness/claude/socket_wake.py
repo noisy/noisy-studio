@@ -1,11 +1,10 @@
 """Wake an idle Claude; speech stays in the hook-owned queue."""
-import os
 import threading
 import time
 import uuid
 from collections import defaultdict
 
-from noisy_coding.harness.claude.socket_transport import Endpoint, send
+from noisy_coding.harness.claude.socket_transport import Endpoint, send, validate
 from noisy_coding.harness.provider import Availability, Receipt, WakeResult
 
 QUIET_SECONDS = 2.0
@@ -34,6 +33,7 @@ class SocketWake:
         path = registration.connection.get('socket') if isinstance(registration.connection, dict) else None
         with self._lock:
             self._endpoints.pop(registration.conversation, None)
+            self.journal.forget_registration(registration.conversation)
             if not isinstance(registration.connection, dict) or registration.connection.get('hook_protocol') != 2:
                 self._unsupported.add(registration.conversation)
                 return  # An old hook cannot consume the wake_delivery response.
@@ -43,6 +43,7 @@ class SocketWake:
             except (ValueError, AttributeError):
                 valid = False
             if valid and isinstance(path, str) and path:
+                self.journal.save_registration(registration)
                 self._endpoints[registration.conversation] = Endpoint(registration.native_session_id, path)
                 self._failures.pop(registration.conversation, None)
 
@@ -55,6 +56,7 @@ class SocketWake:
                     self.journal.retire_wakes(event.conversation)
                 if event.kind == 'session_ended' and event.participant is None:
                     self._endpoints.pop(event.conversation, None)
+                    self.journal.forget_registration(event.conversation)
 
     def availability(self, conversation):
         if self._failure:
@@ -63,7 +65,7 @@ class SocketWake:
             endpoint = self._endpoints.get(conversation)
             if conversation in self._unsupported:
                 return Availability(False, 'Update Noisy Studio hooks to enable socket wake-up', True)
-        if endpoint and os.path.exists(endpoint.path):
+        if endpoint and validate(endpoint) is None:
             return Availability(True, 'socket wake available; speech delivered by hooks')
         return Availability(False, 'No hook listener; register the Claude session for wake-up', True)
 
@@ -89,6 +91,7 @@ class SocketWake:
             self.journal.finish_wake(prompt, state)
             if state == 'unavailable':
                 self._endpoints.pop(conversation, None)
+                self.journal.forget_registration(conversation)
             return WakeResult(state, result.detail)
 
     def accept_wake(self, conversation, prompt):

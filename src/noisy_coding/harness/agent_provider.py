@@ -4,6 +4,8 @@ from __future__ import annotations
 from noisy_coding.harness.claude.journal import Journal
 from noisy_coding.harness.claude.socket_delivery import SocketDelivery
 from noisy_coding.harness.claude.socket_wake import SocketWake
+from noisy_coding.harness.claude.socket_transport import Endpoint, validate
+import sqlite3
 from noisy_coding.harness import hook_runtime
 
 # Deliberate rollback: change only this choice, then restart/re-register sessions.
@@ -159,6 +161,30 @@ class AgentProviders:
             'codex': AgentProvider('codex', 'Codex', HookDelivery(registry), capabilities),
         }
         self._registry = registry
+
+    def restore_connections(self):
+        provider = self.get('claude')
+        implementation = provider._implementation if provider else None
+        waker = getattr(implementation, 'waker', None)
+        if not waker:
+            return
+        try:
+            for registration in waker.journal.registrations():
+                conversation = self._registry.get(registration.conversation)
+                connection = registration.connection
+                if (not conversation or conversation.harness != 'claude'
+                        or conversation.hidden or conversation.ended
+                        or registration.native_session_id != conversation.key
+                        or not isinstance(connection, dict) or connection.get('hook_protocol') != 2
+                        or not isinstance(connection.get('socket'), str)
+                        or validate(Endpoint(registration.native_session_id, connection['socket']))):
+                    waker.journal.forget_registration(registration.conversation)
+                    continue
+                provider.attach(registration)
+            self._registry._readiness['claude'] = provider.availability
+        except (OSError, sqlite3.Error):
+            # Never discard a corrupt journal: it also protects ambiguous sends.
+            waker._failure = 'Voice delivery could not recover its saved state. Restart Noisy Studio; if this persists, report the problem.'
 
     def start(self, record_receipt, reserve, recording, restore=None):
         for provider in self._providers.values():

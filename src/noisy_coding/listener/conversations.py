@@ -84,6 +84,7 @@ class ConversationRegistry:
         self._capabilities: dict[str, Capabilities] = {}
         if path is not None:
             self._load()
+            self.providers.restore_connections()
 
     # -- identity -----------------------------------------------------
 

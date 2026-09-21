@@ -22,7 +22,7 @@ class WriteResult:
 TIMEOUT_SECONDS = 3.0
 
 
-def send(endpoint: Endpoint, text: str) -> WriteResult:
+def validate(endpoint: Endpoint) -> WriteResult | None:
     try:
         if str(uuid.UUID(endpoint.session_id)) != endpoint.session_id.lower():
             raise ValueError
@@ -36,6 +36,13 @@ def send(endpoint: Endpoint, text: str) -> WriteResult:
             return WriteResult('rejected', 'inbox is not a socket owned by the current user')
     except OSError:
         return WriteResult('unavailable', 'inbox endpoint is unavailable; re-register the session')
+    return None
+
+
+def send(endpoint: Endpoint, text: str) -> WriteResult:
+    invalid = validate(endpoint)
+    if invalid:
+        return invalid
     frame = {'type': 'user', 'session_id': endpoint.session_id,
              'message': {'role': 'user', 'content': text}}
     with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as connection:

@@ -7,7 +7,7 @@ import sqlite3
 import threading
 import time
 
-from noisy_coding.harness.provider import Receipt, Speech
+from noisy_coding.harness.provider import Receipt, Registration, Speech
 
 
 class Journal:
@@ -25,11 +25,40 @@ class Journal:
             self._connection.execute('PRAGMA synchronous=FULL')
             self._connection.execute('CREATE TABLE IF NOT EXISTS deliveries (id TEXT PRIMARY KEY, speech TEXT NOT NULL, state TEXT NOT NULL, detail TEXT NOT NULL)')
             self._connection.execute('CREATE TABLE IF NOT EXISTS wake_requests (prompt TEXT PRIMARY KEY, conversation TEXT NOT NULL, state TEXT NOT NULL)')
+            self._connection.execute('CREATE TABLE IF NOT EXISTS registrations (conversation TEXT PRIMARY KEY, registration TEXT NOT NULL)')
             columns = {row[1] for row in self._connection.execute('PRAGMA table_info(deliveries)')}
             if 'written_at' not in columns:
                 self._connection.execute('ALTER TABLE deliveries ADD COLUMN written_at REAL')
             self._connection.commit()
         return self._connection
+
+    def save_registration(self, registration: Registration) -> None:
+        with self._lock:
+            db = self._db()
+            db.execute('INSERT OR REPLACE INTO registrations VALUES (?, ?)',
+                       (registration.conversation, json.dumps(asdict(registration))))
+            db.commit()
+
+    def forget_registration(self, conversation: str) -> None:
+        with self._lock:
+            db = self._db()
+            db.execute('DELETE FROM registrations WHERE conversation=?', (conversation,))
+            db.commit()
+
+    def registrations(self) -> list[Registration]:
+        with self._lock:
+            rows = self._db().execute('SELECT conversation, registration FROM registrations').fetchall()
+        registrations = []
+        for conversation, raw in rows:
+            try:
+                registration = Registration(**json.loads(raw))
+                if (registration.conversation != conversation or registration.participant
+                        or not isinstance(registration.native_session_id, str)):
+                    continue
+                registrations.append(registration)
+            except (TypeError, ValueError):
+                continue
+        return registrations
 
     @staticmethod
     def key(speech: Speech) -> str:
