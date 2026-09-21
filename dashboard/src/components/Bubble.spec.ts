@@ -137,7 +137,7 @@ describe("UserBubble", () => {
     const wrapper = mount(UserBubble, { props: { utterance: {
       ...utterance, status: "unavailable — action needed", delivery_detail: explanation,
     } } });
-    expect(wrapper.get(".st").text()).toBe("! ACTION NEEDED");
+    expect(wrapper.get(".st").text()).toBe("ACTION NEEDED");
     expect(wrapper.get(".delivery-notice").text()).toBe(explanation);
     expect(wrapper.get(".delivery-notice").element.nextElementSibling).toBe(wrapper.get(".txt").element);
     expect(wrapper.get(".mfoot").text()).not.toContain(explanation);
