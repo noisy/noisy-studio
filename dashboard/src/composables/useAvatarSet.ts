@@ -1,7 +1,7 @@
 import { readonly, ref } from 'vue';
 import { DEFAULT_AVATAR_SET, isAvatarSet, type AvatarSetId } from '../avatars/catalog';
 
-export const AVATAR_STORAGE_KEY = 'noisy-coding.avatar-set';
+export const AVATAR_STORAGE_KEY = 'noisy-studio.avatar-set';
 function readPreference(): AvatarSetId {
   try {
     const saved = localStorage.getItem(AVATAR_STORAGE_KEY);

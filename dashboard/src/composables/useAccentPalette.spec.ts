@@ -28,12 +28,12 @@ it('saves and restores independent user and agent palettes', () => {
   selectAgentAccent('rose');
   initializeAccentPalette();
   expect([accent.value, agentAccent.value, document.documentElement.dataset.accent, document.documentElement.dataset.agentAccent]).toEqual(['teal', 'rose', 'teal', 'rose']);
-  localStorage.removeItem('noisy-coding.agent-accent');
+  localStorage.removeItem('noisy-studio.agent-accent');
 });
 
 it('uses teal and periwinkle when neither preference is saved', () => {
   localStorage.removeItem(ACCENT_STORAGE_KEY);
-  localStorage.removeItem('noisy-coding.agent-accent');
+  localStorage.removeItem('noisy-studio.agent-accent');
   initializeAccentPalette();
   expect([document.documentElement.dataset.accent, document.documentElement.dataset.agentAccent]).toEqual(['teal', 'periwinkle']);
 });

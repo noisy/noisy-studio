@@ -3,10 +3,10 @@ from unittest.mock import Mock
 
 import pytest
 
-from noisy_coding.harness.agent_provider import AgentProvider, AgentProviders
-from noisy_coding.harness.base import Event, Observation
-from noisy_coding.harness.provider import Availability, ProviderCapabilities, Receipt, Registration, Speech
-from noisy_coding.listener.state import ListenerState
+from noisy_studio.harness.agent_provider import AgentProvider, AgentProviders
+from noisy_studio.harness.base import Event, Observation
+from noisy_studio.harness.provider import Availability, ProviderCapabilities, Receipt, Registration, Speech
+from noisy_studio.listener.state import ListenerState
 
 
 @pytest.fixture
@@ -105,7 +105,7 @@ def test_mismatched_receipt_cannot_retire_someone_elses_speech(provider_world):
 
 
 def test_legacy_hook_cannot_consume_a_push_providers_queue(provider_world):
-    from noisy_coding.harness.hook_gateway import drain
+    from noisy_studio.harness.hook_gateway import drain
     state, _provider, _transport = provider_world
     utterance = state.create_utterance('user', 'transcribing', agent='session-1')
     state.add_transcript('for the push provider', utterance)

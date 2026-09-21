@@ -8,12 +8,12 @@ in the pool was doubled.
 
 import pytest
 
-from noisy_coding.listener.identity import (
+from noisy_studio.listener.identity import (
     canonical_identity,
     fold_by_identity,
     is_transcript_path,
 )
-from noisy_coding.harness.claude_hooks.adapter import ClaudeHooks
+from noisy_studio.harness.claude_hooks.adapter import ClaudeHooks
 
 SESSION = "6e8a75dc-57f8-4329-bf87-509bd223a573"
 TRANSCRIPT = f"/Users/someone/.claude/projects/-a-project/{SESSION}.jsonl"

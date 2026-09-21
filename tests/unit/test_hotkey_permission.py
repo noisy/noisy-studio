@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import pytest
 
-from noisy_coding.listener import hotkey
+from noisy_studio.listener import hotkey
 
 
 class _FakeQuartz:

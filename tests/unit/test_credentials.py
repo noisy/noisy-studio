@@ -1,6 +1,6 @@
 import stat
 
-from noisy_coding import credentials
+from noisy_studio import credentials
 
 
 def test_api_key_roundtrip_with_private_file(tmp_path, monkeypatch):

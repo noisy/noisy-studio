@@ -1,6 +1,6 @@
 import pytest
 
-from noisy_coding.providers import config, selection
+from noisy_studio.providers import config, selection
 
 
 @pytest.fixture
@@ -67,8 +67,8 @@ def test_local_speech_rejects_an_unsupported_language(settings_file, monkeypatch
 def test_provider_settings_http_applies_only_the_requested_direction(settings_file, monkeypatch):
     import http.client
     import json
-    from noisy_coding.listener.http_api import start_http_api
-    from noisy_coding.listener.state import ListenerState
+    from noisy_studio.listener.http_api import start_http_api
+    from noisy_studio.listener.state import ListenerState
 
     monkeypatch.setattr(selection, 'readiness', lambda candidate: ('ready', ''))
     monkeypatch.setattr(selection.local, 'download_status', lambda: [])
@@ -107,7 +107,7 @@ def test_preparing_an_available_or_in_progress_engine_is_idempotent(settings_fil
 
 
 def test_third_provider_uses_the_shared_selection_lifecycle(settings_file, monkeypatch):
-    from noisy_coding.providers import engine_registry
+    from noisy_studio.providers import engine_registry
     candidate = dict(id='example:voice', provider='example', direction='tts')
     prepared = []
     engine = engine_registry.EngineAdapter(
@@ -138,7 +138,7 @@ def test_third_provider_uses_the_shared_selection_lifecycle(settings_file, monke
 
 
 def test_existing_macos_voice_is_selectable_without_model_download(settings_file, monkeypatch):
-    from noisy_coding.providers import builtin_selection
+    from noisy_studio.providers import builtin_selection
     config.save(tts='local', tts_engine='say', tts_voice='Samantha')
     monkeypatch.setattr(builtin_selection.shutil, 'which', lambda command: '/usr/bin/say')
     candidate = selection.choice(selection.active_choices()['tts'])
@@ -179,7 +179,7 @@ def test_catalog_explains_language_mismatch_before_apply(settings_file, monkeypa
     ('say', 'Samantha', 'Samantha'),
 ])
 def test_local_voice_labels_preserve_legacy_voice_without_loading_models(settings_file, monkeypatch, engine, voice, expected):
-    from noisy_coding.providers import local
+    from noisy_studio.providers import local
     config.save(tts='local', tts_engine=engine, tts_voice=voice)
     monkeypatch.setattr(local._KokoroEngine, 'model', lambda: pytest.fail('Labels must not load model weights'))
 
@@ -190,7 +190,7 @@ def test_local_voice_labels_preserve_legacy_voice_without_loading_models(setting
 
 @pytest.mark.parametrize('recognition_state, expected', [('ready', True), ('download', False), ('setup', False)])
 def test_capture_readiness_depends_only_on_the_selected_recognizer(settings_file, monkeypatch, recognition_state, expected):
-    from noisy_coding import providers
+    from noisy_studio import providers
     config.save(stt='local', tts='grok', stt_model='base')
     monkeypatch.setattr(selection, 'readiness', lambda candidate:
                         (recognition_state, '') if candidate['id']=='whisper:base' else ('setup', 'No cloud key'))
@@ -203,8 +203,8 @@ def test_capture_readiness_depends_only_on_the_selected_recognizer(settings_file
 def test_invalid_configuration_keeps_status_alive_and_backup_restore_preserves_the_damaged_file(settings_file, monkeypatch):
     import http.client
     import json
-    from noisy_coding.listener import http_api
-    from noisy_coding.listener.state import ListenerState
+    from noisy_studio.listener import http_api
+    from noisy_studio.listener.state import ListenerState
     monkeypatch.setattr(http_api, '_maybe_refresh_latest_version', lambda state: None)
     monkeypatch.setattr(http_api.credentials, 'api_key', lambda: '')
     monkeypatch.setattr(http_api.credentials, 'api_key_hint', lambda: '')

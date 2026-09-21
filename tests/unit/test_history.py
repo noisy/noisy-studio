@@ -1,5 +1,5 @@
-from noisy_coding.listener import daemon
-from noisy_coding.listener.state import ListenerState
+from noisy_studio.listener import daemon
+from noisy_studio.listener.state import ListenerState
 
 
 def test_history_roundtrip_restores_cards_and_id_sequence(tmp_path, monkeypatch):

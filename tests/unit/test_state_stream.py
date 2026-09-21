@@ -1,5 +1,5 @@
 def test_state_snapshot_digest_ignores_volatile_fields_only():
-    from noisy_coding.listener.state_stream import snapshot_digest
+    from noisy_studio.listener.state_stream import snapshot_digest
 
     base = {"type": "snapshot", "status": {"agents": ["a"], "nudge_clocks": {"a": 1}, "mic_level": 0.1}, "utterances": []}
     clocks_moved = {**base, "status": {**base["status"], "nudge_clocks": {"a": 2}, "mic_level": 0.7}}

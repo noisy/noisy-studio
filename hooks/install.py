@@ -4,10 +4,10 @@
     python3 hooks/install.py            # daemon on the default port (8765)
     python3 hooks/install.py --port 7765
 
-Registers the noisy-coding hooks in ~/.claude/settings.json (user scope):
+Registers the noisy-studio hooks in ~/.claude/settings.json (user scope):
 one script, hooks/claude_hook.py, for every lifecycle event, run with the
 plain `python3` from PATH (stdlib only, python 3.9+). Idempotent: existing
-noisy-coding entries are replaced in place, everything else in the file is
+noisy-studio entries are replaced in place, everything else in the file is
 preserved. Restart Claude Code afterwards - hooks are read at startup.
 """
 
@@ -29,7 +29,7 @@ TOOL_EVENTS = ("PreToolUse", "PostToolUse")
 
 
 def _command(port: int | None) -> str:
-    prefix = f"NOISY_CODING_LISTENER_PORT={port} " if port else ""
+    prefix = f"NOISY_STUDIO_LISTENER_PORT={port} " if port else ""
     return f'{prefix}python3 "{SCRIPT}"'
 
 
@@ -55,7 +55,7 @@ def entries(port: int | None = None) -> dict:
 
 def _is_ours(entry: dict) -> bool:
     return any(
-        "noisy-coding" in hook.get("command", "") or str(HOOKS_DIR) in hook.get("command", "")
+        "noisy-studio" in hook.get("command", "") or str(HOOKS_DIR) in hook.get("command", "")
         for hook in entry.get("hooks", [])
     )
 
@@ -83,7 +83,7 @@ def main() -> None:
     parser.add_argument("--port", type=int, default=None, help="daemon HTTP port (default 8765)")
     args = parser.parse_args()
     install(SETTINGS, args.port)
-    print(f"noisy-coding hooks registered in {SETTINGS}")
+    print(f"noisy-studio hooks registered in {SETTINGS}")
     print("Restart Claude Code to activate them.")
 
 

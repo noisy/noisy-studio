@@ -38,7 +38,7 @@ export function resetScenario(next: Scenario) {
   if(next === 'recording') messages.push({id:5,role:'user',text:'Great. Next, let’s look at the slow dashboard query…',status:'recording...',detail:'Capturing your voice',cost_usd:0,agent:'codex',started_at:now,updated_at:now,committed_at:0});
   if(next === 'speaking') messages[3].status='speaking...';
   if(next === 'queued' || next === 'muted') messages.filter(m=>m.role==='claude').forEach(m=>m.status='unheard');
-  localStorage.setItem('noisy-coding.audio-cues', JSON.stringify({enabled:false,recordingHum:false,cues:{}}));
+  localStorage.setItem('noisy-studio.audio-cues', JSON.stringify({enabled:false,recordingHum:false,cues:{}}));
 }
 export async function getStatus() { if(scenario==='offline') throw new Error('Simulated offline'); return clone(status); }
 // Browser previews cannot request native macOS permissions.

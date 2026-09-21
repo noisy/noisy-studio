@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
 
-from noisy_coding.listener.vad import UtteranceSegmenter, VadConfig
+from noisy_studio.listener.vad import UtteranceSegmenter, VadConfig
 
 CONFIG = VadConfig()
 
@@ -120,7 +120,7 @@ def test_high_sensitivity_catches_speech_that_default_misses(make_frames):
 
 
 def test_default_sensitivity_scale_is_exactly_todays_behaviour():
-    from noisy_coding.listener.vad import sensitivity_scale
+    from noisy_studio.listener.vad import sensitivity_scale
 
     assert sensitivity_scale(50) == 1.0
     assert sensitivity_scale(0) == 2.0

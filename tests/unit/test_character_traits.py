@@ -2,8 +2,8 @@ import json
 
 import pytest
 
-from noisy_coding.listener.state import ListenerState
-from noisy_coding.listener import daemon, http_api
+from noisy_studio.listener.state import ListenerState
+from noisy_studio.listener import daemon, http_api
 
 
 @pytest.mark.parametrize(("values", "verbosity", "talkative"), [

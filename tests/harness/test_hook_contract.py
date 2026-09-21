@@ -13,8 +13,8 @@ from pathlib import Path
 
 import pytest
 
-from noisy_coding import harness
-from noisy_coding.harness.base import HarnessError
+from noisy_studio import harness
+from noisy_studio.harness.base import HarnessError
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "harness"
 REQUIRED = ("session.jsonl", "resume.jsonl", "title.jsonl")
@@ -116,7 +116,7 @@ def test_6_delivery_wakes_with_exit_2_and_carries_every_message_once(named):
 
 def test_7_speech_identity_comes_from_the_session_not_the_environment(named, monkeypatch):
     name, adapter = named
-    monkeypatch.setenv("NOISY_CODING_AGENT_NAME", "forged")
+    monkeypatch.setenv("NOISY_STUDIO_AGENT_NAME", "forged")
     monkeypatch.chdir(Path(__file__).parent)
     speak_rows = [r for r in _rows(name, "session.jsonl")
                   if r.get("hook_event_name") == "PreToolUse"
@@ -136,6 +136,6 @@ def test_7_speech_identity_comes_from_the_session_not_the_environment(named, mon
 def test_payload_without_a_session_fails_closed(named):
     _name, adapter = named
     with pytest.raises(HarnessError):
-        adapter.interpret({"hook_event_name": "PreToolUse", "tool_name": "mcp__noisy-coding__speak"})
+        adapter.interpret({"hook_event_name": "PreToolUse", "tool_name": "mcp__noisy-studio__speak"})
     with pytest.raises(HarnessError):
         adapter.interpret("not an object")  # type: ignore[arg-type]

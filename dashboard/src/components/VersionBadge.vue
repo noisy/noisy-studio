@@ -64,7 +64,7 @@ const skew = computed(() => {
   // Stale daemon: the fix depends on which daemon this is.
   return props.devInstance
     ? { action: "RESTART THE DEV DAEMON (scripts/dev_daemon.sh)", hint: "The local dev daemon started before the version bump." }
-    : { action: "UPDATE THE CONTAINER (/noisy-coding:update)", hint: "The daemon runs an older release." };
+    : { action: "UPDATE THE NOISY STUDIO APP", hint: "The daemon runs an older release." };
 });
 </script>
 
@@ -75,7 +75,7 @@ const skew = computed(() => {
   <span
     v-else-if="updateAvailable"
     class="verupdate"
-    title="A newer release is published — run /noisy-coding:update"
+    title="A newer release is published — run /noisy-studio:update"
   >
     v{{ uiVersion }} · NEW v{{ updateAvailable }} AVAILABLE
   </span>

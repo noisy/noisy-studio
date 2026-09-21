@@ -7,9 +7,9 @@ from _codex_config import configure
 
 def main():
     configure()
-    os.environ["NOISY_CODING_REQUIRE_AGENT_ID"] = "1"
-    os.environ["NOISY_CODING_MCP_TRANSPORT"] = "stdio"
-    from noisy_coding.server import main as serve
+    os.environ["NOISY_STUDIO_REQUIRE_AGENT_ID"] = "1"
+    os.environ["NOISY_STUDIO_MCP_TRANSPORT"] = "stdio"
+    from noisy_studio.server import main as serve
 
     serve()
 

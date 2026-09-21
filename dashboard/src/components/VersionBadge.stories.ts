@@ -29,13 +29,13 @@ export const UiStaleWindows: StoryObj<typeof VersionBadge> = {
   args: { uiVersion: "2.7.7", daemonVersion: "2.8.0", platform: "windows" },
 };
 
-/** UI is newer → the container runs an old release; update it. */
+/** UI is newer → the native app runs an old release; update it. */
 export const DaemonStale: StoryObj<typeof VersionBadge> = {
   args: { uiVersion: "2.8.0", daemonVersion: "2.7.7" },
 };
 
 /** Stale daemon on a LOCAL DEV instance — the fix is a restart, not a
- *  container update. */
+ *  native app update. */
 export const DaemonStaleDev: StoryObj<typeof VersionBadge> = {
   args: { uiVersion: "2.9.0", daemonVersion: "2.8.0", devInstance: true },
 };

@@ -3,9 +3,9 @@ from unittest.mock import Mock
 import numpy as np
 import pytest
 
-from noisy_coding import providers
-from noisy_coding.listener import daemon, stt
-from noisy_coding.listener.state import ListenerState
+from noisy_studio import providers
+from noisy_studio.listener import daemon, stt
+from noisy_studio.listener.state import ListenerState
 
 
 @pytest.fixture

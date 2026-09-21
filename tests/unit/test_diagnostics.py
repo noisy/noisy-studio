@@ -3,7 +3,7 @@ import time
 
 import pytest
 
-from noisy_coding import diagnostics
+from noisy_studio import diagnostics
 
 
 @pytest.fixture(autouse=True)

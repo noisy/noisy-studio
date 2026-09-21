@@ -6,7 +6,7 @@ import type { DaemonStatus, Utterance } from "../types";
 import { detectCues, snapshotUtterances, type CueName } from "./cueEvents";
 import { HUM_DEFAULT_VOLUME, playCue, startRecordingHum, stopRecordingHum, type HumNoise } from "./cueSounds";
 
-const STORAGE_KEY = "noisy-coding.audio-cues";
+const STORAGE_KEY = "noisy-studio.audio-cues";
 
 export interface CuePrefs {
   enabled: boolean;

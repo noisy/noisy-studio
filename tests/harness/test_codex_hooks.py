@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from noisy_coding.harness.codex_hooks.adapter import CodexHooks
+from noisy_studio.harness.codex_hooks.adapter import CodexHooks
 
 
 def _title(payload, index_text=""):
@@ -18,7 +18,7 @@ def test_codex_tab_has_no_name_until_codex_names_the_thread():
     # No project, no id, no prefix: an unnamed thread yields no title at all,
     # and the registry shows its neutral placeholder instead.
     assert _title({"hook_event_name": "SessionStart",
-                   "session_id": "codex-0a1b2c3d", "cwd": "/Users/dev/noisy-coding"}) == ""
+                   "session_id": "codex-0a1b2c3d", "cwd": "/Users/dev/noisy-studio"}) == ""
 
 
 def test_codex_tab_takes_the_threads_own_name_when_codex_has_one():

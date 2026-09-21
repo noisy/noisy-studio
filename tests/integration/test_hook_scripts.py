@@ -15,9 +15,9 @@ from pathlib import Path
 
 import pytest
 
-from noisy_coding.listener import http_api
-from noisy_coding.listener.http_api import start_http_api
-from noisy_coding.listener.state import ListenerState
+from noisy_studio.listener import http_api
+from noisy_studio.listener.http_api import start_http_api
+from noisy_studio.listener.state import ListenerState
 
 REPO = Path(__file__).resolve().parents[2]
 FIXTURES = REPO / "tests" / "fixtures" / "harness" / "claude-hooks"
@@ -32,7 +32,7 @@ def _rows(name: str) -> list[dict]:
 @pytest.fixture
 def daemon(tmp_path, monkeypatch):
     # Retained hook implementation remains independently executable for rollback.
-    from noisy_coding.harness import agent_provider
+    from noisy_studio.harness import agent_provider
     monkeypatch.setattr(agent_provider, "CLAUDE_DELIVERY", "hooks")
     monkeypatch.setattr(http_api, "DIST_DIR", tmp_path / "missing")
     monkeypatch.setattr(http_api, "SETTINGS_FILE", tmp_path / "settings.json")
@@ -43,8 +43,8 @@ def daemon(tmp_path, monkeypatch):
 
 
 def _run(script: Path, payload: dict, port: int, env_extra: dict | None = None, timeout: float = 10.0):
-    environment = {k: v for k, v in os.environ.items() if not k.startswith("NOISY_CODING_")}
-    environment.update(NOISY_CODING_LISTENER_PORT=str(port), NOISY_CODING_REWAKE_GRACE_SECONDS="0")
+    environment = {k: v for k, v in os.environ.items() if not k.startswith("NOISY_STUDIO_")}
+    environment.update(NOISY_STUDIO_LISTENER_PORT=str(port), NOISY_STUDIO_REWAKE_GRACE_SECONDS="0")
     environment.update(env_extra or {})
     return subprocess.run(
         [sys.executable, str(script)], input=json.dumps(payload), capture_output=True,
@@ -62,7 +62,7 @@ def test_session_start_registers_the_tab_and_listens_until_the_window_ends(daemo
     state, port = daemon
     start = _rows("session.jsonl")[0]
     began = time.time()
-    result = _run(CLAUDE_HOOK, start, port, {"NOISY_CODING_REWAKE_WAIT_SECONDS": "1"})
+    result = _run(CLAUDE_HOOK, start, port, {"NOISY_STUDIO_REWAKE_WAIT_SECONDS": "1"})
     assert result.returncode == 0 and result.stdout == ""
     assert 1.0 <= time.time() - began < 5.0
     key = start["session_id"]
@@ -75,7 +75,7 @@ def test_session_start_registers_the_tab_and_listens_until_the_window_ends(daemo
 def test_post_tool_use_delivers_queued_voice_as_context(daemon):
     state, port = daemon
     rows = _rows("session.jsonl")
-    _run(CLAUDE_HOOK, rows[0], port, {"NOISY_CODING_REWAKE_WAIT_SECONDS": "0"})
+    _run(CLAUDE_HOOK, rows[0], port, {"NOISY_STUDIO_REWAKE_WAIT_SECONDS": "0"})
     key = rows[0]["session_id"]
     _queue(state, key, "please add a test")
     post = next(r for r in rows if r["hook_event_name"] == "PostToolUse")
@@ -90,7 +90,7 @@ def test_post_tool_use_delivers_queued_voice_as_context(daemon):
 def test_a_subagents_post_tool_use_leaves_the_parents_queue_alone(daemon):
     state, port = daemon
     rows = _rows("participant.jsonl")
-    _run(CLAUDE_HOOK, rows[0], port, {"NOISY_CODING_REWAKE_WAIT_SECONDS": "0"})
+    _run(CLAUDE_HOOK, rows[0], port, {"NOISY_STUDIO_REWAKE_WAIT_SECONDS": "0"})
     key = rows[0]["session_id"]
     _queue(state, key, "for the main thread only")
     child = next(r for r in rows if r.get("agent_id") and r["hook_event_name"] == "PostToolUse")
@@ -103,11 +103,11 @@ def test_a_subagents_post_tool_use_leaves_the_parents_queue_alone(daemon):
 def test_stop_wakes_the_model_with_the_spoken_text(daemon):
     state, port = daemon
     rows = _rows("session.jsonl")
-    _run(CLAUDE_HOOK, rows[0], port, {"NOISY_CODING_REWAKE_WAIT_SECONDS": "0"})
+    _run(CLAUDE_HOOK, rows[0], port, {"NOISY_STUDIO_REWAKE_WAIT_SECONDS": "0"})
     key = rows[0]["session_id"]
     _queue(state, key, "what did you change")
     stop = next(r for r in rows if r["hook_event_name"] == "Stop")
-    result = _run(CLAUDE_HOOK, stop, port, {"NOISY_CODING_REWAKE_WAIT_SECONDS": "5"})
+    result = _run(CLAUDE_HOOK, stop, port, {"NOISY_STUDIO_REWAKE_WAIT_SECONDS": "5"})
     assert result.returncode == 2
     assert "[VOICE] The user said (spoken): what did you change" in result.stderr
     assert "what did you change" in json.loads(result.stdout.splitlines()[0])["systemMessage"]
@@ -117,12 +117,12 @@ def test_stop_wakes_the_model_with_the_spoken_text(daemon):
 def test_a_stale_stop_listener_stands_down_when_a_newer_one_starts(daemon):
     state, port = daemon
     rows = _rows("session.jsonl")
-    _run(CLAUDE_HOOK, rows[0], port, {"NOISY_CODING_REWAKE_WAIT_SECONDS": "0"})
+    _run(CLAUDE_HOOK, rows[0], port, {"NOISY_STUDIO_REWAKE_WAIT_SECONDS": "0"})
     key = rows[0]["session_id"]
     stop = next(r for r in rows if r["hook_event_name"] == "Stop")
-    environment = {k: v for k, v in os.environ.items() if not k.startswith("NOISY_CODING_")}
-    environment.update(NOISY_CODING_LISTENER_PORT=str(port), NOISY_CODING_REWAKE_WAIT_SECONDS="20",
-                       NOISY_CODING_REWAKE_GRACE_SECONDS="0")
+    environment = {k: v for k, v in os.environ.items() if not k.startswith("NOISY_STUDIO_")}
+    environment.update(NOISY_STUDIO_LISTENER_PORT=str(port), NOISY_STUDIO_REWAKE_WAIT_SECONDS="20",
+                       NOISY_STUDIO_REWAKE_GRACE_SECONDS="0")
     stale = subprocess.Popen([sys.executable, str(CLAUDE_HOOK)], stdin=subprocess.PIPE,
                              stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=environment)
     stale.stdin.write(json.dumps(stop)); stale.stdin.close()
@@ -158,13 +158,13 @@ def test_pre_tool_use_injects_the_conversation_identity_into_speak(daemon):
 
 def test_without_a_daemon_every_hook_is_silent_and_exits_zero():
     for row in _rows("session.jsonl"):
-        result = _run(CLAUDE_HOOK, row, 1, {"NOISY_CODING_REWAKE_WAIT_SECONDS": "1"}, timeout=5)
+        result = _run(CLAUDE_HOOK, row, 1, {"NOISY_STUDIO_REWAKE_WAIT_SECONDS": "1"}, timeout=5)
         assert (result.returncode, result.stdout, result.stderr) == (0, "", "")
 
 
 def test_speech_without_session_identity_is_blocked(daemon):
     _state, port = daemon
-    result = _run(CLAUDE_HOOK, {"hook_event_name": "PreToolUse", "tool_name": "mcp__noisy-coding__speak",
+    result = _run(CLAUDE_HOOK, {"hook_event_name": "PreToolUse", "tool_name": "mcp__noisy-studio__speak",
                                 "tool_input": {"text": "x"}}, port)
     output = json.loads(result.stdout)
     assert output["hookSpecificOutput"]["permissionDecision"] == "deny"
@@ -175,7 +175,7 @@ def test_codex_hook_reads_its_endpoint_from_the_settings_file(daemon, tmp_path):
     state, port = daemon
     settings = tmp_path / "codex.json"
     settings.write_text(json.dumps({"port": port, "listen_seconds": 1}))
-    env = {"NOISY_CODING_CODEX_CONFIG": str(settings), "HOME": str(tmp_path)}
+    env = {"NOISY_STUDIO_CODEX_CONFIG": str(settings), "HOME": str(tmp_path)}
     payload = {"hook_event_name": "SessionStart", "session_id": "codex-abc12345", "cwd": str(tmp_path)}
     # The port comes from the settings file; the env var is only an override.
     result = _run(CODEX_HOOK, payload, port, env)
@@ -187,4 +187,4 @@ def test_codex_hook_reads_its_endpoint_from_the_settings_file(daemon, tmp_path):
     result = _run(CODEX_HOOK, {**payload, "hook_event_name": "Stop"}, port, env)
     assert result.returncode == 2 and "codex, are you there" in result.stderr
     assert time.time() - began < 3.0
-    assert not (tmp_path / ".config/noisy-coding/sessions.json").exists()
+    assert not (tmp_path / ".config/noisy-studio/sessions.json").exists()

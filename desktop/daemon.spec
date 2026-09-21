@@ -6,7 +6,7 @@
 #
 # Build:  .venv/bin/pyinstaller desktop/daemon.spec --distpath desktop/build/daemon
 # Output: desktop/build/daemon/Noisy Studio Engine.app (the shipped engine) and
-#         desktop/build/daemon/noisy-coding-daemon/ (the same onedir tree, for local runs)
+#         desktop/build/daemon/noisy-studio-daemon/ (the same onedir tree, for local runs)
 import json
 import sys
 from pathlib import Path
@@ -17,7 +17,7 @@ ROOT = Path.cwd()
 APP_VERSION = json.loads((ROOT / "desktop" / "package.json").read_text())["version"]
 
 a = Analysis(
-    [str(ROOT / "src" / "noisy_coding" / "listener" / "__main__.py")],
+    [str(ROOT / "src" / "noisy_studio" / "listener" / "__main__.py")],
     # Claude hook modules are frozen into the same runtime as the engine.
     pathex=[str(ROOT / "src"), str(ROOT / "hooks")],
     binaries=[],
@@ -29,7 +29,7 @@ a = Analysis(
     # The daemon reads its own version from package metadata; without the
     # dist-info the frozen build reports "dev" and the update check is
     # meaningless (#100).
-    + copy_metadata("noisy-coding"),
+    + copy_metadata("noisy-studio"),
     hiddenimports=[
         # Imported dynamically or through plugin machinery, so the static
         # analysis does not see them.
@@ -54,7 +54,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name="noisy-coding-daemon",
+    name="noisy-studio-daemon",
     debug=False,
     strip=False,
     upx=False,
@@ -66,7 +66,7 @@ coll = COLLECT(
     a.datas,
     strip=False,
     upx=False,
-    name="noisy-coding-daemon",
+    name="noisy-studio-daemon",
 )
 
 # The engine is its own app bundle, not a bare executable (#98): macOS

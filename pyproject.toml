@@ -1,5 +1,5 @@
 [project]
-name = "noisy-coding"
+name = "noisy-studio"
 version = "3.0.0-alpha.9"
 description = "Voice coding for Claude Code — talk to your agent while it works (Grok/xAI voice backend)"
 readme = "README.md"
@@ -22,9 +22,9 @@ dependencies = [
 ]
 
 [project.scripts]
-noisy-coding-mcp = "noisy_coding.server:main"
-noisy-coding-listener = "noisy_coding.listener.daemon:main"
-noisy-coding-mobile = "noisy_coding.mobile_server:main"
+noisy-studio-mcp = "noisy_studio.server:main"
+noisy-studio-listener = "noisy_studio.listener.daemon:main"
+noisy-studio-mobile = "noisy_studio.mobile_server:main"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
@@ -34,7 +34,7 @@ requires = ["uv_build>=0.11.0,<0.12.0"]
 build-backend = "uv_build"
 
 [project.optional-dependencies]
-# Local (offline) STT — heavy, so opt-in: pip install 'noisy-coding[local]'
+# Local (offline) STT — heavy, so opt-in: pip install 'noisy-studio[local]'
 local = [
     "faster-whisper>=1.1.1",
     "kokoro-onnx>=0.6.1",

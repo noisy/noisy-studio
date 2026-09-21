@@ -11,7 +11,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "hooks"))
 from _codex_config import config_path  # noqa: E402
 
-OWNER = "noisy-coding"
+OWNER = "noisy-studio"
 MANAGED_KEYS = {"managed_by", "port", "listen_seconds", "agent_label"}
 
 

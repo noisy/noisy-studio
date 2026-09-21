@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from noisy_coding.listener import daemon
-from noisy_coding.listener.state import ListenerState
-from noisy_coding.listener.vad import VadConfig
+from noisy_studio.listener import daemon
+from noisy_studio.listener.state import ListenerState
+from noisy_studio.listener.vad import VadConfig
 
 
 class _Stream:

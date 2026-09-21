@@ -34,12 +34,12 @@ describe("VersionBadge", () => {
     }
   });
 
-  it("tells the user to update the container when the UI is newer", () => {
+  it("tells the user to update the native app when the UI is newer", () => {
     const wrapper = mount(VersionBadge, {
       props: { uiVersion: "2.8.0", daemonVersion: "2.7.7" },
     });
 
-    expect(wrapper.find(".verskew").text()).toContain("UPDATE THE CONTAINER");
+    expect(wrapper.find(".verskew").text()).toContain("UPDATE THE NOISY STUDIO APP");
   });
 
   it("compares numerically, not lexicographically (2.10.0 > 2.8.0)", () => {
@@ -50,13 +50,13 @@ describe("VersionBadge", () => {
     expect(wrapper.find(".verskew").text()).toContain("HARD-REFRESH");
   });
 
-  it("on a dev instance a stale daemon asks for a restart, not a container update", () => {
+  it("on a dev instance a stale daemon asks for a restart, not a native app update", () => {
     const wrapper = mount(VersionBadge, {
       props: { uiVersion: "2.9.0", daemonVersion: "2.8.0", devInstance: true },
     });
 
     expect(wrapper.find(".verskew").text()).toContain("RESTART THE DEV DAEMON");
-    expect(wrapper.find(".verskew").text()).not.toContain("UPDATE THE CONTAINER");
+    expect(wrapper.find(".verskew").text()).not.toContain("UPDATE THE NOISY STUDIO APP");
   });
 
   it("announces a newer published release in calm green", () => {

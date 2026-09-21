@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from noisy_coding.listener import hotkey
-from noisy_coding.listener.chords import FLAG_MASKS, KEYCODES
+from noisy_studio.listener import hotkey
+from noisy_studio.listener.chords import FLAG_MASKS, KEYCODES
 
 
 class _State:

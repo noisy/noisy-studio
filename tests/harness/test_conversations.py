@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import pytest
 
-from noisy_coding.harness.base import Capabilities
-from noisy_coding.harness.fake.adapter import FakeHarness, FakeSession
-from noisy_coding.listener.conversations import ConversationRegistry
+from noisy_studio.harness.base import Capabilities
+from noisy_studio.harness.fake.adapter import FakeHarness, FakeSession
+from noisy_studio.listener.conversations import ConversationRegistry
 
 
 class Clock:

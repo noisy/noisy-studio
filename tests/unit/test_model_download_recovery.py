@@ -4,13 +4,13 @@ from types import ModuleType
 
 import pytest
 
-from noisy_coding.providers import downloads, local
-from noisy_coding.providers.base import TTSError
+from noisy_studio.providers import downloads, local
+from noisy_studio.providers.base import TTSError
 
 
 @pytest.mark.parametrize('chunks,total', [([b'part'], 20), ([], 0)])
 def test_incomplete_model_is_never_published_and_retry_recovers(tmp_path, monkeypatch, chunks, total):
-    monkeypatch.setattr('noisy_coding.config_dir.CONFIG_DIR', tmp_path)
+    monkeypatch.setattr('noisy_studio.config_dir.CONFIG_DIR', tmp_path)
     class Response:
         headers = {'content-length': str(total)}
         def raise_for_status(self):

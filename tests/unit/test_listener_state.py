@@ -1,8 +1,8 @@
 import threading
 import time
 
-from noisy_coding.listener import state as state_module
-from noisy_coding.listener.state import VOICE_POOL, ListenerState
+from noisy_studio.listener import state as state_module
+from noisy_studio.listener.state import VOICE_POOL, ListenerState
 
 
 def _finishes_within(fn, seconds: float) -> bool:
@@ -667,8 +667,8 @@ def test_choosing_a_voice_for_a_tab_updates_its_ledger_claim():
 
 
 def test_restored_tabs_on_the_strip_never_share_a_voice_even_before_they_poll():
-    from noisy_coding.harness.base import Capabilities
-    from noisy_coding.harness.fake.adapter import FakeHarness, FakeSession
+    from noisy_studio.harness.base import Capabilities
+    from noisy_studio.harness.fake.adapter import FakeHarness, FakeSession
 
     state = ListenerState()
     harness = FakeHarness()

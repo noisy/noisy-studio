@@ -8,7 +8,7 @@ Spends API credits and makes sound. Usage:
 import asyncio
 import sys
 
-from noisy_coding import playback, tts
+from noisy_studio import playback, tts
 
 
 async def main() -> None:

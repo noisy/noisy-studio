@@ -1,5 +1,5 @@
-from noisy_coding.listener.microphone_history import MicrophoneHistory
-from noisy_coding.listener.state import ListenerState
+from noisy_studio.listener.microphone_history import MicrophoneHistory
+from noisy_studio.listener.state import ListenerState
 
 
 def rows(state):

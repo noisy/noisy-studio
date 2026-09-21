@@ -9,7 +9,7 @@ from urllib.parse import urlsplit
 
 from websockets.sync.server import serve
 
-from noisy_coding.listener.stt_stream import StreamingSession
+from noisy_studio.listener.stt_stream import StreamingSession
 
 ROOT = Path(__file__).resolve().parent
 CLIPS = ROOT.parent.parent / "dashboard/src/components/marketing/crew-voice"

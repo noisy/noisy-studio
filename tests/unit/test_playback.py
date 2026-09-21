@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from noisy_coding import playback
+from noisy_studio import playback
 
 
 def test_player_command_uses_afplay_on_macos(monkeypatch):

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from noisy_coding.listener import http_api
-from noisy_coding.listener.conversations import ConversationRegistry
-from noisy_coding.listener.state import ListenerState
+from noisy_studio.listener import http_api
+from noisy_studio.listener.conversations import ConversationRegistry
+from noisy_studio.listener.state import ListenerState
 
 
 class _Listener:
@@ -81,7 +81,7 @@ def test_talk_to_tab_counts_visible_conversations_left_to_right(tmp_path):
 
 
 def test_defaults_fill_untouched_actions_but_never_an_explicit_off():
-    from noisy_coding.listener.hotkey import DEFAULT_HOTKEYS
+    from noisy_studio.listener.hotkey import DEFAULT_HOTKEYS
 
     st = _state()
     st.set_hotkeys({"toggle": "F15", "tab1": ""})   # tab1 cleared on purpose

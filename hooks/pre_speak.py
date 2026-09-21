@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""PreToolUse hook on noisy-coding speak: show the user what is about to be said.
+"""PreToolUse hook on noisy-studio speak: show the user what is about to be said.
 
 Prints a systemMessage so the terminal shows the spoken text next to the
 tool-call spinner. Never blocks the call.

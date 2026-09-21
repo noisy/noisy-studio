@@ -5,10 +5,10 @@ from unittest.mock import Mock
 
 import pytest
 
-from noisy_coding.harness.claude.socket_transport import WriteResult
-from noisy_coding.harness.hook_gateway import _apply_harness_event, drain
-from noisy_coding.listener.conversations import ConversationRegistry
-from noisy_coding.listener.state import ListenerState
+from noisy_studio.harness.claude.socket_transport import WriteResult
+from noisy_studio.harness.hook_gateway import _apply_harness_event, drain
+from noisy_studio.listener.conversations import ConversationRegistry
+from noisy_studio.listener.state import ListenerState
 
 SESSION = '00000000-0000-4000-8000-000000000001'
 

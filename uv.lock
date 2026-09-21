@@ -541,8 +541,8 @@ wheels = [
 ]
 
 [[package]]
-name = "noisy-coding"
-version = "3.0.0-alpha.9"
+name = "noisy-studio"
+version = "3.0.0a9"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },

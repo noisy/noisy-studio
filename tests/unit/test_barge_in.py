@@ -1,7 +1,7 @@
 """Push-to-talk beats the echo mute (#61, #64)."""
 
-from noisy_coding.listener.daemon import _ptt_barge_in
-from noisy_coding.listener.state import ListenerState
+from noisy_studio.listener.daemon import _ptt_barge_in
+from noisy_studio.listener.state import ListenerState
 
 
 def test_held_key_lifts_the_mute_and_parks_the_cut_clip_as_unheard():
@@ -55,14 +55,14 @@ def test_daemon_boot_helpers_are_importable():
     # A NameError at boot took the dev daemon down on stream (2026-09-13):
     # rehome_default_voice_copies() called save_characters() that daemon.py
     # never imported. Keep every boot-time helper resolvable.
-    from noisy_coding.listener import daemon
+    from noisy_studio.listener import daemon
     for name in ("save_characters", "_load_history", "_save_history", "_ptt_barge_in"):
         assert callable(getattr(daemon, name))
 
 
 
 def test_barge_in_parks_the_addressees_clip_but_requeues_another_agents(monkeypatch):
-    from noisy_coding.listener import daemon, speech
+    from noisy_studio.listener import daemon, speech
 
     requeued = []
     monkeypatch.setattr(speech, "submit", lambda state, text, **kw: requeued.append((text, kw)) or None)

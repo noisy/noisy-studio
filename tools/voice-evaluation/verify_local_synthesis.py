@@ -6,7 +6,7 @@ import time
 import wave
 from pathlib import Path
 
-from noisy_coding.providers.local import LocalTTS, models_present
+from noisy_studio.providers.local import LocalTTS, models_present
 
 
 async def main():

@@ -2,11 +2,11 @@ from unittest.mock import Mock
 
 import pytest
 
-from noisy_coding.harness import agent_provider
-from noisy_coding.harness.claude.socket_transport import WriteResult
-from noisy_coding.harness.hook_gateway import _apply_harness_event, drain
-from noisy_coding.listener.conversations import ConversationRegistry
-from noisy_coding.listener.state import ListenerState
+from noisy_studio.harness import agent_provider
+from noisy_studio.harness.claude.socket_transport import WriteResult
+from noisy_studio.harness.hook_gateway import _apply_harness_event, drain
+from noisy_studio.listener.conversations import ConversationRegistry
+from noisy_studio.listener.state import ListenerState
 
 SESSION = '00000000-0000-4000-8000-000000000001'
 
@@ -29,7 +29,7 @@ def test_socket_selection_disables_start_stop_and_posttool_consumers_but_keeps_i
     stopped = _apply_harness_event(state, 'claude-hooks', {'hook_event_name': 'Stop', 'session_id': SESSION})
     post = _apply_harness_event(state, 'claude-hooks', {'hook_event_name': 'PostToolUse', 'session_id': SESSION})
     identity = _apply_harness_event(state, 'claude-hooks', {
-        'hook_event_name': 'PreToolUse', 'session_id': SESSION, 'tool_name': 'mcp__noisy_coding__speak',
+        'hook_event_name': 'PreToolUse', 'session_id': SESSION, 'tool_name': 'mcp__noisy_studio__speak',
     })
 
     assert (started['listener'], stopped['listener'], post['may_drain'], identity['speech_identity']) == ('none', 'none', False, SESSION)
@@ -103,8 +103,8 @@ def test_deliberate_hook_rollback_preserves_identity_and_holds_unconfirmed_speec
 
 
 def test_journal_recovers_pending_speech_missing_from_periodic_history(tmp_path):
-    from noisy_coding.harness.provider import Speech
-    from noisy_coding.harness.claude.journal import Journal
+    from noisy_studio.harness.provider import Speech
+    from noisy_studio.harness.claude.journal import Journal
     speech = Speech(23, SESSION, 'preserve this pending message', 100)
     Journal(tmp_path / 'claude-delivery.sqlite3').add(speech)
     state = ListenerState()
@@ -120,8 +120,8 @@ def test_journal_recovers_pending_speech_missing_from_periodic_history(tmp_path)
 
 
 def test_durable_cancellation_removes_an_older_history_copy_on_restart(tmp_path):
-    from noisy_coding.harness.provider import Speech
-    from noisy_coding.harness.claude.journal import Journal
+    from noisy_studio.harness.provider import Speech
+    from noisy_studio.harness.claude.journal import Journal
     speech = Speech(23, SESSION, 'cancelled message', 100)
     journal = Journal(tmp_path / 'claude-delivery.sqlite3')
     journal.add(speech)

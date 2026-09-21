@@ -94,7 +94,7 @@ def bench_whisper(wav_bytes: bytes, duration: float) -> list[dict]:
 
 
 def bench_grok_stt(wav_bytes: bytes, duration: float) -> list[dict]:
-    from noisy_coding.listener import stt
+    from noisy_studio.listener import stt
 
     def run() -> float:
         t = time.monotonic()
@@ -115,7 +115,7 @@ def bench_tts() -> list[dict]:
     rows = []
 
     # Kokoro
-    from noisy_coding.providers.local import LocalTTS
+    from noisy_studio.providers.local import LocalTTS
 
     local = LocalTTS()
 
@@ -139,7 +139,7 @@ def bench_tts() -> list[dict]:
     rows.append({"name": "macOS say (local)", "cold_ms": first * 1000, "warm_ms": warm * 1000})
 
     # Grok
-    from noisy_coding import tts as grok_tts
+    from noisy_studio import tts as grok_tts
 
     def run_grok() -> float:
         t = time.monotonic()

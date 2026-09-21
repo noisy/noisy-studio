@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import pytest
 
-from noisy_coding.listener import chords
-from noisy_coding.listener.chords import Chord, ChordError, canonical, matches, parse_chord, problems
+from noisy_studio.listener import chords
+from noisy_studio.listener.chords import Chord, ChordError, canonical, matches, parse_chord, problems
 
 
 @pytest.mark.parametrize("text, expected", [

@@ -2,11 +2,11 @@ from unittest.mock import Mock
 
 import pytest
 
-from noisy_coding.harness.claude.journal import Journal
-from noisy_coding.harness.claude.socket_transport import WriteResult
-from noisy_coding.harness.hook_gateway import _apply_harness_event, drain
-from noisy_coding.listener.conversations import ConversationRegistry
-from noisy_coding.listener.state import ListenerState
+from noisy_studio.harness.claude.journal import Journal
+from noisy_studio.harness.claude.socket_transport import WriteResult
+from noisy_studio.harness.hook_gateway import _apply_harness_event, drain
+from noisy_studio.listener.conversations import ConversationRegistry
+from noisy_studio.listener.state import ListenerState
 
 SESSION = '00000000-0000-4000-8000-000000000001'
 OTHER = '00000000-0000-4000-8000-000000000002'
@@ -91,8 +91,8 @@ def test_wake_cannot_consume_another_sessions_speech(world):
 
 
 def test_pending_wake_survives_restart_without_a_duplicate_write(world):
-    from noisy_coding.harness.claude.socket_wake import SocketWake
-    from noisy_coding.harness.provider import Registration
+    from noisy_studio.harness.claude.socket_wake import SocketWake
+    from noisy_studio.harness.provider import Registration
     state, provider, waker = world
     queue(state)
     waker.tick(state.record_delivery)
@@ -146,7 +146,7 @@ def test_recording_extends_wake_delay_but_not_beyond_the_continuation_cap(world)
 
 
 def test_explicit_session_restart_allows_new_control_but_not_duplicate_speech(world):
-    from noisy_coding.harness.base import Event
+    from noisy_studio.harness.base import Event
     state, provider, waker = world
     queue(state)
     waker.tick(state.record_delivery)

@@ -13,7 +13,7 @@ import { websiteAnalytics } from './analytics';
 let stopScroll: (() => void) | undefined;
 onMounted(() => { stopScroll = observePageScroll(window, document, websiteAnalytics); });
 onBeforeUnmount(() => stopScroll?.());
-const source = "https://github.com/noisy/noisy-coding";
+const source = "https://github.com/noisy/noisy-studio";
 </script>
 
 <template>

@@ -7,11 +7,11 @@ import wave
 import numpy as np
 import pytest
 
-from noisy_coding import providers
-from noisy_coding.providers import config
-from noisy_coding.providers.base import STTError
-from noisy_coding.providers.grok import GrokSTT, GrokTTS
-from noisy_coding.providers.local import LocalSTT, LocalTTS, _wav_to_float32
+from noisy_studio import providers
+from noisy_studio.providers import config
+from noisy_studio.providers.base import STTError
+from noisy_studio.providers.grok import GrokSTT, GrokTTS
+from noisy_studio.providers.local import LocalSTT, LocalTTS, _wav_to_float32
 
 
 @pytest.fixture
@@ -119,10 +119,10 @@ def test_wav_decoding_resamples_other_rates():
 
 def test_grok_errors_are_provider_errors():
     """Callers catch providers.STTError/TTSError — Grok's must qualify."""
-    from noisy_coding.listener.stt import GrokSTTError
-    from noisy_coding.listener.stt_stream import GrokStreamError
-    from noisy_coding.tts import GrokTTSError
-    from noisy_coding.tts_stream import GrokTTSStreamError
+    from noisy_studio.listener.stt import GrokSTTError
+    from noisy_studio.listener.stt_stream import GrokStreamError
+    from noisy_studio.tts import GrokTTSError
+    from noisy_studio.tts_stream import GrokTTSStreamError
 
     assert issubclass(GrokSTTError, providers.STTError)
     assert issubclass(GrokStreamError, providers.STTError)
@@ -140,14 +140,14 @@ def test_voice_ready_requires_local_weights_on_disk(providers_file, monkeypatch)
     installed-but-not-downloaded local setup is NOT ready (PR #47 round 2)."""
     providers_file.write_text(json.dumps({"stt": "local", "tts": "local"}))
     monkeypatch.setattr(
-        "noisy_coding.providers.builtin_selection.find_spec", lambda name: object()
+        "noisy_studio.providers.builtin_selection.find_spec", lambda name: object()
     )
     monkeypatch.setattr(
-        "noisy_coding.providers.local.models_present", lambda **kw: False
+        "noisy_studio.providers.local.models_present", lambda **kw: False
     )
     assert providers.voice_ready() is False
     monkeypatch.setattr(
-        "noisy_coding.providers.local.models_present", lambda **kw: True
+        "noisy_studio.providers.local.models_present", lambda **kw: True
     )
     assert providers.voice_ready() is True
 
@@ -161,18 +161,18 @@ def test_voice_ready_checks_only_the_local_direction(
         json.dumps({"tts": "local", "stt": "grok", "local": {}})
     )
     monkeypatch.setattr(
-        "noisy_coding.providers.builtin_selection.find_spec", lambda name: object()
+        "noisy_studio.providers.builtin_selection.find_spec", lambda name: object()
     )
     monkeypatch.setattr(
-        "noisy_coding.credentials.api_key", lambda: "xai-test-key"
+        "noisy_studio.credentials.api_key", lambda: "xai-test-key"
     )
     kokoro_dir = tmp_path / "models" / "kokoro"
     kokoro_dir.mkdir(parents=True)
     for filename in ("kokoro-v1.0.onnx", "voices-v1.0.bin"):
         (kokoro_dir / filename).write_bytes(b"weights")
-    monkeypatch.setattr("noisy_coding.config_dir.CONFIG_DIR", tmp_path)
+    monkeypatch.setattr("noisy_studio.config_dir.CONFIG_DIR", tmp_path)
     monkeypatch.setattr(
-        "noisy_coding.providers.local._whisper_cached",
+        "noisy_studio.providers.local._whisper_cached",
         lambda model: (_ for _ in ()).throw(AssertionError("STT is grok — must not be checked")),
     )
     assert providers.voice_ready() is True
@@ -188,9 +188,9 @@ def test_catalog_survives_repeated_calls(providers_file):
 
 def test_mixed_setup_does_not_require_unused_recognition_dependency(providers_file, monkeypatch):
     providers_file.write_text(json.dumps({"tts": "local", "stt": "grok"}))
-    monkeypatch.setattr("noisy_coding.credentials.api_key", lambda: "test-key")
-    monkeypatch.setattr("noisy_coding.providers.builtin_selection.find_spec", lambda name: None if name == "faster_whisper" else object())
-    monkeypatch.setattr("noisy_coding.providers.local.models_present", lambda **kw: True)
+    monkeypatch.setattr("noisy_studio.credentials.api_key", lambda: "test-key")
+    monkeypatch.setattr("noisy_studio.providers.builtin_selection.find_spec", lambda name: None if name == "faster_whisper" else object())
+    monkeypatch.setattr("noisy_studio.providers.local.models_present", lambda **kw: True)
     assert providers.voice_ready() is True
 
 
@@ -201,7 +201,7 @@ def test_mixed_setup_does_not_require_unused_recognition_dependency(providers_fi
 ])
 @pytest.mark.parametrize('direction', ['stt', 'tts'])
 def test_effective_mode_reflects_engine_capabilities(providers_file, monkeypatch, direction, provider, preferred, expected):
-    monkeypatch.setattr("noisy_coding.tts_stream.streaming_available", lambda: True)
+    monkeypatch.setattr("noisy_studio.tts_stream.streaming_available", lambda: True)
     providers_file.write_text(json.dumps({direction: provider}))
     assert providers.effective_mode(direction, preferred) == expected
 
@@ -236,9 +236,9 @@ def test_switching_provider_preserves_its_settings_for_return(providers_file):
 @pytest.mark.asyncio
 async def test_grok_voice_bindings_are_frozen_and_used_for_synthesis(providers_file, monkeypatch):
     from unittest.mock import AsyncMock
-    from noisy_coding.providers.base import SynthesizedAudio
+    from noisy_studio.providers.base import SynthesizedAudio
     synthesize = AsyncMock(return_value=SynthesizedAudio(b'audio', 'audio/mpeg', 1))
-    monkeypatch.setattr('noisy_coding.providers.grok.tts.synthesize', synthesize)
+    monkeypatch.setattr('noisy_studio.providers.grok.tts.synthesize', synthesize)
     config.save_selection('tts', 'grok', {'voice_bindings': {'lux': 'rex'}})
     prepared = providers.active_tts()
     config.save_selection('tts', 'grok', {'voice_bindings': {'lux': 'luna'}})
@@ -250,7 +250,7 @@ async def test_grok_voice_bindings_are_frozen_and_used_for_synthesis(providers_f
 
 
 def test_kokoro_replaces_bindings_from_another_local_engine():
-    from noisy_coding.providers.manifest import KOKORO_VOICES
+    from noisy_studio.providers.manifest import KOKORO_VOICES
     provider = LocalTTS({'tts_engine':'kokoro', 'voice_bindings':{'lux':'system', 'rex':'am_adam'}})
     assert provider.options['voice_bindings']['lux'] in KOKORO_VOICES
     assert provider.options['voice_bindings']['rex'] == 'am_adam'

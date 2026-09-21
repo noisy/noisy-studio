@@ -3,9 +3,9 @@ import time
 
 import pytest
 
-from noisy_coding import tts
-from noisy_coding.listener import audio_cache, speech
-from noisy_coding.listener.state import ListenerState
+from noisy_studio import tts
+from noisy_studio.listener import audio_cache, speech
+from noisy_studio.listener.state import ListenerState
 
 
 @pytest.fixture

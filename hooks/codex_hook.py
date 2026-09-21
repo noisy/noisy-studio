@@ -2,14 +2,13 @@
 """The one Codex hook script: every lifecycle event goes through here.
 
 Same flow as claude_hook.py with two Codex facts: the endpoint comes from
-~/.config/noisy-coding/codex.json (both hooks and MCP read it, so they
+~/.config/noisy-studio/codex.json (both hooks and MCP read it, so they
 always agree), and the Stop hook is synchronous, so its listening window is
 the short one the user configured - the turn stays open while we listen.
 """
 
 from __future__ import annotations
 
-import _environment as environment
 import json
 import os
 import sys
@@ -22,14 +21,14 @@ def main() -> None:
     try:
         settings = configure()
     except (ValueError, OSError, TypeError) as error:
-        print(json.dumps({"systemMessage": f"noisy-coding configuration error: {error}"}))
+        print(json.dumps({"systemMessage": f"noisy-studio configuration error: {error}"}))
         return
     import _hook_flow  # after configure(): the port comes from the settings file
 
     payload = _hook_flow.read_payload()
     if not payload:
         return
-    listen_seconds = float(environment.get("NOISY_CODING_REWAKE_WAIT_SECONDS", "30"))
+    listen_seconds = float(os.environ.get("NOISY_STUDIO_REWAKE_WAIT_SECONDS", "30"))
     try:
         code = _hook_flow.run("codex-hooks", payload, listen_seconds=listen_seconds)
     except Exception:

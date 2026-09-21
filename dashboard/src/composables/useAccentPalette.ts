@@ -1,8 +1,8 @@
 import { readonly, ref } from 'vue';
 import { resolveAccent, DEFAULT_USER_ACCENT, DEFAULT_AGENT_ACCENT } from '../styles/accentPalettes';
 
-export const ACCENT_STORAGE_KEY = 'noisy-coding.accent';
-export const AGENT_ACCENT_STORAGE_KEY = 'noisy-coding.agent-accent';
+export const ACCENT_STORAGE_KEY = 'noisy-studio.accent';
+export const AGENT_ACCENT_STORAGE_KEY = 'noisy-studio.agent-accent';
 function readPreference(key = ACCENT_STORAGE_KEY, fallback = DEFAULT_USER_ACCENT) {
   try { return resolveAccent(localStorage.getItem(key), fallback); }
   catch { return fallback; }

@@ -25,7 +25,7 @@ def test_repeated_install_and_uninstall_preserve_unrelated_configuration(install
     installer.configure_file(settings, 9765, 60)
     installer.configure_file(settings, 12345, 0)
     assert json.loads(settings.read_text()) == {
-        "managed_by": "noisy-coding", "port": 12345, "listen_seconds": 0, "agent_label": "Codex",
+        "managed_by": "noisy-studio", "port": 12345, "listen_seconds": 0, "agent_label": "Codex",
     }
     installer.configure_file(settings, uninstall=True)
 
@@ -46,7 +46,7 @@ def test_installer_refuses_to_replace_invalid_or_unowned_settings(installer, tmp
 
 def test_uninstall_preserves_unknown_settings(installer, tmp_path):
     path = tmp_path / "codex.json"
-    path.write_text(json.dumps({"managed_by": "noisy-coding", "port": 9765, "other": True}))
+    path.write_text(json.dumps({"managed_by": "noisy-studio", "port": 9765, "other": True}))
 
     installer.configure_file(path, uninstall=True)
 

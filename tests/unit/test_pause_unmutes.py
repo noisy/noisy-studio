@@ -5,7 +5,7 @@ speakers. A paused clip makes no sound, so the reason is gone - and the
 user pauses PRECISELY in order to say something. Leaving the mute on gave
 a dashboard that said RECORDING while nothing was captured.
 """
-from noisy_coding.listener.state import ListenerState
+from noisy_studio.listener.state import ListenerState
 
 
 def test_pause_clears_the_echo_mute():

@@ -13,9 +13,9 @@ from pathlib import Path
 
 import pytest
 
-from noisy_coding.listener import http_api
-from noisy_coding.listener.http_api import start_http_api
-from noisy_coding.listener.state import ListenerState
+from noisy_studio.listener import http_api
+from noisy_studio.listener.http_api import start_http_api
+from noisy_studio.listener.state import ListenerState
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "harness" / "claude-hooks"
 

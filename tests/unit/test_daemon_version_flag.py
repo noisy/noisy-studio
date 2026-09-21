@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from noisy_coding.listener import daemon
-from noisy_coding.listener.http_api import DAEMON_VERSION
+from noisy_studio.listener import daemon
+from noisy_studio.listener.http_api import DAEMON_VERSION
 
 
 def test_version_flag_prints_the_version_and_never_opens_audio(monkeypatch, capsys):
-    monkeypatch.setattr(daemon.sys, "argv", ["noisy-coding-daemon", "--version"])
+    monkeypatch.setattr(daemon.sys, "argv", ["noisy-studio-daemon", "--version"])
     monkeypatch.setattr(daemon, "run", lambda: (_ for _ in ()).throw(AssertionError("run() must not start")))
     daemon.main()
     assert capsys.readouterr().out.strip() == DAEMON_VERSION
@@ -15,7 +15,7 @@ def test_version_flag_prints_the_version_and_never_opens_audio(monkeypatch, caps
 
 
 def test_display_version_speaks_the_tag_dialect():
-    from noisy_coding.listener.http_api import display_version
+    from noisy_studio.listener.http_api import display_version
 
     assert display_version("3.0.0a4") == "3.0.0-alpha.4"
     assert display_version("3.1.0b2") == "3.1.0-beta.2"

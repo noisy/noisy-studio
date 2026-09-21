@@ -7,7 +7,7 @@ Existing clips are skipped; remove a clip explicitly to regenerate it.
 import asyncio
 import json
 from pathlib import Path
-from noisy_coding.tts import synthesize
+from noisy_studio.tts import synthesize
 
 async def main():
     folder = Path(__file__).resolve().parents[2] / 'website/src/assets/voice-intros'

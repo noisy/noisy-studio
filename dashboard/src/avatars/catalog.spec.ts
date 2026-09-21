@@ -24,7 +24,7 @@ describe('voice artwork coverage', () => {
   it('covers every voice assigned by the backend, including Aurora and Liora', () => {
     // The pool moved from http_api.py to state.py (VOICE_POOL) when agent
     // tabs started claiming exclusive voices (#54); read it where it lives.
-    const backend = readFileSync(resolve('../src/noisy_coding/listener/state.py'), 'utf8');
+    const backend = readFileSync(resolve('../src/noisy_studio/listener/state.py'), 'utf8');
     const pool = backend.match(/^VOICE_POOL = \(([\s\S]*?)\)/m)?.[1] ?? '';
     const voices = [...pool.matchAll(/"([^"]+)"/g)].map(match => match[1]);
     expect(voices.length).toBeGreaterThan(0);

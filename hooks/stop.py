@@ -11,7 +11,6 @@ Fails open (silent exit) whenever the listener daemon is not running.
 # runs on the system python3 (which may be 3.9, pre-PEP-604) as advertised.
 from __future__ import annotations
 
-import _environment as environment
 import fcntl
 import json
 import os
@@ -23,20 +22,20 @@ from pathlib import Path
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _agent_identity import identity  # noqa: E402
 
-PORT = environment.get("NOISY_CODING_LISTENER_PORT", "8765")
+PORT = os.environ.get("NOISY_STUDIO_LISTENER_PORT", "8765")
 BASE_URL = f"http://127.0.0.1:{PORT}"
 POLL_INTERVAL_SECONDS = 0.5
-REWAKE_WAIT_SECONDS = float(environment.get("NOISY_CODING_REWAKE_WAIT_SECONDS", "3600"))
+REWAKE_WAIT_SECONDS = float(os.environ.get("NOISY_STUDIO_REWAKE_WAIT_SECONDS", "3600"))
 # After speech arrives, keep listening this long for a continuation before
 # waking the model, so a longer musing isn't answered mid-thought.
-GRACE_SECONDS = float(environment.get("NOISY_CODING_REWAKE_GRACE_SECONDS", "2.0"))
+GRACE_SECONDS = float(os.environ.get("NOISY_STUDIO_REWAKE_GRACE_SECONDS", "2.0"))
 GRACE_CAP_SECONDS = 20.0
 
 # Per-session identity is resolved from stdin in main() and stored here so the
 # module-level polling helpers can reach it.
 AGENT = ""
 DRAIN_PATH = "/drain"
-REWAKE_LOCK_FILE = Path.home() / ".config" / "noisy-coding" / "rewake-default.lock"
+REWAKE_LOCK_FILE = Path.home() / ".config" / "noisy-studio" / "rewake-default.lock"
 
 
 def _get(path: str) -> dict:
@@ -115,7 +114,7 @@ def _collect_continuation(first: str) -> str:
 
 VOICE_INSTRUCTION = (
     "Treat this as his next message. Answer it now — aloud via the "
-    "noisy-coding speak tool (briefly) and in text."
+    "noisy-studio speak tool (briefly) and in text."
 )
 
 
@@ -134,7 +133,7 @@ def main() -> None:
         return
     # Per-agent rewake lock so one session's poller can't block another's.
     REWAKE_LOCK_FILE = (
-        Path.home() / ".config" / "noisy-coding" / f"rewake-{AGENT}.lock"
+        Path.home() / ".config" / "noisy-studio" / f"rewake-{AGENT}.lock"
     )
     try:
         # Only one background poller may watch the queue: a stale poller

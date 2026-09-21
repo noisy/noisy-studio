@@ -5,7 +5,7 @@ import subprocess
 
 import pytest
 
-from noisy_coding import integration, server
+from noisy_studio import integration, server
 
 LAUNCHER = Path(__file__).resolve().parents[2] / "hooks" / "native.sh"
 
@@ -55,16 +55,16 @@ def test_missing_app_is_silent_for_hooks_and_actionable_for_tools(tmp_path, mode
 
 @pytest.mark.parametrize(("configured_port", "expected_port"), [(None, "9765"), ("7765", "7765")])
 def test_bundled_mcp_uses_the_selected_endpoint_without_starting_audio(monkeypatch, configured_port, expected_port):
-    monkeypatch.delenv("NOISY_CODING_LISTENER_PORT", raising=False)
+    monkeypatch.delenv("NOISY_STUDIO_LISTENER_PORT", raising=False)
     if configured_port:
-        monkeypatch.setenv("NOISY_CODING_LISTENER_PORT", configured_port)
-    monkeypatch.setenv("NOISY_CODING_NO_AUTOSPAWN", "")
-    monkeypatch.setenv("NOISY_CODING_MCP_TRANSPORT", "http")
+        monkeypatch.setenv("NOISY_STUDIO_LISTENER_PORT", configured_port)
+    monkeypatch.setenv("NOISY_STUDIO_NO_AUTOSPAWN", "")
+    monkeypatch.setenv("NOISY_STUDIO_MCP_TRANSPORT", "http")
     observed = []
     monkeypatch.setattr(server, "main", lambda: observed.append({
-        "port": os.environ["NOISY_CODING_LISTENER_PORT"],
-        "no_autospawn": os.environ["NOISY_CODING_NO_AUTOSPAWN"],
-        "transport": os.environ["NOISY_CODING_MCP_TRANSPORT"],
+        "port": os.environ["NOISY_STUDIO_LISTENER_PORT"],
+        "no_autospawn": os.environ["NOISY_STUDIO_NO_AUTOSPAWN"],
+        "transport": os.environ["NOISY_STUDIO_MCP_TRANSPORT"],
     }))
 
     integration.run("mcp")

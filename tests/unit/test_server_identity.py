@@ -12,13 +12,13 @@ import httpx
 import pytest
 import respx
 
-from noisy_coding import server
+from noisy_studio import server
 
 
 @pytest.mark.asyncio
 @respx.mock
 async def test_acknowledgement_uses_injected_session_and_preserves_message_ids(monkeypatch):
-    monkeypatch.setenv("NOISY_CODING_LISTENER_PORT", "12345")
+    monkeypatch.setenv("NOISY_STUDIO_LISTENER_PORT", "12345")
     message_ids = ['a' * 64, 'b' * 64]
     route = respx.post("http://127.0.0.1:12345/delivery/acknowledge").mock(
         return_value=httpx.Response(200, json={"confirmed": message_ids, "unmatched": []}))
@@ -31,9 +31,9 @@ async def test_acknowledgement_uses_injected_session_and_preserves_message_ids(m
 @pytest.mark.asyncio
 @respx.mock
 async def test_speak_routes_by_the_injected_identity_only(monkeypatch):
-    monkeypatch.setenv("NOISY_CODING_LISTENER_PORT", "12345")
+    monkeypatch.setenv("NOISY_STUDIO_LISTENER_PORT", "12345")
     # Even a stale environment identity must not leak into routing.
-    monkeypatch.setenv("NOISY_CODING_AGENT_NAME", "forged")
+    monkeypatch.setenv("NOISY_STUDIO_AGENT_NAME", "forged")
     monkeypatch.setenv("CLAUDE_CODE_SESSION_ID", "also-forged")
     route = respx.post("http://127.0.0.1:12345/speak").mock(
         return_value=httpx.Response(200, json={"voice": "test"}))
@@ -52,8 +52,8 @@ async def test_speak_routes_by_the_injected_identity_only(monkeypatch):
 @pytest.mark.asyncio
 @respx.mock
 async def test_speak_without_injected_identity_fails_closed(monkeypatch):
-    monkeypatch.setenv("NOISY_CODING_LISTENER_PORT", "12345")
-    monkeypatch.setenv("NOISY_CODING_AGENT_NAME", "forged")  # must be ignored
+    monkeypatch.setenv("NOISY_STUDIO_LISTENER_PORT", "12345")
+    monkeypatch.setenv("NOISY_STUDIO_AGENT_NAME", "forged")  # must be ignored
     speak = respx.post("http://127.0.0.1:12345/speak").mock(
         return_value=httpx.Response(200, json={"voice": "x"}))
     event = respx.post("http://127.0.0.1:12345/event").mock(
@@ -69,8 +69,8 @@ async def test_speak_without_injected_identity_fails_closed(monkeypatch):
 @pytest.mark.asyncio
 @respx.mock
 async def test_change_voice_uses_the_injected_identity(monkeypatch):
-    monkeypatch.setenv("NOISY_CODING_AGENT_NAME", "forged")
-    monkeypatch.setenv("NOISY_CODING_LISTENER_PORT", "12345")
+    monkeypatch.setenv("NOISY_STUDIO_AGENT_NAME", "forged")
+    monkeypatch.setenv("NOISY_STUDIO_LISTENER_PORT", "12345")
     route = respx.post("http://127.0.0.1:12345/voice").mock(
         return_value=httpx.Response(200, json={"voice": "test"}))
 
@@ -82,7 +82,7 @@ async def test_change_voice_uses_the_injected_identity(monkeypatch):
 @pytest.mark.asyncio
 @respx.mock
 async def test_change_voice_without_identity_fails_closed(monkeypatch):
-    monkeypatch.setenv("NOISY_CODING_LISTENER_PORT", "12345")
+    monkeypatch.setenv("NOISY_STUDIO_LISTENER_PORT", "12345")
     respx.post("http://127.0.0.1:12345/event").mock(return_value=httpx.Response(200, json={"ok": True}))
     voice = respx.post("http://127.0.0.1:12345/voice").mock(
         return_value=httpx.Response(200, json={"voice": "x"}))

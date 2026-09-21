@@ -2,9 +2,9 @@ import json
 
 import pytest
 
-from noisy_coding.harness.base import Capabilities, Event, Interpretation
-from noisy_coding.listener.conversations import ConversationRegistry
-from noisy_coding.listener.state import ListenerState
+from noisy_studio.harness.base import Capabilities, Event, Interpretation
+from noisy_studio.listener.conversations import ConversationRegistry
+from noisy_studio.listener.state import ListenerState
 
 
 @pytest.mark.parametrize("title", [

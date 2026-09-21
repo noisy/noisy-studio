@@ -5,7 +5,7 @@ import pytest
 import respx
 from httpx import Response
 
-from noisy_coding import credentials, tts
+from noisy_studio import credentials, tts
 
 FAKE_AUDIO = b"fake-mp3-bytes"
 

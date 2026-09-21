@@ -6,7 +6,7 @@ import tempfile
 import time
 from pathlib import Path
 
-from noisy_coding.providers.local import LocalSTT, models_present
+from noisy_studio.providers.local import LocalSTT, models_present
 
 ROOT = Path(__file__).resolve().parents[2]
 TAKE = ROOT / 'tools/demo-recorder/takes/hero-v1'

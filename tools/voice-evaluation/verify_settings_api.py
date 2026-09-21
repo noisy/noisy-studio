@@ -10,11 +10,11 @@ import wave
 from pathlib import Path
 
 os.environ['HF_HUB_OFFLINE'] = '1'
-from noisy_coding import credentials, providers
-from noisy_coding.listener.http_api import start_http_api
-from noisy_coding.listener.state import ListenerState
-from noisy_coding.providers import config, selection
-from noisy_coding.providers.local import models_present
+from noisy_studio import credentials, providers
+from noisy_studio.listener.http_api import start_http_api
+from noisy_studio.listener.state import ListenerState
+from noisy_studio.providers import config, selection
+from noisy_studio.providers.local import models_present
 
 
 def main():

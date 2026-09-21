@@ -1,15 +1,15 @@
 import http.client
 import json
 
-from noisy_coding.harness.claude.socket_transport import WriteResult
-from noisy_coding.harness.hook_gateway import _apply_harness_event
-from noisy_coding.listener.conversations import ConversationRegistry
-from noisy_coding.listener.http_api import start_http_api
-from noisy_coding.listener.state import ListenerState
+from noisy_studio.harness.claude.socket_transport import WriteResult
+from noisy_studio.harness.hook_gateway import _apply_harness_event
+from noisy_studio.listener.conversations import ConversationRegistry
+from noisy_studio.listener.http_api import start_http_api
+from noisy_studio.listener.state import ListenerState
 
 
 def test_acknowledgement_during_send_confirms_only_its_session_and_is_not_downgraded(tmp_path, monkeypatch):
-    from noisy_coding.harness import agent_provider
+    from noisy_studio.harness import agent_provider
     monkeypatch.setattr(agent_provider, 'CLAUDE_DELIVERY', 'socket')
     state = ListenerState()
     state.conversations = ConversationRegistry(path=tmp_path / 'conversations.json')

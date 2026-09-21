@@ -1,8 +1,8 @@
 import http.client
 import json
 
-from noisy_coding.listener.http_api import start_http_api
-from noisy_coding.listener.state import ListenerState
+from noisy_studio.listener.http_api import start_http_api
+from noisy_studio.listener.state import ListenerState
 
 
 def test_set_mic_level_clamps_to_unit_range():
@@ -21,7 +21,7 @@ def test_set_mic_level_clamps_to_unit_range():
 def test_ptt_hold_barges_in_on_playback_only_in_ptt_mode(monkeypatch):
     import json as json_module
 
-    from noisy_coding.listener import http_api as http_api_module
+    from noisy_studio.listener import http_api as http_api_module
 
     stops = []
     monkeypatch.setattr(http_api_module.playback, "stop_all_players", lambda: stops.append(1))
@@ -51,7 +51,7 @@ def test_ptt_hold_barges_in_on_playback_only_in_ptt_mode(monkeypatch):
 def test_speak_with_interrupt_stops_native_playback(monkeypatch):
     from concurrent.futures import Future
 
-    from noisy_coding.listener import http_api as http_api_module
+    from noisy_studio.listener import http_api as http_api_module
 
     stops = []
 
@@ -79,7 +79,7 @@ def test_speak_with_interrupt_stops_native_playback(monkeypatch):
 
 
 def test_diagnose_requires_an_api_key(monkeypatch):
-    from noisy_coding.listener import http_api as http_api_module
+    from noisy_studio.listener import http_api as http_api_module
 
     monkeypatch.setattr(http_api_module.credentials, "api_key", lambda: "")
     state = ListenerState()
@@ -97,7 +97,7 @@ def test_diagnose_requires_an_api_key(monkeypatch):
 
 
 def test_diagnose_returns_the_per_check_breakdown(monkeypatch):
-    from noisy_coding.listener import http_api as http_api_module
+    from noisy_studio.listener import http_api as http_api_module
 
     checks = {
         "api_key": {"ok": True, "ms": 120},
@@ -137,7 +137,7 @@ def _post_credentials(port: int, key: str) -> tuple[int, dict]:
 
 
 def _fake_key_store(monkeypatch, initial: str = ""):
-    from noisy_coding.listener import http_api as http_api_module
+    from noisy_studio.listener import http_api as http_api_module
 
     store = {"key": initial}
     monkeypatch.setattr(
@@ -154,7 +154,7 @@ def _fake_key_store(monkeypatch, initial: str = ""):
 
 
 def test_saving_a_verified_key_reports_the_checks_and_speaks(monkeypatch):
-    from noisy_coding.listener import http_api as http_api_module
+    from noisy_studio.listener import http_api as http_api_module
 
     checks = {"api_key": {"ok": True, "ms": 90}}
     store = _fake_key_store(monkeypatch)
@@ -184,7 +184,7 @@ def test_saving_a_verified_key_reports_the_checks_and_speaks(monkeypatch):
 
 
 def test_a_key_failing_verification_is_never_accepted(monkeypatch):
-    from noisy_coding.listener import http_api as http_api_module
+    from noisy_studio.listener import http_api as http_api_module
 
     checks = {"api_key": {"ok": False, "detail": "HTTP 401: invalid key"}}
     store = _fake_key_store(monkeypatch, initial="xai-old-working")
@@ -205,7 +205,7 @@ def test_a_key_failing_verification_is_never_accepted(monkeypatch):
 
 
 def test_a_rejected_first_key_leaves_the_daemon_unconfigured(monkeypatch):
-    from noisy_coding.listener import http_api as http_api_module
+    from noisy_studio.listener import http_api as http_api_module
 
     checks = {"api_key": {"ok": False, "detail": "HTTP 401: invalid key"}}
     store = _fake_key_store(monkeypatch, initial="")

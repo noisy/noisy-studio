@@ -25,9 +25,9 @@ def main():
         return
 
     os.environ['HF_HUB_OFFLINE'] = '1'
-    from noisy_coding import credentials
-    from noisy_coding.providers.grok import GrokSTT
-    from noisy_coding.providers.local import LocalSTT, models_present
+    from noisy_studio import credentials
+    from noisy_studio.providers.grok import GrokSTT
+    from noisy_studio.providers.local import LocalSTT, models_present
 
     if not models_present(tts=False, options={'stt_model': 'base'}):
         raise SystemExit('Whisper base must already be cached. No cloud requests made.')

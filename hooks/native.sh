@@ -11,7 +11,7 @@ esac
 engine="${NOISY_STUDIO_ENGINE:-}"
 if [ -z "$engine" ]; then
     for app in "/Applications/Noisy Studio.app" "$HOME/Applications/Noisy Studio.app"; do
-        candidate="$app/Contents/Helpers/Noisy Studio Engine.app/Contents/MacOS/noisy-coding-daemon"
+        candidate="$app/Contents/Helpers/Noisy Studio Engine.app/Contents/MacOS/noisy-studio-daemon"
         if [ -x "$candidate" ]; then
             engine="$candidate"
             break

@@ -1,4 +1,4 @@
-/** The demo-token backend for the TRY IT LIVE section on noisy-coding.dev.
+/** The demo-token backend for the TRY IT LIVE section on noisy-studio.dev.
  *
  *  DELIBERATELY SEPARATE from the application: the daemon/app backend must
  *  never be entangled with the website. This service exists for exactly one

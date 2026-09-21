@@ -12,8 +12,8 @@
     "tool_timeout_sec": 180,
     "cwd": ".",
     "env_vars": [
-      "NOISY_CODING_CODEX_CONFIG",
-      "NOISY_CODING_LISTENER_PORT"
+      "NOISY_STUDIO_CODEX_CONFIG",
+      "NOISY_STUDIO_LISTENER_PORT"
     ]
   }
 }

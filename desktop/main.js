@@ -16,10 +16,9 @@ const http = require("node:http");
 const { createDesktopAnalytics, loadAnalyticsConfig } = require('./analytics');
 let analytics = null;
 
-// Keep existing browser preferences and permissions when the app display name changes.
-// Source launches used the production name, even with NOISY_MODE=local.
-const legacyProfileName = app.getName() === "Noisy Studio Dev" ? "Noisy Coding Dev" : "Noisy Coding";
-app.setPath("userData", path.join(app.getPath("appData"), legacyProfileName));
+// V3 uses distinct canonical production and development profiles.
+const profileName = app.getName() === "Noisy Studio Dev" ? "Noisy Studio Dev" : "Noisy Studio";
+app.setPath("userData", path.join(app.getPath("appData"), profileName));
 if (process.env.NOISY_SMOKE) {
   // A smoke run must not share the Chromium profile with a running install:
   // the profile lock would make the second instance exit before it prints.
@@ -87,7 +86,7 @@ let child = null;   // the daemon WE started, if any
 // The engine ships as its own app bundle so macOS lists its permissions
 // under a stable name and icon (#98); the bare binary is the pre-bundle
 // layout, still produced next to it for local runs.
-const ENGINE_EXECUTABLE = path.join("Noisy Studio Engine.app", "Contents", "MacOS", "noisy-coding-daemon");
+const ENGINE_EXECUTABLE = path.join("Noisy Studio Engine.app", "Contents", "MacOS", "noisy-studio-daemon");
 
 function daemonBinary() {
   const fs = require("node:fs");
@@ -100,7 +99,7 @@ function daemonBinary() {
     path.join(__dirname, "build", "daemon"),
   ];
   for (const root of roots) {
-    for (const candidate of [path.join(root, ENGINE_EXECUTABLE), path.join(root, "noisy-coding-daemon", "noisy-coding-daemon")]) {
+    for (const candidate of [path.join(root, ENGINE_EXECUTABLE), path.join(root, "noisy-studio-daemon", "noisy-studio-daemon")]) {
       if (fs.existsSync(candidate)) return candidate;
     }
   }
@@ -115,15 +114,15 @@ async function spawnDaemon() {
   child = spawn(bin, [], {
     env: {
       ...process.env,
-      NOISY_CODING_LISTENER_PORT: String(OWN_PORT),
+      NOISY_STUDIO_LISTENER_PORT: String(OWN_PORT),
       // The engine exits by itself when this process is gone - the only
       // protection against an orphan holding the microphone after a crash.
-      NOISY_CODING_PARENT_PID: String(process.pid),
+      NOISY_STUDIO_PARENT_PID: String(process.pid),
       // Its own config directory: sharing one means sharing settings,
       // history and the voice ledger, where the last writer wins.
-      NOISY_CODING_CONFIG_DIR:
-        process.env.NOISY_CODING_CONFIG_DIR ||
-        path.join(app.getPath("home"), ".config", "noisy-coding-app"),
+      NOISY_STUDIO_CONFIG_DIR:
+        process.env.NOISY_STUDIO_CONFIG_DIR ||
+        path.join(app.getPath("home"), ".config", "noisy-studio"),
     },
     stdio: "ignore",
     detached: false,

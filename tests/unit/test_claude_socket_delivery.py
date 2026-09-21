@@ -2,10 +2,10 @@ from unittest.mock import Mock
 
 import pytest
 
-from noisy_coding.harness.claude.journal import Journal
-from noisy_coding.harness.claude.socket_delivery import SocketDelivery
-from noisy_coding.harness.claude.socket_transport import WriteResult
-from noisy_coding.harness.provider import Registration, Speech
+from noisy_studio.harness.claude.journal import Journal
+from noisy_studio.harness.claude.socket_delivery import SocketDelivery
+from noisy_studio.harness.claude.socket_transport import WriteResult
+from noisy_studio.harness.provider import Registration, Speech
 
 SESSION_1 = '00000000-0000-4000-8000-000000000001'
 SESSION_2 = '00000000-0000-4000-8000-000000000002'

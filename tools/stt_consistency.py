@@ -30,8 +30,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
 
-from noisy_coding import providers  # noqa: E402
-from noisy_coding.config_dir import CONFIG_DIR  # noqa: E402
+from noisy_studio import providers  # noqa: E402
+from noisy_studio.config_dir import CONFIG_DIR  # noqa: E402
 
 
 def newest_utterances(count: int) -> list[Path]:

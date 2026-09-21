@@ -14,7 +14,7 @@ BIN="$APP/Contents/MacOS/$(plutil -extract CFBundleExecutable raw -o - "$APP/Con
 PORT=$((20000 + RANDOM % 10000))
 CONF="$(mktemp -d)"
 trap 'rm -rf "$CONF"' EXIT
-export NOISY_SMOKE=1 NOISY_SMOKE_VERSION="$EXPECTED" NOISY_APP_PORT="$PORT" NOISY_CODING_CONFIG_DIR="$CONF"
+export NOISY_SMOKE=1 NOISY_SMOKE_VERSION="$EXPECTED" NOISY_APP_PORT="$PORT" NOISY_STUDIO_CONFIG_DIR="$CONF"
 # Electron needs a window server; on GitHub's macOS runners it has one.
 # (Not perl/timeout: a path with spaces must never pass through a shell.)
 OUT="$(mktemp)"

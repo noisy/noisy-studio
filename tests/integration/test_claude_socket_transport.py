@@ -5,8 +5,8 @@ import tempfile
 import threading
 from unittest.mock import Mock
 
-from noisy_coding.harness.claude import socket_transport
-from noisy_coding.harness.claude.socket_transport import Endpoint, send
+from noisy_studio.harness.claude import socket_transport
+from noisy_studio.harness.claude.socket_transport import Endpoint, send
 
 SESSION = '00000000-0000-4000-8000-000000000001'
 

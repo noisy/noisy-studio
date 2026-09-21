@@ -5,10 +5,10 @@ const path = require('node:path');
 const vm = require('node:vm');
 
 for (const [name, profile] of [
-  ['Noisy Studio', 'Noisy Coding'],
-  ['Noisy Studio Dev', 'Noisy Coding Dev'],
+  ['Noisy Studio', 'Noisy Studio'],
+  ['Noisy Studio Dev', 'Noisy Studio Dev'],
 ]) {
-  test(`${name} preserves the existing profile before Electron becomes ready`, () => {
+  test(`${name} selects its canonical profile before Electron becomes ready`, () => {
     const configuredPaths = {};
     const app = {
       getName: () => name,

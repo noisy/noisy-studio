@@ -121,13 +121,13 @@ jobs:
         # Without bundled package metadata it reports "dev" (#100) and every
         # user sees a broken version badge and update check.
         run: |
-          engine="desktop/build/daemon/Noisy Studio Engine.app/Contents/MacOS/noisy-coding-daemon"
+          engine="desktop/build/daemon/Noisy Studio Engine.app/Contents/MacOS/noisy-studio-daemon"
           built="$("$engine" --version)"
           expected="${TAG#v}"
           echo "daemon reports '$built', tag is '$expected'"
           test "$built" = "$expected"
       - name: Smoke-test frozen agent integrations
-        run: uv run python scripts/smoke_integrations.py "desktop/build/daemon/Noisy Studio Engine.app/Contents/MacOS/noisy-coding-daemon"
+        run: uv run python scripts/smoke_integrations.py "desktop/build/daemon/Noisy Studio Engine.app/Contents/MacOS/noisy-studio-daemon"
       - name: Package the macOS app
         working-directory: desktop
         env:

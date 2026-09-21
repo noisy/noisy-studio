@@ -51,7 +51,7 @@ def bump_uv_lock(new_version: str) -> None:
     path = REPO_ROOT / "uv.lock"
     text = path.read_text()
     text = re.sub(
-        r'(\[\[package\]\]\nname = "noisy-coding"\nversion = )"[^"]+"',
+        r'(\[\[package\]\]\nname = "noisy-studio"\nversion = )"[^"]+"',
         rf'\1"{new_version}"',
         text,
         count=1,

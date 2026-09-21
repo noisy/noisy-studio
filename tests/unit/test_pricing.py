@@ -1,4 +1,4 @@
-from noisy_coding.listener import pricing
+from noisy_studio.listener import pricing
 
 
 def test_stt_cost_is_ten_cents_per_audio_hour():

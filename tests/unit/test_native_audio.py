@@ -6,10 +6,10 @@ from unittest.mock import Mock
 
 import pytest
 
-from noisy_coding.listener import daemon, http_api
-from noisy_coding.listener.microphone_sample import MicrophoneSample
-from noisy_coding.listener.state import ListenerState
-from noisy_coding.listener.state_stream import StateStream
+from noisy_studio.listener import daemon, http_api
+from noisy_studio.listener.microphone_sample import MicrophoneSample
+from noisy_studio.listener.state import ListenerState
+from noisy_studio.listener.state_stream import StateStream
 
 
 def test_old_audio_settings_are_migrated_on_disk_once(tmp_path, monkeypatch):
