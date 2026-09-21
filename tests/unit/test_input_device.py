@@ -31,20 +31,20 @@ def test_failed_pick_falls_back_for_now_but_keeps_the_preference(monkeypatch):
     state = ListenerState()
     state.set_input_device("Jabra Link 380")
     monkeypatch.setattr(daemon.sd, "InputStream", _fake_input_stream({"Jabra Link 380"}))
-    stream, opened = daemon._open_input_stream(state, VadConfig(), on_audio=lambda *a: None)
+    stream, opened = daemon._open_input_stream(state, VadConfig(), on_audio=lambda *a: None, history=daemon.MicrophoneHistory(state))
     assert isinstance(stream, _Stream) and stream.started
     assert opened == ""                                   # system default for now
     assert state.input_device == "Jabra Link 380"          # the pick survives
     assert state.active_input_device == ""
     rows = [u["text"] for u in state.utterances() if u["role"] == "system"]
-    assert any("preferred 'Jabra Link 380' unavailable" in r for r in rows)
+    assert rows == ["MIC → system default (waiting for 'Jabra Link 380')"]
 
 
 def test_pick_opens_when_available(monkeypatch):
     state = ListenerState()
     state.set_input_device("Jabra Link 380")
     monkeypatch.setattr(daemon.sd, "InputStream", _fake_input_stream(set()))
-    _stream, opened = daemon._open_input_stream(state, VadConfig(), on_audio=lambda *a: None)
+    _stream, opened = daemon._open_input_stream(state, VadConfig(), on_audio=lambda *a: None, history=daemon.MicrophoneHistory(state))
     assert opened == "Jabra Link 380"
     assert state.active_input_device == "Jabra Link 380"
 
@@ -52,7 +52,7 @@ def test_pick_opens_when_available(monkeypatch):
 def test_no_hardware_at_all_uses_the_browser_tab_without_rewriting_the_pick(monkeypatch):
     state = ListenerState()  # pick = system default
     monkeypatch.setattr(daemon.sd, "InputStream", _fake_input_stream({None}))
-    stream, opened = daemon._open_input_stream(state, VadConfig(), on_audio=lambda *a: None)
+    stream, opened = daemon._open_input_stream(state, VadConfig(), on_audio=lambda *a: None, history=daemon.MicrophoneHistory(state))
     assert stream is None and opened == "browser"
     assert state.input_device == ""                        # preference untouched
     assert state.active_input_device == "browser"

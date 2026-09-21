@@ -34,6 +34,7 @@ from noisy_coding.listener.http_api import (
 )
 from noisy_coding.listener.identity import canonical_identity, is_transcript_path
 from noisy_coding.listener.state import ListenerState
+from noisy_coding.listener.microphone_history import MicrophoneHistory
 from noisy_coding.listener.tab_audio import start_bridge
 from noisy_coding.listener.vad import UtteranceSegmenter, VadConfig
 
@@ -330,7 +331,21 @@ def _finalize_stream(
     _log(f"[queued/live] ({seconds:.1f}s) {text}")
 
 
-def _open_input_stream(
+def _open_input_stream(state, config, on_audio, *, history: MicrophoneHistory):
+    wanted = state.input_device
+    stream, opened = _open_selected_input_stream(state, config, on_audio, wanted=wanted)
+    state.set_active_input_device(opened)
+    effective = opened or 'system default'
+    if stream is not None:
+        try:
+            effective = str(sd.query_devices(stream.device, 'input')['name'])
+        except (AttributeError, KeyError, TypeError, ValueError, sd.PortAudioError):
+            pass  # Keep the known selection if device metadata is unavailable.
+    history.record(effective, opened, wanted)
+    return stream, opened
+
+
+def _open_selected_input_stream(
     state: ListenerState, config: VadConfig, on_audio, *, wanted: str | None = None
 ) -> tuple["sd.InputStream | None", str]:
     """Open the wanted microphone, falling back to the system default.
@@ -349,8 +364,6 @@ def _open_input_stream(
     selected = state.input_device if wanted is None else wanted
     if selected == "browser":
         _log("[mic] input = browser tab (WS bridge)")
-        state.set_active_input_device("browser")
-        state.create_utterance("system", "", text="MIC → THIS BROWSER TAB")
         return None, "browser"
     options = {"device": selected} if selected else {}
     try:
@@ -369,23 +382,13 @@ def _open_input_stream(
             # can supply a microphone instead.
             _log(f"[mic] no audio hardware ({error}) — the browser tab is the microphone")
             state.add_event("mic_error", "no audio hardware — browser tab input")
-            return _open_input_stream(state, config, on_audio, wanted="browser")
+            return _open_selected_input_stream(state, config, on_audio, wanted="browser")
         _log(f"[mic] cannot open '{selected}': {error} — using system default for now, will retry")
         state.add_event("mic_error", f"cannot open '{selected}' — system default for now, retrying")
-        stream, opened = _open_input_stream(state, config, on_audio, wanted="")
-        state.create_utterance(
-            "system", "", text=f"MIC → system default (preferred '{selected}' unavailable, retrying)"
-        )
+        stream, opened = _open_selected_input_stream(state, config, on_audio, wanted="")
         return stream, opened
     input_stream.start()
-    state.set_active_input_device(selected)
     _log(f"[mic] listening on {selected or 'system default'}")
-    # An inline system row in the conversation timeline: seeing "mic →
-    # Jabra" right above three garbled messages explains them instantly,
-    # without raising any alarm when nothing is actually wrong.
-    state.create_utterance(
-        "system", "", text=f"MIC → {selected or 'system default'}"
-    )
     return input_stream, selected
 
 
@@ -572,7 +575,8 @@ def run(config: VadConfig | None = None) -> None:
     _log(f"noisy-coding-listener: mic on, API at http://127.0.0.1:{port}")
     _log("Endpoints: GET /drain /status, POST /speak /pause /resume. Ctrl+C to stop.")
 
-    active_input, active_device = _open_input_stream(state, config, on_audio)
+    microphone_history = MicrophoneHistory(state, CONFIG_DIR / "microphone-state.json")
+    active_input, active_device = _open_input_stream(state, config, on_audio, history=microphone_history)
     wanted_device = state.input_device  # the pick we last acted on
     last_pick_retry = time.monotonic()
     try:
@@ -620,7 +624,7 @@ def run(config: VadConfig | None = None) -> None:
                     _log("[mic] PortAudio reinitialized - device table refreshed")
                 except Exception as error:  # noqa: BLE001 - keep the old instance
                     _log(f"[mic] PortAudio reinit skipped: {error}")
-                active_input, active_device = _open_input_stream(state, config, on_audio)
+                active_input, active_device = _open_input_stream(state, config, on_audio, history=microphone_history)
                 wanted_device = state.input_device
                 last_pick_retry = time.monotonic()
                 last_frame_at = time.monotonic()

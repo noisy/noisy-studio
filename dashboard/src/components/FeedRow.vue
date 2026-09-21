@@ -27,7 +27,7 @@ function sysTime(epochSeconds: number): string {
        the timeline so oddities right below them explain themselves —
        informative, never an alarm. -->
   <div v-if="utterance.role === 'system'" class="sysrow">
-    <span>{{ utterance.text }} · {{ sysTime(utterance.committed_at) }}</span>
+    <span>{{ utterance.text }}<template v-if="utterance.detail"> · {{ utterance.detail }}</template> · {{ sysTime(utterance.committed_at) }}</span>
   </div>
   <UserBubble
     v-else-if="utterance.role === 'user'"
