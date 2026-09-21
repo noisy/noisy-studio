@@ -55,11 +55,6 @@ export interface DaemonStatus {
   shutdown_at?: number;
   ptt_held: boolean;
   input_device: string;
-  /** Where Claude's voice plays: system speakers or the browser tab. */
-  output_device: "system" | "browser";
-  browser_audio?: boolean; // the dashboard tab may act as mic/speaker (opt-in, #99)
-  /** A browser tab currently holds the audio lease (WS bridge). */
-  tab_audio: boolean;
   /** Global push-to-talk keys and the macOS Input Monitoring permission they need (#97). */
   hotkeys?: HotkeyState;
   /** Live per-endpoint xAI check results — partial while checks run. */
@@ -142,14 +137,12 @@ export interface SettingsPatch {
   ptt_cancel_key?: string;
   shutdown_at?: number;
   input_device?: string;
-  output_device?: "system" | "browser";
   language?: string;
 }
 
 export interface InputDevice {
   name: string;
   default: boolean;
-  /** Wire value when it differs from the display name (virtual devices:
-   * "THIS BROWSER TAB" → "browser"). */
+  /** Device identifier when it differs from the display name. */
   value?: string;
 }

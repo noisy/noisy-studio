@@ -1,3 +1,5 @@
+> Historical research: browser audio transport was removed in V3. The WebSocket now serves dashboard state only; use the native microphone path for current audio testing.
+
 # Research: automated end-to-end testing with voice, no human in the loop
 
 Status: research / proposal. Nothing implemented yet.

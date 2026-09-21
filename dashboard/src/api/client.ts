@@ -137,8 +137,7 @@ export function setPtt(held: boolean): Promise<void> {
 }
 
 /** Transport pause for SYSTEM-speaker playback: freezes the daemon's
- * player in place (SIGSTOP) and reports the new state. Tab playback
- * pauses client-side in useBrowserAudio instead. */
+ * player in place (SIGSTOP) and reports the new state. */
 export function togglePlaybackPause(): Promise<{ paused: boolean }> {
   return postJson<{ paused: boolean }>("/playback-pause", {});
 }

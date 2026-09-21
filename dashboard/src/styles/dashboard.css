@@ -95,8 +95,6 @@
 .hud footer .ok { color:var(--green); }
 .hud footer .bad, .hud .lasterr { color:var(--red); }
 .hud .lasterr { max-width:260px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.hud .tabaudio { padding:10px; border:1px solid var(--amber); background:var(--panel); color:var(--amber); }
-.hud .taberr { display:block; color:var(--red); }
 .locked { opacity:.4; pointer-events:none; }
 .setup-overlay { position:fixed; inset:0; z-index:60; display:grid; place-items:start center; padding:8vh 16px 24px; background:#151619e8; overflow-y:auto; }
 .setup-box { width:100%; max-width:520px; padding:28px; background:var(--panel); border:1px solid var(--line); border-radius:16px; }

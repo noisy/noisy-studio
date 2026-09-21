@@ -18,7 +18,7 @@ from noisy_coding.harness import hook_gateway
 from noisy_coding.config_dir import CONFIG_DIR
 from noisy_coding.providers.config import ConfigurationError, recovery_info
 from noisy_coding.listener import stt_lab
-from noisy_coding.listener import pricing, speech, tab_audio
+from noisy_coding.listener import pricing, speech
 from noisy_coding.listener.dashboard import DASHBOARD_HTML
 from noisy_coding.listener.identity import canonical_identity
 from noisy_coding.listener.state import ListenerState
@@ -299,9 +299,7 @@ INTRO_FLAG = CONFIG_DIR / "intro-done"
 def _queue_first_contact_intro(state: ListenerState) -> None:
     """First contact just completed — have Claude say hello.
 
-    The user is looking at the dashboard and the tab can already play
-    (pasting the key was the browser's autoplay gesture; the WS lease
-    needs no permission). The greeting rides the normal transcript queue
+    The user is looking at the dashboard. The greeting rides the normal transcript queue
     with a [DASHBOARD] prefix — a daemon event, not the user's speech —
     and fires once per install (flag file survives restarts).
     """
@@ -311,8 +309,7 @@ def _queue_first_contact_intro(state: ListenerState) -> None:
         "[DASHBOARD] The user just finished first-contact setup and is "
         "looking at the dashboard. Introduce yourself aloud with the "
         "speak tool — welcome them to Noisy Studio in one or two warm "
-        "sentences and ask them to click the amber ENABLE TAB AUDIO "
-        "banner so this tab can also become their microphone."
+        "sentences and invite them to select their microphone in Settings and say hello."
     )
     try:
         INTRO_FLAG.parent.mkdir(parents=True, exist_ok=True)
@@ -378,7 +375,6 @@ def save_settings(state: ListenerState) -> None:
                     "ptt_cancel_key": state.ptt_cancel_key,
                     "hotkeys": state.hotkeys,
                     "input_device": state.input_device,
-                    "output_device": state.output_device,
                     "language": state.language,
                     # The user's conscious pick — a restart must not re-run
                     # the first-to-register race and reroute their speech.
@@ -507,10 +503,7 @@ def status_payload(state: ListenerState) -> dict:
                             # What is actually open right now; differs from
                             # input_device while the pick is unavailable (#41).
                             "active_input_device": state.active_input_device,
-                            "output_device": state.output_device,
-                            "browser_audio": state.browser_audio,
                             "hotkeys": _hotkeys_snapshot(state),
-                            "tab_audio": state.tab_audio_alive,
                             "activity": state.activity,
                             "nudge_clocks": state.nudge_clocks(),
                             "language": state.language,
@@ -604,16 +597,9 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 agent = parse_qs(url.query).get("agent", [None])[0]
                 self._respond({"character": state.character(agent)})
             elif url.path == "/devices":
-                # The dashboard tab is a virtual microphone: selectable
-                # always, audible only while a tab holds the audio lease.
-                browser_entry = (
-                    [{"name": "THIS BROWSER TAB", "default": False, "value": "browser"}]
-                    if state.browser_audio
-                    else []
-                )
                 self._respond(
                     {
-                        "devices": list_input_devices() + browser_entry,
+                        "devices": list_input_devices(),
                         "selected": state.input_device,
                     }
                 )
@@ -808,9 +794,6 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         # Muting THIS conversation while its clip plays:
                         # instant silence, the clip parks unheard.
                         playback.stop_all_players()
-                        live_bridge = tab_audio.bridge()
-                        if live_bridge is not None:
-                            live_bridge.stop_tab_playback()
                     state.add_event("agent", f"'{name}' {'muted' if name in muted else 'unmuted'}")
                     self._respond({"muted_agents": muted})
                 else:
@@ -977,8 +960,6 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     result["language"] = state.set_language(str(body["language"]))
                 if "input_device" in body:
                     result["input_device"] = state.set_input_device(str(body["input_device"]))
-                if "output_device" in body:
-                    result["output_device"] = state.set_output_device(str(body["output_device"]))
                 if result:
                     save_settings(state)
                     self._respond(result)
@@ -1029,6 +1010,20 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     text = provider.transcribe(audio, '' if state.language == 'auto' else state.language)
                     self._respond({'text': text, 'elapsed_ms': round((time.monotonic() - started)*1000)})
                 except (ValueError, RuntimeError, wave.Error, EOFError) as error:
+                    self._respond({'error': str(error)}, status=400)
+            elif self.path == "/speech-settings/sample":
+                body = self._read_json_body()
+                try:
+                    if body.get('action') == 'start':
+                        if not state.user_muted:
+                            raise ValueError('Pause the main microphone before recording a test sample.')
+                        self._respond({'id': state.microphone_sample.start()})
+                    elif body.get('action') in ('finish', 'cancel'):
+                        audio = state.microphone_sample.finish(body.get('id'), cancel=body['action'] == 'cancel')
+                        self._respond({'audio': audio})
+                    else:
+                        raise ValueError('Choose start, finish or cancel.')
+                except ValueError as error:
                     self._respond({'error': str(error)}, status=400)
             elif self.path == "/speech-settings/preview":
                 import asyncio
@@ -1171,8 +1166,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     state.add_event("agent", f"skipped {count} unheard message(s)")
                 self._respond({"skipped": count})
             elif self.path == "/playback-pause":
-                # Transport pause: freezes the system player in place; the
-                # tab player (browser output) pauses itself client-side.
+                # Transport pause freezes the native player in place.
                 paused = playback.toggle_pause()
                 # Capture is muted while the agent speaks so the microphone
                 # does not hear the speakers. A PAUSED clip makes no sound,
@@ -1193,9 +1187,6 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 # still be worth hearing and parks as UNHEARD.
                 state.interrupt_playing_as_unheard("stopped by you", label="skipped")
                 playback.stop_all_players()
-                live_bridge = tab_audio.bridge()
-                if live_bridge is not None:
-                    live_bridge.stop_tab_playback()
                 self._respond({"stopped": True})
             elif self.path == "/cancel":
                 utterance_id = int(self._read_json_body().get("utterance_id", 0))
@@ -1266,21 +1257,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                         # Spoken confirmation doubles as the ultimate TTS
                         # proof: hearing it means the whole voice path works.
                         # It also hands the user their NEXT step — the mic.
-                        # tab_mic_live, not tab_audio_alive: a connected tab
-                        # plays audio just fine while its microphone still
-                        # awaits the activation click (the yellow banner).
-                        mic_pending = (
-                            state.input_device == "browser"
-                            and not state.tab_mic_live
-                        )
-                        next_step = (
-                            "One step left: the microphone. Click the ENABLE "
-                            "TAB AUDIO banner at the top of the page and allow "
-                            "microphone access when your browser asks — then "
-                            "just say hello."
-                            if mic_pending
-                            else "Your microphone is already live — just start talking."
-                        )
+                        next_step = "Select your microphone in Settings and start talking."
                         speech.submit(
                             state,
                             "New xAI key accepted — every voice check passed, "
@@ -1302,9 +1279,6 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     # it unheard (cut short ≠ played; catch-up replays it).
                     if state.interrupt_playing_as_unheard("voice muted"):
                         playback.stop_all_players()
-                        live_bridge = tab_audio.bridge()
-                        if live_bridge is not None:
-                            live_bridge.stop_tab_playback()
                 state.add_event("voice_muted" if muted else "voice_unmuted")
                 self._respond({"voice_muted": muted})
             elif self.path == "/mute":
@@ -1418,7 +1392,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 body = {**body, "agent": _revive_if_known(state, claimed)}
             if body.get("interrupt"):
                 # Cut the current utterance short — wherever it is playing:
-                # local player processes AND the browser tab. BEFORE submit,
+                # native player processes. BEFORE submit,
                 # so the stop can never race ahead and cut down the very
                 # clip we are about to queue. Scoped to the caller's OWN
                 # conversation: an agent may cut its own stale sentence, it
@@ -1429,9 +1403,6 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 if playing is None or owner in (None, body.get("agent")):
                     state.interrupt_playing_as_unheard("replaced by a newer message")
                     playback.stop_all_players()
-                    live_bridge = tab_audio.bridge()
-                    if live_bridge is not None:
-                        live_bridge.stop_tab_playback()
                 else:
                     state.add_event("speak_wait", "interrupt ignored — another conversation is speaking")
             agent, speaker, voice_override = _resolve_speaker(state, body)

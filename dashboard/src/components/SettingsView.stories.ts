@@ -16,11 +16,13 @@ export const Configured: StoryObj<typeof SettingsView> = {
   }),
 };
 
-// Plain-web deployments opt in to the dashboard tab as a speaker/microphone
-// (NOISY_CODING_BROWSER_AUDIO=1); the native app never shows this option (#99).
-export const BrowserAudioAllowed: StoryObj<typeof SettingsView> = {
-  args: { apiKeyHint: "····kRc9", browserAudio: true, outputDevice: "browser" },
-  render: Configured.render,
+export const NativeAudio: StoryObj<typeof SettingsView> = {
+  args: { apiKeyHint: "configured", devices: [{ name: "System microphone", default: true }], selectedDevice: "" },
+  render: (args) => ({
+    components: { SettingsView }, setup: () => ({ args }),
+    template: `<div style="max-width:760px"><SettingsView v-bind="args" /></div>`,
+    mounted() { (this.$el as HTMLElement).querySelectorAll<HTMLButtonElement>(".tabbtn").forEach((b) => { if (b.textContent?.trim() === "Audio") b.click(); }); },
+  }),
 };
 
 // Settings > Hotkeys (#104): the tab is HUD/Hotkeys tab; here only the

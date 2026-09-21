@@ -31,20 +31,18 @@ from noisy_coding.listener.http_api import (
     start_http_api,
     SPEAKER_COLORS_FILE,
     save_characters,
+    save_settings,
 )
 from noisy_coding.listener.identity import canonical_identity, is_transcript_path
 from noisy_coding.listener.state import ListenerState
 from noisy_coding.listener.microphone_history import MicrophoneHistory
-from noisy_coding.listener.tab_audio import start_bridge
+from noisy_coding.listener.state_stream import start_state_stream
 from noisy_coding.listener.vad import UtteranceSegmenter, VadConfig
 
 STT_LANGUAGE_ENV_VAR = "NOISY_CODING_STT_LANGUAGE"
 MODE_ENV_VAR = "NOISY_CODING_MODE"
 # Source defaults; saved settings (newer intent) override them.
 INPUT_DEVICE_ENV_VAR = "NOISY_CODING_INPUT_DEVICE"
-# Opt-in for the dashboard tab as microphone/speaker (plain-web deployments);
-# the native app never sets it (#99).
-BROWSER_AUDIO_ENV_VAR = "NOISY_CODING_BROWSER_AUDIO"
 # Set by the desktop app to its own pid; the engine exits when that process dies.
 PARENT_PID_ENV_VAR = "NOISY_CODING_PARENT_PID"
 
@@ -57,7 +55,6 @@ def _parent_alive(pid: int) -> bool:
     except PermissionError:
         return True
     return True
-OUTPUT_DEVICE_ENV_VAR = "NOISY_CODING_OUTPUT_DEVICE"
 MANAGEMENT_KEY_ENV_VAR = "NOISY_CODING_MANAGEMENT_KEY"
 TEAM_ID_ENV_VAR = "NOISY_CODING_TEAM_ID"
 CREDITS_POLL_SECONDS = 60.0
@@ -99,22 +96,15 @@ def _ptt_barge_in(state: ListenerState) -> bool:
     the speakers - and the capture loop dropped every frame while that mute
     was set, even with the key physically held. The key responded, the hum
     played, nothing was captured. Holding the key is a deliberate act, so
-    it preempts: stop playback (speakers AND browser tab), park the cut clip
+    it preempts: stop native playback, park the cut clip
     as UNHEARD so it can be replayed, lift the mute, and let this frame reach
     the segmenter. Auto (VAD) detection never does this - a cough must not
     cut the agent off. Returns True when a clip was actually interrupted.
     """
     from noisy_coding import playback
-    from noisy_coding.listener import tab_audio
 
     clip = state.playing_clip()
     playback.stop_all_players()
-    bridge = tab_audio.bridge()
-    if bridge is not None:
-        try:
-            bridge.stop_tab_playback()
-        except Exception:
-            pass
     # Whose clip did we cut? Krzysztof's rule (2026-09-13): when the user
     # talks, everyone goes quiet - but only the ADDRESSEE's message may have
     # become obsolete by what the user is about to say, so it parks as
@@ -341,7 +331,8 @@ def _open_input_stream(state, config, on_audio, *, history: MicrophoneHistory):
             effective = str(sd.query_devices(stream.device, 'input')['name'])
         except (AttributeError, KeyError, TypeError, ValueError, sd.PortAudioError):
             pass  # Keep the known selection if device metadata is unavailable.
-    history.record(effective, opened, wanted)
+    if stream is not None:
+        history.record(effective, opened, wanted)
     return stream, opened
 
 
@@ -351,21 +342,18 @@ def _open_selected_input_stream(
     """Open the wanted microphone, falling back to the system default.
 
     Returns (stream, opened) where `opened` is the device actually in use:
-    the wanted name, "" for the system default, or "browser" for the tab
-    (its frames arrive over the WS bridge, so the stream is None).
+    the wanted name or "" for the system default. A missing native device
+    returns no stream and is retried by the capture loop.
 
     The user's PICK is never rewritten here (#41): a device that is missing
     right now - unplugged headphones, a dock mid-switch, PortAudio refusing
     to reopen during a hardware change - falls back for the moment, and the
     capture loop keeps retrying the pick until it comes back. Rewriting the
-    pick with the fallback is what made the selection "snap back to the
-    browser tab" and stay there until a restart.
+    pick with the fallback is what made the selection lose the user’s intended microphone.
     """
     selected = state.input_device if wanted is None else wanted
-    if selected == "browser":
-        _log("[mic] input = browser tab (WS bridge)")
-        return None, "browser"
     options = {"device": selected} if selected else {}
+    input_stream = None
     try:
         input_stream = sd.InputStream(
             samplerate=config.sample_rate,
@@ -375,19 +363,18 @@ def _open_selected_input_stream(
             callback=on_audio,
             **options,
         )
+        input_stream.start()
     except (sd.PortAudioError, ValueError) as error:
+        if input_stream is not None:
+            input_stream.close()
         if not selected:
-            # No selection and even the default won't open: this host has
-            # no usable audio hardware. The optional browser input
-            # can supply a microphone instead.
-            _log(f"[mic] no audio hardware ({error}) — the browser tab is the microphone")
-            state.add_event("mic_error", "no audio hardware — browser tab input")
-            return _open_selected_input_stream(state, config, on_audio, wanted="browser")
+            _log(f"[mic] no native microphone available ({error}) — will retry")
+            state.add_event("mic_error", "No native microphone is available. Connect a microphone or check system permissions; Noisy Studio will retry.")
+            return None, ""
         _log(f"[mic] cannot open '{selected}': {error} — using system default for now, will retry")
         state.add_event("mic_error", f"cannot open '{selected}' — system default for now, retrying")
         stream, opened = _open_selected_input_stream(state, config, on_audio, wanted="")
         return stream, opened
-    input_stream.start()
     _log(f"[mic] listening on {selected or 'system default'}")
     return input_stream, selected
 
@@ -425,6 +412,14 @@ def load_saved_characters(state: ListenerState) -> None:
         pass
 
 
+def migrate_audio_settings(state: ListenerState, saved: dict) -> None:
+    if isinstance(saved, dict) and (saved.get("input_device") == "browser" or "output_device" in saved):
+        if saved.get("input_device") == "browser":
+            state.set_input_device("")
+        save_settings(state)
+        state.add_event("settings_migrated", "Audio settings updated to native microphone and system speakers")
+
+
 def run(config: VadConfig | None = None) -> None:
     # Before any config file is read: carry the user's data across the
     # grok-voice -> noisy-coding rename so the API key/settings/history survive.
@@ -433,11 +428,10 @@ def run(config: VadConfig | None = None) -> None:
     port = int(os.environ.get(PORT_ENV_VAR, str(DEFAULT_PORT)))
 
     state = ListenerState()
+    state.microphone_sample.sample_rate = config.sample_rate
     state.set_mode(os.environ.get(MODE_ENV_VAR, "live"))
     state.set_language(os.environ.get(STT_LANGUAGE_ENV_VAR, ""))
-    state.set_browser_audio(os.environ.get(BROWSER_AUDIO_ENV_VAR, "") == "1")
     state.set_input_device(os.environ.get(INPUT_DEVICE_ENV_VAR, ""))
-    state.set_output_device(os.environ.get(OUTPUT_DEVICE_ENV_VAR, ""))
     load_saved_characters(state)
     # A voice a speaker earned is theirs across restarts too - the ledger is
     # only meaningful if it outlives the process that wrote it.
@@ -450,6 +444,7 @@ def run(config: VadConfig | None = None) -> None:
         state.load_speaker_colors(json.loads(SPEAKER_COLORS_FILE.read_text()))
     except (OSError, ValueError, AttributeError):
         pass
+    saved = {}
     # Saved tuning (pause-split, smart_turn, mode) survives restarts and
     # overrides the env default for mode, since it reflects newer intent.
     try:
@@ -479,8 +474,6 @@ def run(config: VadConfig | None = None) -> None:
             )
         if "input_device" in saved:
             state.set_input_device(str(saved["input_device"]))
-        if saved.get("output_device") in ("system", "browser"):
-            state.set_output_device(saved["output_device"])
         if "language" in saved:
             state.set_language(saved["language"])
         if saved.get("active_agent"):
@@ -490,6 +483,7 @@ def run(config: VadConfig | None = None) -> None:
             state.restore_active_agent(str(saved["active_agent"]))
     except (OSError, ValueError):
         pass
+    migrate_audio_settings(state, saved)
     _load_history(state)
     threading.Thread(target=_history_saver, args=(state,), daemon=True).start()
     # Conversations (the harness-contract view of the tabs) persist across
@@ -563,13 +557,14 @@ def run(config: VadConfig | None = None) -> None:
     segmenter = UtteranceSegmenter(config)
     frames: queue.Queue[np.ndarray] = queue.Queue()
     stt_executor = ThreadPoolExecutor(max_workers=1)
-    # Browser-tab audio: a WS bridge one port up feeds the SAME frames
-    # queue, so downstream (VAD/STT/PTT) can't tell tab from hardware.
+    # Push dashboard snapshots independently of native audio capture.
     from noisy_coding.listener.http_api import state_snapshot
 
-    start_bridge(state, frames, config.frame_samples, port, snapshot=lambda: state_snapshot(state))
+    start_state_stream(port, snapshot=lambda: state_snapshot(state))
 
     def on_audio(indata: np.ndarray, *_args: object) -> None:
+        if state.user_muted:
+            state.microphone_sample.feed(indata[:, 0].tobytes())
         frames.put(indata[:, 0].copy())
 
     _log(f"noisy-coding-listener: mic on, API at http://127.0.0.1:{port}")
@@ -607,7 +602,7 @@ def run(config: VadConfig | None = None) -> None:
                     stream = None
                 segmenter = UtteranceSegmenter(config)
                 state.set_recording(False)
-                if active_input is not None:  # None while the browser tab is the mic
+                if active_input is not None:  # No stream while native hardware is unavailable
                     active_input.stop()
                     active_input.close()
                 # PortAudio enumerates devices ONCE per initialization, so a
@@ -631,8 +626,7 @@ def run(config: VadConfig | None = None) -> None:
 
             def finalize_open_segment() -> None:
                 """Close the in-progress utterance NOW with the audio it
-                holds — for hard end-of-turn signals (mic mute, browser tab
-                death) where no further frame will ever arrive."""
+                holds when capture stops and no further frame will arrive."""
                 nonlocal stream
                 utterance = segmenter.flush()
                 state.set_recording(False)
@@ -665,18 +659,10 @@ def run(config: VadConfig | None = None) -> None:
                     frame = frames.get(timeout=FRAME_WAIT_SECONDS)
                 except queue.Empty:
                     if state.input_device != wanted_device:
-                        reopen_input("input device switched")  # native ↔ browser too
+                        reopen_input("input device switched")
                     elif active_device != state.input_device and time.monotonic() - last_pick_retry >= PICK_RETRY_SECONDS:
                         reopen_input("retrying the preferred microphone")
-                    elif active_device == "browser":
-                        # The tab is the mic and stopped sending: nothing to
-                        # reopen. The lease decides — a dead tab mid-utterance
-                        # closes the segment with the audio we hold.
-                        if segmenter.is_recording and not state.tab_audio_alive:
-                            _log("[recording] closed — browser tab lost the audio lease")
-                            state.add_event("tab_audio_lost", "tab stopped sending mid-utterance")
-                            finalize_open_segment()
-                    else:
+                    elif active_input is not None or time.monotonic() - last_pick_retry >= PICK_RETRY_SECONDS:
                         reopen_input("no audio frames (stream stalled)", kind="mic_error")
                     continue
                 now = time.monotonic()
@@ -691,9 +677,8 @@ def run(config: VadConfig | None = None) -> None:
                     # when the headset or dock reappears (#41).
                     reopen_input("retrying the preferred microphone")
                     continue
-                # Hardware only: a long gap means stale PortAudio buffers
-                # (sleep/wake). A tab hiccup has no hardware to reanimate.
-                if active_device != "browser" and frame_gap > AUDIO_GAP_REOPEN_SECONDS:
+                # A long gap means stale PortAudio buffers after sleep/wake.
+                if frame_gap > AUDIO_GAP_REOPEN_SECONDS:
                     reopen_input(f"{frame_gap:.0f}s audio gap (sleep/device change?)")
                     continue
                 if now >= recognition_check_at:

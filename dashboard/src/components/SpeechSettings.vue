@@ -30,7 +30,7 @@ const sample = useSpeechSample(async wav => {
 async function recordSample() {
   stop(); const request = previewRequest; transcript.value='';
   try { if(await sampleAllowed(request)) await sample.start(); }
-  catch { if(request === previewRequest) error.value='Microphone access is unavailable. Check browser permissions.'; }
+  catch { if(request === previewRequest) error.value='Microphone access is unavailable. Connect a microphone and check system permissions.'; }
 }
 const playing = ref('');
 const loadingSample = ref(false);

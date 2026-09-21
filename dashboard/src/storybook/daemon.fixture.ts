@@ -19,7 +19,7 @@ export function resetScenario(next: Scenario) {
     speaking_agents:next === 'speaking' ? ['codex'] : [], queued:next === 'queued' ? 2 : 0,
     session_cost_usd:{user:.0214,claude:.1187}, usage:{stt_seconds:764,tts_chars:18432}, credits_usd:4.21,
     mode:'batch',tts_mode:'live',recognition_live_available:next !== 'local-speech',speech_live_available:next !== 'local-speech',recognition_mode:next === 'local-speech' ? 'batch' : undefined,speech_output_mode:next === 'local-speech' ? 'batch' : undefined,end_silence_ms:1500,mic_sensitivity:50,smart_turn:.7,smart_turn_mode:'soft',detection_mode:'ptt',ptt_held:false,
-    input_device:'',output_device:'system',browser_audio:false,tab_audio:false,hotkeys:{configured:true,permission:'granted',armed:true,bindings:{hold:'F8',toggle:'F15',scratch:'escape',tab1:'F1',tab2:'F2'},stored:{hold:'F8',toggle:'F15',scratch:'escape',tab1:'F1',tab2:'F2'},problems:{}},activity:{},language:'en',
+    input_device:'',hotkeys:{configured:true,permission:'granted',armed:true,bindings:{hold:'F8',toggle:'F15',scratch:'escape',tab1:'F1',tab2:'F2'},stored:{hold:'F8',toggle:'F15',scratch:'escape',tab1:'F1',tab2:'F2'},problems:{}},activity:{},language:'en',
     agents:next === 'no-tabs' ? {} : {codex:1,claude:2,docs:3}, agent_labels:next === 'no-tabs' ? {} : {codex:next === 'long' ? 'codex / investigate-checkout-performance-and-retry-handling' : 'Codex',claude:'Code review',docs:'Documentation'},
     agent_voices:{codex:'lux',claude:'eve',docs:'rex'},active_agent:next === 'no-tabs' ? null : 'codex',muted_agents:[], queued_by_agent:{claude:2},
     version:'2.17.0',latest_version:'2.17.0', shutdown_at:next === 'shutdown' ? now+180 : undefined,

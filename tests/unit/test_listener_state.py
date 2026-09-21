@@ -365,18 +365,6 @@ def test_mic_sensitivity_defaults_to_mid_and_clamps():
     assert state.set_mic_sensitivity(75) == 75
 
 
-def test_tab_mic_requires_both_the_flag_and_a_live_lease():
-    state = ListenerState()
-    assert state.tab_mic_live is False
-
-    state.set_tab_mic(True)
-    assert state.tab_mic_live is False  # a dead lease can't have a live mic
-
-    state.refresh_tab_audio()
-    assert state.tab_mic_live is True
-
-    state.release_tab_audio()
-    assert state.tab_mic_live is False  # release clears the mic flag too
 
 
 def test_queued_by_agent_counts_speech_waiting_to_be_heard():

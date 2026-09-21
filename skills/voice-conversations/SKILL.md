@@ -80,8 +80,8 @@ the user to repeat - don't act on garbage.
 ## Troubleshooting quick refs
 
 - Daemon status: `curl -s http://127.0.0.1:9765/status` (`api_key_set` or
-  local engine ready, `tab_audio`, `recording`).
-- `tab_audio: false` -> the dashboard tab isn't connected: the user clicks
-  the ENABLE TAB AUDIO banner on the dashboard to grant mic/speaker access.
+  local engine ready, `input_device`, `recording`).
+- No microphone input -> select a native microphone in Settings and check the
+  operating system microphone permission. Browser audio is no longer supported.
 - Voice one-way -> a port or connection mismatch between the hooks and the
   MCP server; see the setup skill.

@@ -26,7 +26,6 @@ import CompanionFloat from "./components/CompanionFloat.vue";
 import VersionBadge from "./components/VersionBadge.vue";
 import type { CueName } from "./composables/cueEvents";
 import { useAudioCues } from "./composables/useAudioCues";
-import { useBrowserAudio } from "./composables/useBrowserAudio";
 import { useDaemonState } from "./composables/useDaemonState";
 import { useMicStream } from "./composables/useMicStream";
 
@@ -278,108 +277,27 @@ onMounted(loadDevices);
 // subprocess, so a mic plugged in after daemon start appears the moment
 // the panel opens - not only after the manual refresh button.
 watch(showSettings, (open) => { if (open) loadDevices(); });
-const browserAudio = useBrowserAudio();
 useTabStatus(status);
-// Tab honesty (#30): mute releases the capture (Chrome's red dot goes
-// away), unmute re-acquires it - permission is already granted, so no
-// gesture is needed on the way back.
-watch(
-  () => status.value?.muted ?? false,
-  (muted) => {
-    if (muted) browserAudio.suspendMic();
-    else browserAudio.resumeMic().catch(swallow);
-  },
-);
-// Playback lives in ONE of two places: the browser tab (output=browser)
-// or a daemon-side system player (output=system). The transport buttons
-// drive both - whichever holds the clip reacts, the other no-ops.
-const daemonPaused = ref(false);
-const playbackPaused = computed(
-  () => browserAudio.playbackPaused.value || daemonPaused.value,
-);
+const playbackPaused = ref(false);
 const pausePlayback = async () => {
-  browserAudio.pauseToggle();
-  try {
-    daemonPaused.value = (await togglePlaybackPause()).paused;
-  } catch {
-    /* daemon unreachable - the tab side already did what it could */
-  }
+  try { playbackPaused.value = (await togglePlaybackPause()).paused; }
+  catch { /* daemon unreachable */ }
 };
 // A new clip means the pause belonged to the previous one - reset, or the
 // playing bubble would show a resume icon for audio that is running.
 watch(
   () => status.value?.playing_utterance_id ?? 0,
   () => {
-    daemonPaused.value = false;
+    playbackPaused.value = false;
   },
 );
 
 const skipPlayback = () => {
-  browserAudio.skip();
-  daemonPaused.value = false;
+  playbackPaused.value = false;
   interruptPlayback().catch(swallow);
 };
-// The SPEAKER side needs no permission and no gesture — connect the WS
-// lease the moment the page knows the tab is a nominated device, so
-// Claude's first words (the first-contact greeting) can play at once.
-let autoConnectTried = false;
-watch(status, (s) => {
-  if (autoConnectTried || !s) return;
-  if (s.input_device === "browser" || s.output_device === "browser") {
-    autoConnectTried = true; // once per page load; the banner is the retry
-    browserAudio.connect().catch(swallow);
-  }
-});
-// The banner covers what still needs the USER: the mic permission (and a
-// reconnect after a failed auto-connect).
-const tabAudioNeeded = computed(
-  () =>
-    !!status.value &&
-    !unconfigured.value &&
-    ((status.value.input_device === "browser" && !browserAudio.micLive.value) ||
-      (status.value.output_device === "browser" && !browserAudio.active.value)),
-);
-const tabAudioRoles = computed(() => {
-  const roles = [];
-  if (status.value?.input_device === "browser" && !browserAudio.micLive.value) {
-    roles.push("microphone");
-  }
-  if (status.value?.output_device === "browser" && !browserAudio.active.value) {
-    roles.push("speaker");
-  }
-  return roles.join(" and ");
-});
-async function enableTabAudio() {
-  try {
-    if (status.value?.input_device === "browser") await browserAudio.enable();
-    else await browserAudio.connect();
-  } catch {
-    // the reason is already in browserAudio.error, shown on the banner
-  }
-}
-// The tab connection serves both directions — tear it down only when
-// NEITHER side uses the tab anymore.
-function dropTabUnlessNeeded() {
-  const s = status.value;
-  if (s?.input_device !== "browser" && s?.output_device !== "browser") {
-    browserAudio.disable();
-  }
-}
 async function pickMic(name: string) {
-  if (name !== "browser") {
-    await setSettings({ input_device: name }).catch(swallow);
-    dropTabUnlessNeeded();
-    return;
-  }
-  // The picker click is our user gesture — getUserMedia is allowed here.
-  try {
-    await browserAudio.enable();
-    await setSettings({ input_device: "browser" });
-  } catch {
-    // Permission or lease refused: stay on the system default rather than
-    // pointing the daemon at a microphone that will never send a frame.
-    await setSettings({ input_device: "" }).catch(swallow);
-  }
+  await setSettings({ input_device: name }).catch(swallow);
 }
 // Ticking countdown for the shutdown banner (0.5 s poll keeps it honest).
 const nowTick = ref(Date.now());
@@ -400,20 +318,6 @@ const grantHotkeys = () => requestHotkeyPermission().catch(swallow);
 // One action at a time: the daemon merges, refuses collisions, and the
 // next snapshot carries the stored map plus any problem to show (#104).
 const setHotkey = (action: string, chord: string) => setSettings({ hotkeys: { [action]: chord } }).catch(swallow);
-
-async function pickOutput(value: string) {
-  if (value !== "browser") {
-    await setSettings({ output_device: "system" }).catch(swallow);
-    dropTabUnlessNeeded();
-    return;
-  }
-  try {
-    await browserAudio.connect(); // lease only — the speaker needs no mic permission
-    await setSettings({ output_device: "browser" });
-  } catch {
-    await setSettings({ output_device: "system" }).catch(swallow);
-  }
-}
 
 const SILENCE_OPTIONS = [800, 1500, 2000, 3000, 4000];
 // User terms for the VAD speech threshold (never raw RMS): LOW for noisy
@@ -517,10 +421,6 @@ const LANGUAGES: Record<string, string> = {
       @postpone="postponeShutdown(60).catch(swallow)"
       @cancel="cancelShutdown().catch(swallow)"
     />
-    <button v-if="tabAudioNeeded" class="tabaudio" @click="enableTabAudio">
-      🎙 ENABLE TAB AUDIO — this tab is your {{ tabAudioRoles }}; click once to activate
-      <span v-if="browserAudio.error.value" class="taberr">{{ browserAudio.error.value }}</span>
-    </button>
         <header class="topbar">
           <div class="topbar-logobox">
             <div class="logo" :class="{ dev: isDevInstance }">
@@ -660,16 +560,13 @@ const LANGUAGES: Record<string, string> = {
           <SettingsView
             :api-key-hint="status?.api_key_hint ?? ''"
             :devices="devices"
-            :browser-audio="status?.browser_audio ?? false"
             :selected-device="status?.input_device ?? ''"
-            :output-device="status?.output_device ?? 'system'"
             :cue-prefs="cuePrefs"
             :hotkeys="status?.hotkeys ?? null"
             :checks="visibleChecks"
             :checks-running="checksRunning"
             @save="saveKey"
             @pick-device="pickMic"
-            @pick-output="pickOutput"
             @set-hotkey="setHotkey"
             @grant-hotkeys="grantHotkeys"
             @refresh-devices="loadDevices"
@@ -767,9 +664,6 @@ const LANGUAGES: Record<string, string> = {
 
     <footer>
       <span>Service <b :class="offline ? 'bad' : 'ok'">{{ offline ? "OFFLINE" : "ONLINE" }}</b></span>
-      <span v-if="status?.input_device === 'browser'">
-        TAB MIC <b :class="status?.tab_audio ? 'ok' : 'bad'">{{ status?.tab_audio ? "Live" : "NO TAB" }}</b>
-      </span>
       <span>Recognition <b>{{ (status?.recognition_mode ?? status?.mode)?.toUpperCase() ?? "—" }}</b></span>
       <span>Language <b>{{ status?.language || "Auto" }}</b></span>
       <span>Queue <b>{{ status?.queued ?? "—" }}</b></span>

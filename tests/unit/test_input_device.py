@@ -49,10 +49,10 @@ def test_pick_opens_when_available(monkeypatch):
     assert state.active_input_device == "Jabra Link 380"
 
 
-def test_no_hardware_at_all_uses_the_browser_tab_without_rewriting_the_pick(monkeypatch):
+def test_no_hardware_waits_for_native_microphone_without_browser_fallback(monkeypatch):
     state = ListenerState()  # pick = system default
     monkeypatch.setattr(daemon.sd, "InputStream", _fake_input_stream({None}))
     stream, opened = daemon._open_input_stream(state, VadConfig(), on_audio=lambda *a: None, history=daemon.MicrophoneHistory(state))
-    assert stream is None and opened == "browser"
+    assert stream is None and opened == ""
     assert state.input_device == ""                        # preference untouched
-    assert state.active_input_device == "browser"
+    assert state.active_input_device == ""

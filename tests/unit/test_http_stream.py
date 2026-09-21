@@ -48,21 +48,17 @@ def test_ptt_hold_barges_in_on_playback_only_in_ptt_mode(monkeypatch):
         server.shutdown()
 
 
-def test_speak_with_interrupt_stops_local_players_and_the_tab(monkeypatch):
+def test_speak_with_interrupt_stops_native_playback(monkeypatch):
     from concurrent.futures import Future
 
     from noisy_coding.listener import http_api as http_api_module
 
     stops = []
 
-    class FakeBridge:
-        def stop_tab_playback(self):
-            stops.append("tab")
 
     monkeypatch.setattr(
         http_api_module.playback, "stop_all_players", lambda: stops.append("local")
     )
-    monkeypatch.setattr(http_api_module.tab_audio, "bridge", lambda: FakeBridge())
     monkeypatch.setattr(http_api_module.speech, "submit", lambda *_a, **_k: Future())
 
     state = ListenerState()
@@ -79,7 +75,7 @@ def test_speak_with_interrupt_stops_local_players_and_the_tab(monkeypatch):
     finally:
         server.shutdown()
 
-    assert stops == ["local", "tab"]  # replay click cuts audio wherever it plays
+    assert stops == ["local"]
 
 
 def test_diagnose_requires_an_api_key(monkeypatch):
@@ -182,32 +178,9 @@ def test_saving_a_verified_key_reports_the_checks_and_speaks(monkeypatch):
     assert payload["api_key_set"] is True
     assert payload["checks"] == checks
     assert spoken and "accepted" in spoken[0]  # audible proof the voice path works
-    assert "already live" in spoken[0]  # default mic → no activation step needed
+    assert "Select your microphone" in spoken[0]  # default mic → no activation step needed
 
 
-def test_accepted_key_walks_the_user_to_the_mic_when_the_tab_is_silent(monkeypatch):
-    from noisy_coding.listener import http_api as http_api_module
-
-    checks = {"api_key": {"ok": True, "ms": 90}}
-    _fake_key_store(monkeypatch)
-    spoken = []
-    monkeypatch.setattr(
-        http_api_module.diagnostics, "run_checks_sync", lambda *_a, **_k: checks
-    )
-    monkeypatch.setattr(
-        http_api_module.speech, "submit",
-        lambda _state, text, **_k: spoken.append(text),
-    )
-    state = ListenerState()
-    state.set_browser_audio(True)  # plain-web deployment (#99)
-    state.set_input_device("browser")  # tab is the mic, but no live lease yet
-    server = start_http_api(state, 0)
-    try:
-        _post_credentials(server.server_address[1], "xai-new-key")
-    finally:
-        server.shutdown()
-
-    assert spoken and "ENABLE TAB AUDIO" in spoken[0]  # the next step, out loud
 
 
 def test_a_key_failing_verification_is_never_accepted(monkeypatch):
@@ -273,30 +246,3 @@ def test_stream_mic_serves_sse_frames_with_level_and_recording():
         connection.close()
     finally:
         server.shutdown()
-
-
-def test_accepted_key_skips_the_mic_step_when_the_tab_mic_is_live(monkeypatch):
-    from noisy_coding.listener import http_api as http_api_module
-
-    checks = {"api_key": {"ok": True, "ms": 90}}
-    _fake_key_store(monkeypatch)
-    spoken = []
-    monkeypatch.setattr(
-        http_api_module.diagnostics, "run_checks_sync", lambda *_a, **_k: checks
-    )
-    monkeypatch.setattr(
-        http_api_module.speech, "submit",
-        lambda _state, text, **_k: spoken.append(text),
-    )
-    state = ListenerState()
-    state.set_browser_audio(True)  # plain-web deployment (#99)
-    state.set_input_device("browser")
-    state.refresh_tab_audio()
-    state.set_tab_mic(True)  # the tab reported a capturing microphone
-    server = start_http_api(state, 0)
-    try:
-        _post_credentials(server.server_address[1], "xai-new-key")
-    finally:
-        server.shutdown()
-
-    assert spoken and "already live" in spoken[0]

@@ -7,6 +7,7 @@ from collections import deque
 from dataclasses import replace, asdict, dataclass
 
 from noisy_coding.listener.conversations import ConversationRegistry
+from noisy_coding.listener.microphone_sample import MicrophoneSample
 from noisy_coding.harness.provider import Receipt, Speech
 from noisy_coding.listener.character_traits import canonical_character_traits
 from noisy_coding.listener.conversation_labels import UNNAMED_CONVERSATION, conversation_label
@@ -77,17 +78,9 @@ DEFAULT_SMART_TURN = 0.0  # 0 = off (pure VAD); 0.5-0.9 = semantic endpointing
 # never leave the daemon stuck recording. Structural safety, not a timer
 # guessing at human behavior.
 PTT_LEASE_SECONDS = 2.0
-# Same structural-safety pattern for the browser-tab audio device: the tab
-# renews the lease with every audio/heartbeat message, so a closed or
-# crashed tab frees the device by itself — no timer guessing.
-TAB_AUDIO_LEASE_SECONDS = 2.0
-# Talkative-driven narration nudges (#16): how long an agent may work in
-# silence before the daemon reminds it to say a one-liner. Anchor points,
-# linearly interpolated; talkative 0 disables nudging entirely. The model has
-# no clock — the daemon does.
+# Talkative-driven silence limits, interpolated between anchors; zero disables nudges.
 TALKATIVE_NUDGE_ANCHORS = ((25, 600.0), (50, 300.0), (75, 120.0), (100, 75.0))
-# "Actively working" = the live-activity line moved this recently. Nudges
-# never target an idle agent waiting for the user.
+# Only nudge agents whose live activity moved recently.
 NUDGE_ACTIVITY_FRESH_SECONDS = 30.0
 
 
@@ -139,14 +132,8 @@ class ListenerState:
         self._agent_last_idle_log: dict[str, float] = {}
         self._active_agent: str | None = None
         self._paused = False  # transient echo-mute while Claude speaks
-        self._tab_audio_last_beat = float("-inf")  # browser-tab audio lease
-        self._tab_mic = False  # the tab's mic is actually capturing
+        self.microphone_sample = MicrophoneSample()
         self._active_input_device = ""  # what is actually open right now (#41)
-        self._output_device = "system"  # where Claude's voice plays: system | browser
-        # The native app owns the audio hardware, so the browser
-        # devices are opt-in (NOISY_CODING_BROWSER_AUDIO=1) and a stored
-        # "browser" pick migrates back to the system devices (#99).
-        self._browser_audio = False
         self._user_muted = False  # explicit mute from the dashboard
         self._voice_muted = False  # speaker-side mute: Claude's speech parks as UNHEARD
         # Per-conversation mute: these agents' speech parks as UNHEARD
@@ -580,38 +567,13 @@ class ListenerState:
     def set_input_device(self, name: str) -> str:
         """The user's PREFERENCE (persisted). What is actually open lives in
         active_input_device - a failed open must never rewrite the pick (#41).
-        "browser" is only a valid pick while browser audio is enabled (#99)."""
+        Old browser selections migrate to the native system microphone."""
         with self._lock:
             name = str(name)
-            if name == "browser" and not self._browser_audio:
+            if name == "browser":
                 name = ""
             self._input_device = name
             return self._input_device
-
-    @property
-    def browser_audio(self) -> bool:
-        with self._lock:
-            return self._browser_audio
-
-    def set_browser_audio(self, enabled: bool) -> None:
-        """Allow (or forbid) the dashboard tab as a device. Forbidding it
-        moves any browser pick back to the system devices and reports which."""
-        with self._lock:
-            self._browser_audio = bool(enabled)
-            if self._browser_audio:
-                return
-            migrated = []
-            if self._input_device == "browser":
-                self._input_device = ""
-                migrated.append("microphone")
-            if self._output_device == "browser":
-                self._output_device = "system"
-                migrated.append("speaker")
-        if migrated:
-            self.add_event(
-                "settings_migrated",
-                f"browser-tab {' and '.join(migrated)} is not available here - using the system devices",
-            )
 
     @property
     def active_input_device(self) -> str:
@@ -623,19 +585,6 @@ class ListenerState:
             self._active_input_device = str(name)
 
     @property
-    def output_device(self) -> str:
-        with self._lock:
-            return self._output_device
-
-    def set_output_device(self, name: str) -> str:
-        with self._lock:
-            if name == "browser" and not self._browser_audio:
-                name = "system"
-            if name in ("system", "browser"):
-                self._output_device = name
-            return self._output_device
-
-    @property
     def detection_mode(self) -> str:
         with self._lock:
             return self._detection_mode
@@ -645,37 +594,6 @@ class ListenerState:
             if mode in ("auto", "ptt"):
                 self._detection_mode = mode
             return self._detection_mode
-
-    def refresh_tab_audio(self) -> None:
-        with self._lock:
-            self._tab_audio_last_beat = time.monotonic()
-
-    def release_tab_audio(self) -> None:
-        with self._lock:
-            self._tab_audio_last_beat = float("-inf")
-            self._tab_mic = False
-
-    @property
-    def tab_audio_alive(self) -> bool:
-        with self._lock:
-            return (
-                time.monotonic() - self._tab_audio_last_beat < TAB_AUDIO_LEASE_SECONDS
-            )
-
-    def set_tab_mic(self, live: bool) -> None:
-        """The tab's own word on its microphone (heartbeat flag): a
-        connected tab can PLAY audio while its mic still awaits the
-        activation click — the lease alone must not imply a live mic."""
-        with self._lock:
-            self._tab_mic = bool(live)
-
-    @property
-    def tab_mic_live(self) -> bool:
-        with self._lock:
-            alive = (
-                time.monotonic() - self._tab_audio_last_beat < TAB_AUDIO_LEASE_SECONDS
-            )
-            return alive and self._tab_mic
 
     def refresh_ptt_hold(self) -> None:
         with self._lock:

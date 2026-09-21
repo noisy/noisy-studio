@@ -22,7 +22,7 @@ from concurrent.futures import Future
 from dataclasses import dataclass
 
 from noisy_coding import playback, providers, tts
-from noisy_coding.listener import audio_cache, tab_audio
+from noisy_coding.listener import audio_cache
 from noisy_coding.listener.state import ListenerState
 
 DEFAULT_VOICE_ENV_VAR = "NOISY_CODING_DEFAULT_VOICE"
@@ -39,10 +39,6 @@ ECHO_TAIL_SECONDS = 0.25
 POST_TURN_GRACE_SECONDS = 1.5
 
 
-class NoAudioSink(Exception):
-    """Nowhere to play: no live browser tab AND system playback failed
-    (hardware-free host). The card parks as UNHEARD — CATCH UP replays it
-    once a tab connects."""
 EMPHASIS_PATTERN = re.compile(r"\*\*(.+?)\*\*")
 
 class _SerialWorker:
@@ -347,8 +343,8 @@ def _hold_for_user_turn(state: ListenerState, utterance_id: int) -> None:
 
 
 def _streaming_available(state: ListenerState, provider: providers.TTSProvider) -> bool:
-    # Browser playback currently consumes complete clips, not streamed chunks.
-    return provider.supports_streaming and state.output_device != "browser"
+    # Native playback supports streaming when the provider does.
+    return provider.supports_streaming
 
 
 def _tts_streaming(state: ListenerState, provider: providers.TTSProvider) -> bool:
@@ -519,13 +515,7 @@ def _play_prepared(
     # Claim the card the moment its playback is committed: the UI's
     # button must flip to STOP now, not when audio actually starts.
     state.set_playing_utterance_id(source_id)
-    # Mute the listener while we play, or the mic transcribes our own
-    # speech — EXCEPT tab-in + tab-out: the browser's echo cancellation
-    # removes Claude's voice from the capture, so the mic stays hot and
-    # the user can talk right through the playback (barge-in).
-    aec_covers_echo = (
-        state.output_device == "browser" and state.input_device == "browser"
-    )
+    # Native speakers require echo muting during playback.
     try:
         audio = prepared.audio
         if audio is None and not prepared.stream:
@@ -537,20 +527,13 @@ def _play_prepared(
                 prepared.voice, prepared.language, prepared.speed,
                 utterance_id, source_id,
             )
-        if not aec_covers_echo:
-            state.set_paused(True)
+        state.set_paused(True)
         state.set_claude_speaking(True, agent)
         if prepared.stream:
             asyncio.run(_stream_and_play(state, text, prepared, utterance_id, source_id))
         else:
             asyncio.run(_play_audio(state, audio, prepared.cached, utterance_id))
-        if not aec_covers_echo:  # nothing was muted — no echo tail to wait out
-            time.sleep(ECHO_TAIL_SECONDS)  # let the room echo die before unmuting
-    except NoAudioSink as error:
-        _log(f"[speak] parked unheard — no audio sink ({error})")
-        state.add_event("speak_unheard", "no browser tab, no speakers — parked")
-        state.update_utterance(utterance_id, status="unheard — no browser tab")
-        return prepared.voice
+        time.sleep(ECHO_TAIL_SECONDS)  # let the room echo die before unmuting
     except Exception as error:
         _log(f"[speak] error: {error}")
         state.add_event("speak_error", str(error)[:200])
@@ -559,8 +542,7 @@ def _play_prepared(
     finally:
         state.set_playing_utterance_id(0)
         state.set_claude_speaking(False, agent)
-        if not aec_covers_echo:
-            state.set_paused(False)
+        state.set_paused(False)
     played_seconds = time.monotonic() - playing_since
     _log(f"[speak] done in {played_seconds:.1f}s")
     state.add_event("speak_done", f"głos '{prepared.voice}'")
@@ -634,32 +616,6 @@ async def _play_audio(
 ) -> None:
     origin = "cache — no re-synthesis" if cached else "fresh synthesis"
     detail = f"{len(audio.audio) / 1024:.0f} kB audio from {origin}"
-    if state.output_device == "browser":
-        live_bridge = tab_audio.bridge()
-        state.add_event("speak_audio", detail + " → browser tab")
-        state.update_utterance(
-            utterance_id, status="playing through speakers…",
-            detail="playing in the browser tab",
-        )
-        if live_bridge is not None and await asyncio.to_thread(
-            live_bridge.play_through_tab, audio.audio, audio.content_type
-        ):
-            return
-        # No live tab took the clip — never lose speech: fall back to
-        # the system speakers and say so in the event log.
-        state.add_event("speak_fallback", "no browser tab — system speakers")
-        state.add_event("speak_audio", detail)
-        state.update_utterance(
-            utterance_id, status="playing through speakers…", detail=detail
-        )
-        try:
-            await playback.play(audio.audio, audio.content_type)
-        except Exception as error:
-            # No audio device is available: there is nothing to play
-            # through right now. Park, don't error — the speech is
-            # synthesized and waits for CATCH UP once a tab connects.
-            raise NoAudioSink(str(error)) from error
-        return
     state.add_event("speak_audio", detail)
     state.update_utterance(
         utterance_id, status="playing through speakers…", detail=detail

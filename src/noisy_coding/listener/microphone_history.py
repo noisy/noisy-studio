@@ -25,7 +25,7 @@ class MicrophoneHistory:
         if effective == self.last_device:
             return
         self.last_device = effective
-        label = 'THIS BROWSER TAB' if opened == 'browser' else opened or 'system default'
+        label = opened or 'system default'
         text = f'MIC → {label}'
         if wanted and wanted != opened:
             text += f" (waiting for '{wanted}')"

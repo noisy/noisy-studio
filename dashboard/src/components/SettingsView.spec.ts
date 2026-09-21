@@ -41,14 +41,11 @@ describe("SettingsView", () => {
     expect(wrapper.emitted("save")).toBeUndefined();
   });
 
-  it("hides the browser-tab speaker unless the daemon allows browser audio (#99)", async () => {
+  it("offers native microphones without browser audio choices", async () => {
     const closed = mount(SettingsView, { props: { apiKeyHint: "····kRc9" } });
     await closed.findAll(".tabbtn").find((b) => b.text() === "Audio")!.trigger("click");
     expect(closed.find('option[value="browser"]').exists()).toBe(false);
 
-    const open = mount(SettingsView, { props: { apiKeyHint: "····kRc9", browserAudio: true } });
-    await open.findAll(".tabbtn").find((b) => b.text() === "Audio")!.trigger("click");
-    expect(open.find('option[value="browser"]').exists()).toBe(true);
   });
 
   it("moves the keys to a Hotkeys tab and keeps a pointer in Audio (#104)", async () => {

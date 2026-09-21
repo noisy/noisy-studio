@@ -23,15 +23,13 @@ const props = withDefaults(
     apiKeyHint: string;
     devices?: InputDevice[];
     selectedDevice?: string;
-    outputDevice?: string;
-    browserAudio?: boolean;
     cuePrefs?: CuePrefs | null;
     hotkeys?: HotkeyState | null;
     checks?: DiagnosticChecks | null;
     checksRunning?: boolean;
   }>(),
   {
-    devices: () => [], selectedDevice: "", outputDevice: "system", browserAudio: false, cuePrefs: null,
+    devices: () => [], selectedDevice: "", cuePrefs: null,
     hotkeys: null,
     checks: null, checksRunning: false,
   },
@@ -71,7 +69,6 @@ const capture = useKeyCapture((action, result) => {
 const emit = defineEmits<{
   save: [key: string];
   pickDevice: [name: string];
-  pickOutput: [value: string];
   setHotkey: [action: string, chord: string];
   grantHotkeys: [];
   refreshDevices: [];
@@ -146,34 +143,13 @@ function submit() {
         <p>
           Which input the daemon listens to — switching swaps the audio stream
           live, no restart. ◆ marks the system default. A device plugged in
-          after the daemon started shows on the list, but needs a daemon
-          restart before it can be opened. This browser tab makes this very
-          tab the microphone (asks for permission on pick).
+          after the daemon started appears when you refresh the list. Speech plays
+          through the system’s selected speakers.
         </p>
       </div>
     </section>
 
-    <section class="sec">
-      <div class="keyrow">
-        <span class="lbl">Output</span>
-        <select
-          class="keyinput"
-          :value="outputDevice"
-          aria-label="Audio output"
-          @change="emit('pickOutput', ($event.target as HTMLSelectElement).value)"
-        >
-          <option value="system">System speakers</option>
-          <option v-if="browserAudio" value="browser">This browser tab</option>
-        </select>
-      </div>
-      <div class="text">
-        <p>
-          Where the agent’s voice plays. This browser tab routes speech through
-          this page — pair it with the tab microphone and the browser's echo
-          cancellation lets you interrupt the agent mid-sentence.
-        </p>
-      </div>
-    </section>
+
 
     <section class="sec">
       <div class="keyrow">

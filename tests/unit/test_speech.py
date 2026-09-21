@@ -457,17 +457,14 @@ def test_resolve_options_uses_the_speaking_agents_character():
     assert resolved[0] == "ara"
 
 
-@pytest.mark.parametrize('supports_streaming, output, preference, override, expected', [
-    (True, 'browser', 'live', 'live', {'speech_live_available':False,'speech_output_mode':'batch'}),
-    (False, '', 'live', 'live', {'speech_live_available':False,'speech_output_mode':'batch'}),
-    (True, '', 'batch', '', {'speech_live_available':True,'speech_output_mode':'batch'}),
-    (True, '', 'batch', 'live', {'speech_live_available':True,'speech_output_mode':'live'}),
+@pytest.mark.parametrize('supports_streaming, preference, override, expected', [
+    (False, 'live', 'live', {'speech_live_available':False,'speech_output_mode':'batch'}),
+    (True, 'batch', '', {'speech_live_available':True,'speech_output_mode':'batch'}),
+    (True, 'batch', 'live', {'speech_live_available':True,'speech_output_mode':'live'}),
 ])
-def test_output_status_matches_the_playback_path(monkeypatch, supports_streaming, output, preference, override, expected):
+def test_output_status_matches_the_playback_path(monkeypatch, supports_streaming, preference, override, expected):
     from types import SimpleNamespace
     state = ListenerState()
-    state.set_browser_audio(True)
-    state.set_output_device(output)
     state.set_tts_mode(preference)
     monkeypatch.setenv(speech.TTS_MODE_ENV_VAR, override)
     monkeypatch.setattr(speech.providers, 'active_tts', lambda: SimpleNamespace(supports_streaming=supports_streaming))

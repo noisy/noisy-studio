@@ -1,3 +1,5 @@
+> Historical research: browser audio transport was removed in V3. The WebSocket now serves dashboard state only; use the native microphone path for current audio testing.
+
 > Historical analysis from before the native integration overhaul.
 > For current setup, use INSTALL.md, hooks.md and codex.md.
 
