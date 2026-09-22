@@ -11,7 +11,7 @@ function toggle(id: AudioControlId, checked: boolean) { emit('visibility', check
 </script>
 <template>
   <div class="audio-controls" :class="{settings}" :style="{ '--audio-settings-max-width': SETTINGS_MAX_WIDTH + 'px' }">
-    <header v-if="!settings"><span>Audio controls</span><button type="button" aria-label="Open all audio controls" title="Open all audio controls" @click="emit('openSettings')">More…</button></header>
+    <header v-if="!settings"><span>Audio controls</span><button type="button" aria-label="Open all audio controls" title="Open all audio controls" @click="emit('openSettings')"><slot name="shortcut">More…</slot></button></header>
     <template v-else><h3>Audio controls</h3><p>All controls are available here. Choose which also appear on your dashboard.</p><div class="visibility-heading">Show on dashboard</div></template>
     <div v-for="c in controls" :key="c.id" class="audio-row" :title="c.disabled ? 'Used in Auto mode' : c.help">
       <div><label :id="`${prefix}-${c.id}-label`" :for="c.buttons ? undefined : `${prefix}-${c.id}`">{{c.label}}</label><p v-if="settings" class="help">{{c.help}}</p></div>
