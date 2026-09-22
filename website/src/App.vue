@@ -13,6 +13,7 @@ import { websiteAnalytics } from './analytics';
 let stopScroll: (() => void) | undefined;
 onMounted(() => { stopScroll = observePageScroll(window, document, websiteAnalytics); });
 onBeforeUnmount(() => stopScroll?.());
+const macDownloadUrl = "https://github.com/noisy/noisy-studio/releases/download/v3.0.0-beta.1/Noisy.Studio-3.0.0-beta.1-arm64.dmg";
 const source = "https://github.com/noisy/noisy-studio";
 </script>
 
@@ -37,7 +38,7 @@ const source = "https://github.com/noisy/noisy-studio";
     >
   </header>
   <main id="main">
-    <HeroShowcase><template #download><PlatformDownload :platform="previewPlatform ?? 'mac'" compact /></template></HeroShowcase>
+    <HeroShowcase><template #download><PlatformDownload :download-url="macDownloadUrl" :platform="previewPlatform ?? 'mac'" compact /></template></HeroShowcase>
     <section
       id="workflow"
       class="wrap workflow-summary"
@@ -73,7 +74,7 @@ const source = "https://github.com/noisy/noisy-studio";
             Hear the progress, give direction, and keep creating.
           </p>
         </div>
-        <PlatformDownload :platform="previewPlatform ?? 'mac'" />
+        <PlatformDownload :download-url="macDownloadUrl" :platform="previewPlatform ?? 'mac'" />
       </div>
     </section>
     <section class="section wrap questions">
