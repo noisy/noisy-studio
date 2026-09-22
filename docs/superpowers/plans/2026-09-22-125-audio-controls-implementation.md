@@ -16,6 +16,10 @@
 - [x] Add typed metadata for supported languages (including unknown/voice-dependent), auto detection, streaming, smart turn; distinguish local turn detection from provider turn-end support.
 - [x] Expose active direction/model metadata with backward-compatible existing flags.
 - [x] Test at the provider boundary and API serialization, run relevant regression checks, commit.
-- [ ] Roll out with graceful delayed restart if required, verify microphone and state, push completed work. Leave capability-driven Settings changes for follow-up.
+- [x] Roll out with graceful delayed restart if required, verify microphone and state, push completed work. Leave capability-driven Settings changes for follow-up.
 
 Do not touch unrelated hook edits or the untracked credential maintenance script. No model downloads or real provider calls needed for routine tests.
+
+## Verification
+
+337 dashboard tests; 481 Python unit/harness tests passed, one skipped; 12 focused contract/state-stream checks passed after final edits. Dashboard and Storybook builds passed. Shared control UI visually checked. Dev restarted gracefully using the preserved dev store; selected microphone remained Jabra Link 380. Active `/status` reports capability version 1 and local silence bounds 0–10000ms. Provider-driven Settings filtering and explanatory language UI remain deferred as requested.
