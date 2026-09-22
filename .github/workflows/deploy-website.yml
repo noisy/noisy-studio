@@ -22,6 +22,8 @@ on:
     paths:
       - "website/**"
       - "scripts/analytics-config.cjs"
+      - "dashboard/package.json"
+      - "dashboard/package-lock.json"
       - "dashboard/src/**" # the site renders the real product components
       - "dashboard/public/**"
       - "dashboard/.storybook/**"
@@ -50,7 +52,10 @@ jobs:
           node-version: 22
           cache: npm
           cache-dependency-path: website/package-lock.json
-      - name: Install and build (website only)
+      # The website imports dashboard components and their runtime dependencies.
+      - name: Install shared dashboard dependencies
+        run: npm ci --prefix dashboard
+      - name: Install and build website
         working-directory: website
         env:
           POSTHOG_PROJECT_TOKEN: ${{ secrets.POSTHOG_PROJECT_TOKEN }}
@@ -65,14 +70,13 @@ jobs:
       # Storybook renders real WEBSITE components, so it needs the website's
       # dependencies too - `posthog-js` is imported by website/src/analytics.
       # Installing only dashboard's deps fails the build at resolve time.
-      - name: Install and build Storybook
+      - name: Build Storybook
         working-directory: dashboard
         env:
           # Answers "which version is this?" on the page itself.
           STORYBOOK_BUILD_SHA: ${{ github.sha }}
           STORYBOOK_BUILD_REF: ${{ github.ref_name }}
         run: |
-          npm ci
           npm run build-storybook -- --output-dir ../website/dist/storybook
 
       - name: Upload ONLY built output (site + storybook)
