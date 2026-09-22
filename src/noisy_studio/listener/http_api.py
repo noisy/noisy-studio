@@ -12,6 +12,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+from noisy_studio.listener.audio_capabilities import audio_capabilities
 from noisy_studio import credentials, diagnostics, harness, playback
 from noisy_studio.harness.hook_gateway import _apply_harness_event, _render_for
 from noisy_studio.harness import hook_gateway
@@ -470,6 +471,7 @@ def status_payload(state: ListenerState) -> dict:
                             "voice_labels": selection.active_voice_labels(),
                             "recognition_mode": _providers.effective_mode("stt", state.mode),
                             "recognition_live_available": _providers.effective_mode("stt", "live") == "live",
+                            "audio_capabilities": audio_capabilities(),
                             **speech.output_status(state),
                             # Named speakers whose bubbles carry a platform
                             # tint (twitch purple / youtube red).

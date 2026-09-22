@@ -14,6 +14,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol, runtime_checkable
 
+from noisy_studio.providers.capabilities import AudioCapabilities
+
 __all__ = [
     "SynthesizedAudio",
     "TTSError",
@@ -57,6 +59,9 @@ class TTSProvider(Protocol):
     label: str  # human wording for status cards ("Grok TTS", "local TTS")
     supports_streaming: bool
 
+    @property
+    def capabilities(self) -> AudioCapabilities: ...
+
     async def synthesize(
         self, text: str, voice_id: str, language: str, speed: float
     ) -> SynthesizedAudio: ...
@@ -87,6 +92,9 @@ class STTProvider(Protocol):
     name: str
     label: str
     supports_streaming: bool
+
+    @property
+    def capabilities(self) -> AudioCapabilities: ...
 
     def transcribe(self, wav_bytes: bytes, language: str = "") -> str: ...
 

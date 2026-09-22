@@ -24,3 +24,20 @@ def test_character_change_updates_status_and_stream_digest():
     assert after["status"]["agent_characters"]["a1"] == saved
     assert status_payload(state)["agent_characters"]["a1"] == saved
     assert snapshot_digest(before) != snapshot_digest(after)
+
+
+def test_provider_capability_change_reaches_status_and_stream(monkeypatch):
+    from noisy_studio.listener import http_api
+    from noisy_studio.listener.state import ListenerState
+    from noisy_studio.listener.state_stream import snapshot_digest
+
+    capabilities = {'version': 1, 'stt': {'model': 'model-a'}, 'tts': None}
+    monkeypatch.setattr(http_api, 'audio_capabilities', lambda: dict(capabilities))
+    state = ListenerState()
+    before = http_api.state_snapshot(state)
+    capabilities['stt'] = {'model': 'model-b'}
+    after = http_api.state_snapshot(state)
+
+    assert (http_api.status_payload(state)['audio_capabilities'],
+            after['status']['audio_capabilities'],
+            snapshot_digest(before) != snapshot_digest(after)) == (capabilities, capabilities, True)

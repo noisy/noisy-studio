@@ -8,7 +8,8 @@ the provider shape, so the daemon can stop naming Grok directly.
 from collections.abc import Callable
 import re
 import json
-from noisy_studio.providers import config
+from noisy_studio.providers.capabilities import AudioCapabilities
+from noisy_studio.providers import config, grok_capabilities
 
 from noisy_studio import tts, tts_stream
 from noisy_studio.listener import pricing, stt, stt_stream
@@ -23,6 +24,10 @@ class GrokTTS:
         self.options = config.provider_options("grok") if options is None else dict(options)
         self.bindings = dict(self.options.get("voice_bindings", {}))
         self.cache_identity = "grok:" + json.dumps(self.options, sort_keys=True)
+
+    @property
+    def capabilities(self) -> AudioCapabilities:
+        return grok_capabilities.tts_capabilities(self.supports_streaming)
 
     def _voice(self, identity: str) -> str:
         return self.bindings.get(identity, identity)
@@ -63,6 +68,10 @@ class GrokSTT:
     name = "grok"
     label = "Grok STT"
     supports_streaming = True
+
+    @property
+    def capabilities(self) -> AudioCapabilities:
+        return grok_capabilities.stt_capabilities()
 
     def transcribe(self, wav_bytes: bytes, language: str = "") -> str:
         return stt.transcribe(wav_bytes, language)

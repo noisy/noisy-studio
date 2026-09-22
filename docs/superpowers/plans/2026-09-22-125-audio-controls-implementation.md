@@ -12,10 +12,10 @@
 - [x] Promote Lab prototype to component stories; focused component/navigation/persistence tests, type check, dashboard/Storybook builds, visual check, commit.
 
 ## Part 2 — provider contract
-- [ ] Trace Grok/local provider and model behavior and verify official provider documentation.
-- [ ] Add typed metadata for supported languages (including unknown/voice-dependent), auto detection, streaming, smart turn; distinguish local turn detection from provider turn-end support.
-- [ ] Expose active direction/model metadata with backward-compatible existing flags.
-- [ ] Test at the provider boundary and API serialization, run relevant regression checks, commit.
+- [x] Trace Grok/local provider and model behavior and verify official provider documentation.
+- [x] Add typed metadata for supported languages (including unknown/voice-dependent), auto detection, streaming, smart turn; distinguish local turn detection from provider turn-end support.
+- [x] Expose active direction/model metadata with backward-compatible existing flags.
+- [x] Test at the provider boundary and API serialization, run relevant regression checks, commit.
 - [ ] Roll out with graceful delayed restart if required, verify microphone and state, push completed work. Leave capability-driven Settings changes for follow-up.
 
 Do not touch unrelated hook edits or the untracked credential maintenance script. No model downloads or real provider calls needed for routine tests.

@@ -14,6 +14,7 @@ export interface HotkeyState {
 }
 
 export interface DaemonStatus {
+  audio_capabilities?: AudioCapabilities;
   conversations?: Record<string, { created_at?: number }>;
   /** Named speakers whose bubbles carry a palette tint (twitch purple / youtube red). */
   speaker_colors?: Record<string, string>;
@@ -146,4 +147,27 @@ export interface InputDevice {
   default: boolean;
   /** Device identifier when it differs from the display name. */
   value?: string;
+}
+
+/** Facts from the selected provider/model. Null codes do not mean universal support. */
+export interface SpeechCapabilities {
+  provider: string;
+  model: string;
+  modes: Array<'batch' | 'live'>;
+  languages: {
+    codes: string[] | null;
+    auto_detect: boolean | null;
+    selectable: boolean;
+    exhaustive: boolean;
+    purpose: 'recognition' | 'synthesis' | 'formatting' | 'voice';
+    note: string;
+  };
+  smart_turn: {modes: Array<'live'>; minimum: number; maximum: number; off_value: number} | null;
+}
+export interface AudioCapabilities {
+  version: 1;
+  stt: SpeechCapabilities | null;
+  tts: SpeechCapabilities | null;
+  turn_detection: {owner: 'application'; modes: Array<'auto' | 'ptt'>};
+  end_silence: {owner: 'application'; minimum_ms: number; maximum_ms: number; modes: Array<'auto'>};
 }

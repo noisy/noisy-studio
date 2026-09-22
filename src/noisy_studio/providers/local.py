@@ -34,6 +34,7 @@ from pathlib import Path
 import httpx
 import numpy as np
 
+from noisy_studio.providers.capabilities import AudioCapabilities
 from noisy_studio.providers import config, downloads
 from noisy_studio.providers.base import (
     STTError,
@@ -59,6 +60,11 @@ class LocalSTT:
 
     def __init__(self, options: dict | None = None):
         self.options = dict(config.local_options() if options is None else options)
+
+    @property
+    def capabilities(self) -> AudioCapabilities:
+        from noisy_studio.providers.local_capabilities import stt_capabilities
+        return stt_capabilities(str(self.options.get('stt_model') or config.DEFAULT_LOCAL_STT_MODEL))
 
     def _load_model(self):
         model_name = str(self.options.get("stt_model") or config.DEFAULT_LOCAL_STT_MODEL)
@@ -317,6 +323,11 @@ class LocalTTS:
                     bindings[identity] = next((v for v in KOKORO_VOICES if v not in bindings.values()), KOKORO_VOICES[len(bindings) % len(KOKORO_VOICES)])
             self.options["voice_bindings"] = bindings
         self.cache_identity = "local:" + json.dumps(self.options, sort_keys=True)
+
+    @property
+    def capabilities(self) -> AudioCapabilities:
+        from noisy_studio.providers.local_capabilities import tts_capabilities
+        return tts_capabilities(str(self.options.get('tts_engine') or 'kokoro'))
 
     async def synthesize(
         self, text: str, voice_id: str, language: str, speed: float
