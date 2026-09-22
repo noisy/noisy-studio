@@ -21,6 +21,7 @@ import time
 from urllib.parse import quote
 
 import _client
+import _registration_retry
 
 POLL_INTERVAL_SECONDS = 0.5
 # After speech arrives, keep listening this long for a continuation before
@@ -45,6 +46,8 @@ def run(harness: str, payload: dict, listen_seconds: float | None = None) -> int
     if listen_seconds is not None:
         body["listen_seconds"] = listen_seconds
     reply = _client.post("/harness/event", body)
+    if reply is None:
+        reply = _registration_retry.wait_for_daemon(body, listen_seconds)
     event_name = str(payload.get("hook_event_name") or "")
     tool_name = str(payload.get("tool_name") or "")
     identity_call = event_name == "PreToolUse" and "noisy" in tool_name and (

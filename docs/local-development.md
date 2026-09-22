@@ -41,6 +41,20 @@ never open audio hardware or start a daemon. Their explicit listener port must
 match the instance being tested. The Codex setup script can select 7765;
 see [codex.md](codex.md).
 
+## Claude started before the daemon
+
+The asynchronous Claude SessionStart hook retries an unavailable daemon every
+2 seconds while its inherited messaging socket remains valid. The retry and
+subsequent listening share a maximum 4-hour window (or the configured shorter
+`NOISY_STUDIO_REWAKE_WAIT_SECONDS`). Explicit HTTP rejection, socket removal or
+replacement ends the retry. Ordinary tool and prompt hooks do not wait.
+
+This requires the updated hook runtime and the long asynchronous SessionStart
+configuration shipped in `hooks/hooks.json`. A startup hook that already exited
+before this fix cannot recover retroactively: send one typed message in that
+Claude session to register its current connection, or resume it with the updated
+hooks. Packaged installations receive the change in their next app build.
+
 ## Restarting the live dev daemon
 
 ```sh
