@@ -1,18 +1,8 @@
 import { computed, nextTick, ref } from 'vue';
 import type { Meta, StoryObj } from '@storybook/vue3';
-import AudioControls from '../components/AudioControls.vue';
-import { DEFAULT_AUDIO_CONTROLS } from '../components/audioControls';
 import './audioControlOptions.css';
 
 export default {title:'Lab/AudioControlOptions',parameters:{layout:'fullscreen'}} satisfies Meta;
-
-export const ShortcutComparison: StoryObj = {
-  render:()=>({components:{AudioControls},setup(){
-    const selected=ref('');
-    const versions=[{name:'Plain text',text:'More'},{name:'Ellipsis',text:'More…'},{name:'Diagonal arrow',text:'More ↗'},{name:'Right arrow',text:'More →'},{name:'Sliders',text:'More',icon:true}];
-    return {versions,selected,visible:DEFAULT_AUDIO_CONTROLS};
-  },template:`<main class="audio-options-lab"><h1>Audio controls · shortcut comparison</h1><p>Same panel, same destination: Settings → Audio. Only the shortcut changes.</p><div class="shortcut-board"><article v-for="v in versions" :key="v.name"><h2>{{v.name}}</h2><section class="shortcut-card"><AudioControls :status="null" :visible="visible" @open-settings="selected=v.name"><template #shortcut><span class="shortcut-label">{{v.text}}<svg v-if="v.icon" aria-hidden="true" width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor"><path d="M2 4h12M2 12h12"/><circle cx="6" cy="4" r="2" fill="var(--panel-solid)"/><circle cx="10" cy="12" r="2" fill="var(--panel-solid)"/></svg></span></template></AudioControls></section></article></div><p role="status">{{selected ? selected + ' selected — this shortcut opens all audio controls.' : 'Click a shortcut to compare its target and feel.'}}</p><p>Recommendation: More → signals navigation within the app. More ↗ retains the earlier appearance.</p></main>`}),
-};
 
 export const ProviderAvailability:StoryObj={
   render:()=>({setup(){
