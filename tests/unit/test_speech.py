@@ -391,7 +391,7 @@ def test_live_mode_streams_the_head_and_prefetches_the_queue(monkeypatch):
     _install_fake_synth(monkeypatch, synth_calls)
     _install_fake_play(monkeypatch, [])
 
-    async def fake_stream_and_play(_state, text, _prepared, _utterance_id, _source_id):
+    async def fake_stream_and_play(_state, text, _prepared, _utterance_id, _source_id, on_playback_complete):
         await asyncio.sleep(0.2)
         streamed.append(text)
 

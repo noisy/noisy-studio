@@ -44,10 +44,12 @@ class GrokTTS:
         speed: float,
         on_first_audio: Callable[[float], None] | None = None,
         on_audio_chunk: Callable[[bytes], None] | None = None,
+        on_playback_complete: Callable[[], None] | None = None,
     ) -> None:
         await tts_stream.speak_streaming(
             _speech_text(text), self._voice(voice_id), language, speed,
             on_first_audio=on_first_audio, on_audio_chunk=on_audio_chunk,
+            on_playback_complete=on_playback_complete,
         )
 
     async def list_voices(self) -> list[dict]:

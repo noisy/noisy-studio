@@ -1490,6 +1490,19 @@ class ListenerState:
             self._playing_utterance_id = 0
             return utterance_id
 
+    def complete_playback(self, utterance_id: int, duration_s: float) -> bool:
+        """Settle only the still-owned playback; an earlier interruption wins."""
+        with self._lock:
+            if not utterance_id or self._playing_utterance_id != utterance_id:
+                return False
+            self._playing_utterance_id = 0
+            for utterance in self._utterances:
+                if utterance["id"] == utterance_id:
+                    utterance.update(status="played", duration_s=duration_s,
+                                     updated_at=time.time())
+                    break
+            return True
+
     def playing_clip(self) -> dict | None:
         """A copy of the card on the speakers right now, or None."""
         with self._lock:

@@ -515,6 +515,22 @@ def _play_prepared(
     # Claim the card the moment its playback is committed: the UI's
     # button must flip to STOP now, not when audio actually starts.
     state.set_playing_utterance_id(source_id)
+    playback_completed = False
+    echo_guard_finished = False
+
+    def playback_complete():
+        nonlocal playback_completed, echo_guard_finished
+        if echo_guard_finished:
+            return
+        playback_completed = state.complete_playback(
+            source_id, round(time.monotonic() - playing_since, 1)
+        )
+        # The card is settled before the independent microphone echo guard.
+        time.sleep(ECHO_TAIL_SECONDS)
+        state.set_claude_speaking(False, agent)
+        state.set_paused(False)
+        echo_guard_finished = True
+
     # Native speakers require echo muting during playback.
     try:
         audio = prepared.audio
@@ -530,15 +546,19 @@ def _play_prepared(
         state.set_paused(True)
         state.set_claude_speaking(True, agent)
         if prepared.stream:
-            asyncio.run(_stream_and_play(state, text, prepared, utterance_id, source_id))
+            asyncio.run(_stream_and_play(
+                state, text, prepared, utterance_id, source_id, playback_complete
+            ))
         else:
             asyncio.run(_play_audio(state, audio, prepared.cached, utterance_id))
-        time.sleep(ECHO_TAIL_SECONDS)  # let the room echo die before unmuting
+        playback_complete()
     except Exception as error:
         _log(f"[speak] error: {error}")
         state.add_event("speak_error", str(error)[:200])
-        state.update_utterance(utterance_id, **_error_card_fields(error))
-        raise
+        if not playback_completed:
+            state.update_utterance(utterance_id, **_error_card_fields(error))
+            raise
+        # A transport-close failure cannot make successfully played audio unheard.
     finally:
         state.set_playing_utterance_id(0)
         state.set_claude_speaking(False, agent)
@@ -554,7 +574,7 @@ def _play_prepared(
     final_status = state.consume_interrupted(utterance_id)
     if final_status:
         state.update_utterance(utterance_id, status=final_status)
-    elif not state.utterance_is_unheard(utterance_id):
+    elif not playback_completed and not state.utterance_is_unheard(utterance_id):
         state.update_utterance(
             utterance_id, status="played", duration_s=round(played_seconds, 1)
         )
@@ -567,6 +587,7 @@ async def _stream_and_play(
     prepared: _PreparedSpeech,
     utterance_id: int,
     source_id: int,
+    on_playback_complete=None,
 ) -> None:
     """Live TTS: play audio as Grok generates it — and keep the bytes.
 
@@ -591,6 +612,7 @@ async def _stream_and_play(
                 prepared.speed,
                 on_first_audio=lambda seconds: state.set_latency("tts", seconds * 1000),
                 on_audio_chunk=chunks.extend,
+                on_playback_complete=on_playback_complete,
             )
             break
         except Exception as error:

@@ -41,13 +41,16 @@ def _stream_player_command() -> list[str] | None:
     return None
 
 
-async def _play_from_stream(chunks: asyncio.Queue[bytes | None]) -> None:
+async def _play_from_stream(
+    chunks: asyncio.Queue[bytes | None],
+    on_playback_complete: Callable[[], None] | None = None,
+) -> None:
     """Feed audio chunks into a streaming player as they arrive."""
     command = _stream_player_command()
     if command is None:
         # No stdin-streaming player (e.g. bare macOS): buffer to a temp file
         # and play once. Loses the streaming latency win but stays correct.
-        await _play_buffered(chunks)
+        await _play_buffered(chunks, on_playback_complete)
         return
 
     process = await asyncio.create_subprocess_exec(
@@ -75,9 +78,21 @@ async def _play_from_stream(chunks: asyncio.Queue[bytes | None]) -> None:
             await process.wait()
     finally:
         playback.unregister_player(process)
+    _report_playback_completion(process.returncode, on_playback_complete)
 
 
-async def _play_buffered(chunks: asyncio.Queue[bytes | None]) -> None:
+def _report_playback_completion(returncode, callback) -> None:
+    if returncode == 0:
+        if callback:
+            callback()
+    elif returncode is not None and returncode > 0:
+        raise playback.PlaybackError(f"Streaming audio player exited with code {returncode}")
+
+
+async def _play_buffered(
+    chunks: asyncio.Queue[bytes | None],
+    on_playback_complete: Callable[[], None] | None = None,
+) -> None:
     buffer = bytearray()
     while True:
         chunk = await chunks.get()
@@ -93,7 +108,12 @@ async def _play_buffered(chunks: asyncio.Queue[bytes | None]) -> None:
             stdout=asyncio.subprocess.DEVNULL,
             stderr=asyncio.subprocess.DEVNULL,
         )
-        await process.wait()
+        playback.register_player(process)
+        try:
+            await process.wait()
+        finally:
+            playback.unregister_player(process)
+        _report_playback_completion(process.returncode, on_playback_complete)
     finally:
         path.unlink(missing_ok=True)
 
@@ -105,6 +125,7 @@ async def speak_streaming(
     speed: float,
     on_first_audio: Callable[[float], None] | None = None,
     on_audio_chunk: Callable[[bytes], None] | None = None,
+    on_playback_complete: Callable[[], None] | None = None,
 ) -> None:
     """Synthesize and play `text`, streaming audio as it is generated.
 
@@ -138,7 +159,7 @@ async def speak_streaming(
             await ws.send(json.dumps({"type": "text.delta", "delta": text}))
             await ws.send(json.dumps({"type": "text.done"}))
 
-            player = asyncio.create_task(_play_from_stream(chunks))
+            player = asyncio.create_task(_play_from_stream(chunks, on_playback_complete))
             async for message in ws:
                 if isinstance(message, bytes):
                     mark_first_audio()

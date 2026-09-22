@@ -69,9 +69,13 @@ class TTSProvider(Protocol):
         speed: float,
         on_first_audio: Callable[[float], None] | None = None,
         on_audio_chunk: Callable[[bytes], None] | None = None,
+        on_playback_complete: Callable[[], None] | None = None,
     ) -> None:
         """Synthesize and play as audio arrives. Only called when
-        supports_streaming is True."""
+        supports_streaming is True. on_playback_complete fires only after
+        successful player completion, before transport cleanup. It is not
+        a generation-complete or last-chunk notification. Audio normalization
+        (including optional safe tail trimming) belongs to the provider."""
         ...
 
     async def list_voices(self) -> list[dict]: ...
