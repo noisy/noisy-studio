@@ -11,3 +11,7 @@ After selection: wire links to Settings → Speech with the appropriate directio
 ## Selected shortcut
 
 Krzysztof selected **More ↗**. Applied to the production component; the shortcut comparison is retired. The provider-availability design remains in Lab for further review.
+
+## Compact language guidance
+
+Default language helper: “Language support varies by model.” Details opens a small overlay containing the engine-specific explanation and change-engine link, without pushing the remaining controls down. Internal design notes stay in this document rather than the settings preview.
