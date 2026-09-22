@@ -39,7 +39,13 @@ def _codex_hooks() -> Harness:
     return CodexHooks()
 
 
-REGISTRY = {"claude-hooks": _claude_hooks, "codex-hooks": _codex_hooks}
+def _grok_hooks() -> Harness:
+    from noisy_studio.harness.grok_hooks.adapter import GrokHooks
+
+    return GrokHooks()
+
+
+REGISTRY = {"claude-hooks": _claude_hooks, "codex-hooks": _codex_hooks, "grok-hooks": _grok_hooks}
 
 
 def names() -> list[str]:
@@ -47,7 +53,7 @@ def names() -> list[str]:
 
 
 def get(name: str) -> Harness:
-    name = {"claude": "claude-hooks", "codex": "codex-hooks"}.get(name, name)
+    name = {"claude": "claude-hooks", "codex": "codex-hooks", "grok": "grok-hooks"}.get(name, name)
     if name not in REGISTRY:
         raise KeyError(f"unknown harness {name!r}; have {names()}")
     return REGISTRY[name]()

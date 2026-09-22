@@ -1,0 +1,2 @@
+{"hook_event_name": "SessionStart", "hookEventName": "session_start", "sessionId": "01a0c70e-12a5-7c40-b332-9b55175c4bff", "cwd": "/Users/dev/project", "source": "resume"}
+{"hook_event_name": "Stop", "hookEventName": "stop", "sessionId": "01a0c70e-12a5-7c40-b332-9b55175c4bff", "cwd": "/Users/dev/project", "reason": "end_turn"}

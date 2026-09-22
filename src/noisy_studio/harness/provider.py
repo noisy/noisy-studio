@@ -75,7 +75,7 @@ class Provider(Protocol):
     def wake(self, conversation: str) -> WakeResult: ...
 
 
-ALIASES = {'claude-hooks': 'claude', 'codex-hooks': 'codex'}
+ALIASES = {'claude-hooks': 'claude', 'codex-hooks': 'codex', 'grok-hooks': 'grok'}
 
 
 def provider_name(name: str) -> str:

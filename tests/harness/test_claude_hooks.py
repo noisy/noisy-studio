@@ -95,6 +95,8 @@ def test_identity_tools_accept_both_plugin_prefixes():
         "mcp__noisy-studio-dev__announce",
         "mcp__plugin_noisy-studio_noisy-studio__change_voice",
         "mcp__plugin_noisy-studio_noisy-studio__change_voice",
+        "noisy-studio__speak",
+        "noisy-studio-dev__announce",
     ):
         assert IDENTITY_TOOLS.match(tool), tool
 

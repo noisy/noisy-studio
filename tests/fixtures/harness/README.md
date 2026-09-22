@@ -15,3 +15,6 @@ agent system has subagents.
 - `codex-hooks/` - synthesised from the shape asserted by the existing
   Codex tests (`tests/unit/test_codex_hooks.py`); replace with a recording
   when one exists.
+- `grok-hooks/` - synthesised from Grok's hook reference (camelCase
+  `sessionId` / `toolName` / `toolInput`, plus `hook_event_name`). Grok
+  has no recorded fixture yet.

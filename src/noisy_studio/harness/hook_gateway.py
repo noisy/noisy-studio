@@ -40,7 +40,8 @@ def _apply_harness_event(
     provider = registry.providers.get(name)
     if provider is not None:
         connection = payload.get("noisy_studio_connection") if payload.get("hook_event_name") in ("SessionStart", "UserPromptSubmit") else None
-        provider.attach(Registration(key, str(payload.get("session_id") or key), connection=connection, participant=result.participant))
+        native_session = str(payload.get("session_id") or payload.get("sessionId") or key)
+        provider.attach(Registration(key, native_session, connection=connection, participant=result.participant))
         registry._readiness[conversation.harness] = provider.availability
         if not provider.allows_hook_pickup:
             conversation.listener = None
