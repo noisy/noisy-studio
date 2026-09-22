@@ -104,12 +104,35 @@ def configure_files(settings: Path, hooks: Path, script: Path, python: str,
         raise ValueError("port must be 1–65535 and listen-seconds 0–3600")
     if not script.is_file():
         raise ValueError("hook script does not exist")
+    previous = settings.read_text() if settings.exists() else None
     _write(settings, json.dumps(
         {**existing, "managed_by": OWNER, "port": port, "listen_seconds": listen_seconds},
         indent=2,
     ) + "\n")
     document = hook_document(python, str(script), listen_seconds)
-    _write(hooks, json.dumps(document, indent=2) + "\n")
+    try:
+        _write(hooks, json.dumps(document, indent=2) + "\n")
+    except OSError:
+        _restore(settings, previous)
+        raise
+
+
+def _restore(settings: Path, previous: str | None) -> None:
+    """Put the settings file back after a later write fails.
+
+    A failed restore is reported as its own error so the caller does not
+    claim that nothing changed.
+    """
+    try:
+        if previous is None:
+            settings.unlink(missing_ok=True)
+        else:
+            _write(settings, previous)
+    except OSError as error:
+        raise ValueError(
+            f"the hook file was not written and {settings} could not be restored; "
+            "put the previous settings back by hand"
+        ) from error
 
 
 def main():

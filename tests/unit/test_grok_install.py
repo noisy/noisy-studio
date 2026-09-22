@@ -54,6 +54,34 @@ def test_installer_refuses_to_replace_unowned_settings(installer, tmp_path, cont
     assert settings.read_text() == contents
 
 
+def test_failed_hook_write_restores_the_previous_settings(installer, tmp_path):
+    settings = tmp_path / "grok.json"
+    settings.write_text('{"managed_by": "noisy-studio", "port": 1, "other": true}\n')
+    original = settings.read_text()
+    script = tmp_path / "grok_hook.py"
+    script.write_text("#!/usr/bin/env python3\n")
+    blocker = tmp_path / "not-a-directory"
+    blocker.write_text("x")
+
+    with pytest.raises(OSError):
+        installer.configure_files(settings, blocker / "noisy-studio.json", script, sys.executable, 9765, 60)
+
+    assert settings.read_text() == original
+
+
+def test_failed_hook_write_removes_settings_that_did_not_exist(installer, tmp_path):
+    settings = tmp_path / "grok.json"
+    script = tmp_path / "grok_hook.py"
+    script.write_text("#!/usr/bin/env python3\n")
+    blocker = tmp_path / "not-a-directory"
+    blocker.write_text("x")
+
+    with pytest.raises(OSError):
+        installer.configure_files(settings, blocker / "noisy-studio.json", script, sys.executable, 9765, 60)
+
+    assert not settings.exists()
+
+
 def test_uninstall_preserves_unknown_settings(installer, tmp_path):
     settings = tmp_path / "grok.json"
     settings.write_text(json.dumps({"managed_by": "noisy-studio", "port": 9765, "other": True}))

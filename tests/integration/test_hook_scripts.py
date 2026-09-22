@@ -191,6 +191,19 @@ def test_codex_hook_reads_its_endpoint_from_the_settings_file(daemon, tmp_path):
     assert not (tmp_path / ".config/noisy-studio/sessions.json").exists()
 
 
+def test_claude_hook_stands_down_when_grok_loaded_it(daemon):
+    state, port = daemon
+    result = _run(CLAUDE_HOOK, {
+        "hookEventName": "pre_tool_use",
+        "sessionId": "grok-session",
+        "toolName": "noisy-studio-dev__speak",
+        "toolInput": {"text": "hi"},
+    }, port, {"GROK_SESSION_ID": "grok-session", "GROK_HOOK_EVENT": "pre_tool_use"})
+
+    assert (result.returncode, result.stdout, result.stderr) == (0, "", "")
+    assert state.agents == {}
+
+
 def test_grok_hook_injects_identity_and_delivers_voice_without_a_person(daemon, tmp_path):
     state, port = daemon
     settings = tmp_path / "grok.json"

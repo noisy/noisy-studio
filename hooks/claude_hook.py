@@ -17,6 +17,10 @@ import _hook_flow  # noqa: E402
 
 
 def main() -> None:
+    # Grok loads these Claude settings for compatibility. Its payload has no
+    # session_id. Do not send it to the Claude adapter, and do not guess one.
+    if os.environ.get("GROK_SESSION_ID") or os.environ.get("GROK_HOOK_EVENT"):
+        return
     payload = _hook_flow.read_payload()
     if not payload:
         return

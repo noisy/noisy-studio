@@ -5,6 +5,10 @@ Claude Code and Codex. The delivery mechanism is private to the Grok
 provider. Today that mechanism is the lifecycle hooks, because Grok does
 not expose an agent inbox socket or a channel the daemon can write to.
 
+Grok also loads Claude's hook settings. The Claude script exits when it
+sees that it was started by Grok, so a camelCase payload is never sent to
+the Claude adapter and no session is guessed.
+
 ## What the hooks do
 
 | Event | Action |
