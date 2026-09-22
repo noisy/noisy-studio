@@ -13,7 +13,10 @@ import { websiteAnalytics } from './analytics';
 let stopScroll: (() => void) | undefined;
 onMounted(() => { stopScroll = observePageScroll(window, document, websiteAnalytics); });
 onBeforeUnmount(() => stopScroll?.());
-const macDownloadUrl = "https://github.com/noisy/noisy-studio/releases/download/v3.0.0-beta.1/Noisy.Studio-3.0.0-beta.1-arm64.dmg";
+// Enable after the beta is ready for promotion on the website.
+const macDownloadEnabled = false;
+const macReleaseUrl = "https://github.com/noisy/noisy-studio/releases/download/v3.0.0-beta.1/Noisy.Studio-3.0.0-beta.1-arm64.dmg";
+const macDownloadUrl = macDownloadEnabled ? macReleaseUrl : undefined;
 const source = "https://github.com/noisy/noisy-studio";
 </script>
 
