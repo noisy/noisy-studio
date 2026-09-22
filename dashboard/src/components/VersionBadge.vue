@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from "vue";
+import { gt, valid } from "semver";
 
 // Footer version indicator. One quiet number when the UI build and the
 // daemon agree; both versions plus the FIX for whichever side is stale
@@ -29,7 +30,7 @@ const props = withDefaults(
 );
 
 function newer(a: string, b: string): boolean {
-  return a.localeCompare(b, undefined, { numeric: true }) > 0;
+  return Boolean(valid(a) && valid(b) && gt(a, b));
 }
 
 // A published release newer than what's running (skew has priority — fix

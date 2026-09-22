@@ -68,6 +68,27 @@ describe("VersionBadge", () => {
     expect(wrapper.find(".verskew").exists()).toBe(false);
   });
 
+  it.each([
+    ["3.0.0-alpha.9", "3.0.0-beta.1", true],
+    ["3.0.0-beta.2", "3.0.0-beta.10", true],
+    ["3.0.0-beta.1", "3.0.0", true],
+    ["3.0.0", "3.0.0-beta.2", false],
+    ["3.0.0-beta.2", "3.0.0-beta.1", false],
+    ["3.0.0-beta.1", "invalid", false],
+  ])("orders release updates from %s to %s", (current, latest, expected) => {
+    const wrapper = mount(VersionBadge, {
+      props: { uiVersion: current, daemonVersion: current, latestVersion: latest },
+    });
+    expect(wrapper.find(".verupdate").exists()).toBe(expected);
+  });
+
+  it("recognizes a stable daemon as newer than a cached beta UI", () => {
+    const wrapper = mount(VersionBadge, {
+      props: { uiVersion: "3.0.0-beta.1", daemonVersion: "3.0.0" },
+    });
+    expect(wrapper.find(".verskew").text()).toContain("HARD-REFRESH");
+  });
+
   it("skew outranks the update announcement — fix inconsistency first", () => {
     const wrapper = mount(VersionBadge, {
       props: { uiVersion: "2.7.7", daemonVersion: "2.8.0", latestVersion: "2.9.0" },
