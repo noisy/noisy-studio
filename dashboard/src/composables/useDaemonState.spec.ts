@@ -92,6 +92,33 @@ describe("useDaemonState", () => {
     unmount();
   });
 
+  it("clears displayed warnings without replaying them and displays new failures", async () => {
+    const first = { seq: 1, ts: 1, kind: "voice_identity_error", detail: "Missing session" };
+    const second = { seq: 2, ts: 2, kind: "voice_identity_error", detail: "Missing session again" };
+    const events = [first];
+    vi.stubGlobal("fetch", vi.fn(async (url: string) => {
+      if (url.startsWith("/status")) return jsonResponse(STATUS);
+      if (url.startsWith("/utterances")) return jsonResponse({ utterances: [] });
+      if (url.startsWith("/events")) {
+        const since = Number(new URL(url, "http://localhost").searchParams.get("since"));
+        return jsonResponse({ events: events.filter(event => event.seq > since) });
+      }
+      return jsonResponse({ character: {} });
+    }));
+    const { state, unmount } = mountComposable();
+    await flush();
+    expect(state.errors.value).toEqual([first]);
+    state.clearErrors();
+    await vi.advanceTimersByTimeAsync(400);
+    await flush();
+    expect(state.errors.value).toEqual([]);
+    events.push(second);
+    await vi.advanceTimersByTimeAsync(400);
+    await flush();
+    expect(state.errors.value).toEqual([second]);
+    unmount();
+  });
+
   it("flags a status change the chat machine cannot explain", async () => {
     const card = { id: 7, role: "user", agent: "agent-a", started_at: 100 };
     let poll = 0;

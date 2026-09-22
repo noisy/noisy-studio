@@ -29,6 +29,7 @@ export interface DaemonState {
   offline: Ref<boolean>;
   viewedAgent: Ref<string | null>;
   errors: Ref<DaemonEvent[]>; // newest last, errors only
+  clearErrors: () => void;
   selectAgent: (name: string) => void;
   dismissAgent: (name: string) => void;
   reorderAgents: (order: string[]) => void;
@@ -73,6 +74,9 @@ function createDaemonState(pollMs: number): SharedDaemonState {
   });
   const { character, pending: characterPending, error: characterError, change: changeCharacter } = characters;
   let lastEventSeq = 0;
+  function clearErrors() {
+    errors.value = [];
+  }
 
   /* THE DAEMON'S active_agent IS THE SELECTION. There is no local pin.
    *
@@ -237,7 +241,7 @@ function createDaemonState(pollMs: number): SharedDaemonState {
     }
   }
 
-  return { status, utterances, utterancesFor, allUtterances, character, characterPending, characterError, changeCharacter, offline, viewedAgent, errors, selectAgent, dismissAgent, reorderAgents, subscribe, unsubscribe };
+  return { status, utterances, utterancesFor, allUtterances, character, characterPending, characterError, changeCharacter, offline, viewedAgent, errors, clearErrors, selectAgent, dismissAgent, reorderAgents, subscribe, unsubscribe };
 }
 
 /* ONE state per window, not one per component.

@@ -29,7 +29,7 @@ import { useAudioCues } from "./composables/useAudioCues";
 import { useDaemonState } from "./composables/useDaemonState";
 import { useMicStream } from "./composables/useMicStream";
 
-const { status, utterances, utterancesFor, character, characterPending, characterError, changeCharacter, offline, viewedAgent, errors, selectAgent, dismissAgent, reorderAgents } =
+const { status, utterances, utterancesFor, character, characterPending, characterError, changeCharacter, offline, viewedAgent, errors, clearErrors, selectAgent, dismissAgent, reorderAgents } =
   useDaemonState();
 
 // Agents visibly "working": their live-activity line was updated in the
@@ -670,6 +670,7 @@ const LANGUAGES: Record<string, string> = {
       <span v-if="lastError" class="lasterr" :title="`${lastError.detail} (${errors.length} error(s) this session)`">
         ⚠ {{ eventTime(lastError.ts) }} {{ lastError.kind.toUpperCase() }} · {{ lastError.detail }}
       </span>
+      <button v-if="lastError" type="button" title="Clear warnings in this dashboard; diagnostic logs are kept" @click="clearErrors">Clear warnings</button>
       <!-- Right edge order: version second-from-corner, system status in
            the corner itself. -->
       <CompanionFloat style="margin-left: auto" />
