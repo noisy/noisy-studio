@@ -1,21 +1,20 @@
 # Follow-ups after the local changes are pushed
 
-Status: local preparation only. Do not post comments or close tickets yet.
-Publish the contributor reply only after the relevant implementation is on remote main and Krzysztof authorizes posting it. Recheck issue status before taking any action.
+Status: published on 2026-09-22 after the implementation reached remote main and Krzysztof authorized the issue updates and contributor reply.
 
 ## Ticket checklist
 
-- [ ] PR #90 — after pushing the independently implemented V3 rename, explain that it supersedes the conflicted PR and link the manual upgrade guide. Do not merge or close the old PR yet.
-
-- [ ] #99 — native audio cleanup: after pushing, link the implementation and update the issue.
-- [ ] PR #103 — post the thank-you draft below after pushing; agree its final disposition with Krzysztof.
+- [x] PR #90 — [superseded implementation update posted](https://github.com/noisy/noisy-studio/pull/90#issuecomment-5770570128), including the upgrade guide. PR remains open pending final disposition.
+- [x] #99 — native audio cleanup completed; [resolution posted](https://github.com/noisy/noisy-studio/issues/99#issuecomment-5770568846) and issue closed.
+- [x] PR #103 — [contributor reply posted](https://github.com/noisy/noisy-studio/pull/103#issuecomment-5770570003). PR remains open pending final disposition.
 - [x] Confirm the X profile for the invitation: https://x.com/realnoisycoder (provided by Krzysztof).
-- [ ] #134 and #135 — microphone timeline fixes: after pushing, review and update the issues.
-- [ ] #136 — Claude connection recovery after daemon restart: after pushing, review and update the issue.
+- [x] #134 and #135 — microphone timeline fixes posted and both issues closed.
+- [x] #136 — restart recovery resolution posted and issue closed.
+- [ ] #80 — broader rebrand issue remains open; signed macOS upgrade/permission validation remains a release check, and the broader media audit needs confirmation before closing it.
 
 Implementation notes: [native audio](2026-09-21-native-audio-only.md), [microphone timeline](2026-09-21-microphone-timeline.md), [restart recovery](2026-09-21-claude-restart-recovery.md).
 
-## Draft reply to PR #103 — not posted
+## Reply posted to PR #103
 
 Target: https://github.com/noisy/noisy-studio/pull/103
 
