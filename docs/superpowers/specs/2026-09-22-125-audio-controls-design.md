@@ -15,3 +15,7 @@ Validation: build Storybook and visually inspect default, Settings, visibility c
 ## Review refinement
 
 Krzysztof selected compact Settings (A). The dashboard preview now places each label and selector on one tight row. Turn detection alone uses a label followed by a row of Auto / Push to talk buttons, matching the existing panel’s density. Default visibility remains Microphone, Language, and Turn detection. AllControls uses the selected compact Settings layout.
+
+## One-click controls refinement
+
+Short binary choices (Turn detection, Agent speech, Your speech, Sound cues) use buttons in both preview and Settings. Every dashboard control fits one row; the panel grows from 300px to 320px. End silence offers 0, 0.5, 1, 1.5, 2, then whole seconds through 10. This supersedes the two-row Turn detection layout above. The expanded silence range is a design requirement; production validation and audio behavior must be checked when wiring the implementation.
