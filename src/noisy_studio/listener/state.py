@@ -57,7 +57,7 @@ def hash_pick(seed: str, pool: tuple[str, ...]) -> str:
 DEFAULT_SPEED = 1.0
 MIN_SPEED, MAX_SPEED = 0.7, 1.5
 DEFAULT_END_SILENCE_MS = 2000
-MIN_END_SILENCE_MS, MAX_END_SILENCE_MS = 500, 4000
+MIN_END_SILENCE_MS, MAX_END_SILENCE_MS = 0, 10000
 # An agent with NO sign of life for this long is shown OFFLINE — never
 # deleted (#11). The flip back to online is immediate on the next
 # heartbeat, and a brief hiccup must not bounce a tab out of the active

@@ -7,7 +7,7 @@
 .hud .logo .sub { color:var(--muted); font-size:12px; }
 .hud .logo > div { position:relative; }
 .hud .devbadge { display:inline-flex; align-items:center; min-height:34px; white-space:nowrap; color:var(--bg0); background:var(--amber); border:1px solid var(--amber); font-size:13px; font-weight:700; border-radius:6px; padding:6px 12px; }
-.hud .cols { display:grid; grid-template-columns:248px minmax(0,1fr); gap:20px; flex:1; min-height:0; }
+.hud .cols { display:grid; grid-template-columns:var(--audio-panel-width, 268px) minmax(0,1fr); gap:20px; flex:1; min-height:0; }
 .hud .col-left { display:flex; flex-direction:column; min-height:0; overflow-y:auto; padding:2px; }
 .hud .col-left > * { flex:none; }
 .hud .microphone-actions { margin-bottom:8px; }
@@ -106,7 +106,7 @@
 .setup-input { min-width:0; flex:1; padding:10px; color:var(--ink); background:var(--bg1); border:1px solid var(--line-strong); border-radius:6px; }
 .setup-error { color:var(--red); margin-top:12px; }
 .setup-checks, .setup-hint { margin-top:16px; }
-@media (max-width:1100px) { .hud .cols { grid-template-columns:248px minmax(0,1fr); gap:16px; } .hud .convo-rail { width:180px; padding-left:14px; } .hud .convo-body { gap:16px; } }
+@media (max-width:1100px) { .hud .cols { grid-template-columns:var(--audio-panel-width, 268px) minmax(0,1fr); gap:16px; } .hud .convo-rail { width:180px; padding-left:14px; } .hud .convo-body { gap:16px; } }
 @media (max-width:900px), (max-height:700px) { .hud .convo-body { flex-direction:column; overflow-y:auto; } .hud .convo-main { flex:none; min-height:450px; } .hud .convo-rail { width:100%; overflow:visible; border-left:0; border-top:1px solid var(--line); padding:20px 0 0; } }
 @media (max-width:760px) { .hud .cols { display:flex; flex-direction:column; flex:none; } .hud .col-mid { order:-1; } .hud .col-left { overflow:visible; } .hud .convo-panel { min-height:650px; } .hud .convo-body { overflow:visible; } .hud .conversation-heading { align-items:flex-start; } .hud .topbar { gap:8px; } .hud .logo svg { width:32px; } .hud .logo .title { font-size:16px; } .hud .logo .sub, .hud .vm-sub { display:none; } .hud .vm-label { font-size:12px; } }
 @media (max-width:600px) { .hud .conversation-heading { flex-direction:column; } .hud .recipient { max-width:100%; } .hud .topbar { flex-wrap:wrap; } .hud .topbar-logobox { width:100%; justify-content:space-between; gap:8px; } .hud .sysstate { width:100%; } .hud .header-action { flex:1; } }

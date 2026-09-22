@@ -102,7 +102,7 @@ class UtteranceSegmenter:
 
     @property
     def _end_silence_ms(self) -> int:
-        return self.end_silence_ms_override or self.config.end_silence_ms
+        return self.config.end_silence_ms if self.end_silence_ms_override is None else self.end_silence_ms_override
 
     @property
     def is_recording(self) -> bool:
@@ -151,7 +151,7 @@ class UtteranceSegmenter:
         self._silence_run = 0 if loud else self._silence_run + 1
 
         silence_ms = self._silence_run * self.config.frame_ms
-        ended_by_silence = silence_ms >= self._end_silence_ms
+        ended_by_silence = not loud and silence_ms >= self._end_silence_ms
         too_long = (
             len(self._recording) * self.config.frame_ms >= self.config.max_utterance_ms
         )
@@ -164,7 +164,7 @@ class UtteranceSegmenter:
             if self.smart_turn_mode == "hard"
             else self.config.smart_turn_min_silence_ms
         )
-        smart_close = self._close_requested and silence_ms >= gate_ms
+        smart_close = self._close_requested and not loud and silence_ms >= gate_ms
         if not (ended_by_silence or too_long or smart_close):
             return None
         self._close_requested = False

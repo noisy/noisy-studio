@@ -1,11 +1,19 @@
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref, computed, nextTick } from "vue";
 import AppearanceSettings from "./AppearanceSettings.vue";
 
 // The panel got crowded - a toolbar splits it into four homes. AUDIO is
 // first: it's what gets touched mid-session.
 const TABS = ["AUDIO", "SOUNDS", "HOTKEYS", "APPEARANCE", "SPEECH", "SYSTEM"] as const;
 const tab = ref<(typeof TABS)[number]>("AUDIO");
+const audioSection = ref<HTMLElement | null>(null);
+async function openAudioControls() {
+  tab.value = 'AUDIO';
+  await nextTick();
+  audioSection.value?.focus();
+  audioSection.value?.scrollIntoView?.({block:'nearest'});
+}
+defineExpose({openAudioControls});
 
 import type { DiagnosticChecks } from "../api/client";
 import type { InputDevice, HotkeyState } from "../types";
@@ -122,6 +130,7 @@ function submit() {
     />
 
     <template v-if="tab === 'AUDIO'">
+    <div ref="audioSection" tabindex="-1" aria-label="Audio controls"><slot name="audio-controls">
     <!-- Microphone first: switched far more often than the API key. -->
     <section class="sec">
       <div class="keyrow">
@@ -151,6 +160,7 @@ function submit() {
 
 
 
+    </slot></div>
     <section class="sec">
       <div class="keyrow">
         <span class="lbl">Hotkeys</span>

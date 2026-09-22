@@ -61,3 +61,11 @@ describe("SettingsView", () => {
     expect(w.emitted("grantHotkeys")).toHaveLength(1);
   });
 });
+
+it('opens Audio controls from another settings tab', async () => {
+  const wrapper = mount(SettingsView, {props:{apiKeyHint:''},slots:{'audio-controls':'<div>Shared audio controls</div>'}});
+  await wrapper.findAll('.tabbtn').find(b=>b.text()==='System')!.trigger('click');
+  await wrapper.vm.openAudioControls();
+  expect(wrapper.get('[aria-label="Audio controls"]').text()).toContain('Shared audio controls');
+  expect(wrapper.findAll('.tabbtn').find(b=>b.text()==='Audio')!.attributes('aria-pressed')).toBe('true');
+});

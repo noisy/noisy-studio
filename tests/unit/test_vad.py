@@ -125,3 +125,21 @@ def test_default_sensitivity_scale_is_exactly_todays_behaviour():
     assert sensitivity_scale(50) == 1.0
     assert sensitivity_scale(0) == 2.0
     assert sensitivity_scale(100) == 0.5
+
+
+def test_zero_silence_waits_for_first_quiet_frame_without_cutting_speech(make_frames):
+    segmenter = UtteranceSegmenter(CONFIG)
+    segmenter.end_silence_ms_override = 0
+    during_speech = _feed_all(segmenter, make_frames(True, 40))
+    after_pause = _feed_all(segmenter, make_frames(False, 1))
+
+    assert (len(during_speech), len(after_pause)) == (0, 1)
+
+
+def test_ten_second_silence_keeps_a_nine_second_pause_open(make_frames):
+    segmenter = UtteranceSegmenter(CONFIG)
+    segmenter.end_silence_ms_override = 10000
+    before = _feed_all(segmenter, make_frames(True, 40) + make_frames(False, 300))
+    after = _feed_all(segmenter, make_frames(False, 34))
+
+    assert (len(before), len(after)) == (0, 1)

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import "./styles/dashboard.css";
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { cancelTranscript, getDevices, runDiagnostics, saveApiKey, setAgentMuted, setMode, setMuted, setPtt, setSettings, setVoiceMuted, speakText, stopPlayback, type DiagnosticChecks, togglePlaybackPause, interruptPlayback, skipUnheard, scheduleShutdown, cancelShutdown, postponeShutdown, requestHotkeyPermission } from "./api/client";
 import type { InputDevice } from "./types";
 import { replaySpeechText } from "./components/bubbleStatus";
@@ -17,6 +17,9 @@ import SpeechSettings from "./components/SpeechSettings.vue";
 import HudPanel from "./components/HudPanel.vue";
 import Oscilloscope from "./components/Oscilloscope.vue";
 import TurnHistory from "./components/TurnHistory.vue";
+import AudioControls from "./components/AudioControls.vue";
+import { AUDIO_PANEL_WIDTH, type AudioChange } from "./components/audioControls";
+import { useAudioControlVisibility } from "./composables/useAudioControlVisibility";
 import SettingsView from "./components/SettingsView.vue";
 import ShutdownBanner from "./components/ShutdownBanner.vue";
 import { useTabStatus } from "./composables/useTabStatus";
@@ -77,15 +80,6 @@ const instanceLabel = computed(() => isDevInstance.value ? "DEV INSTANCE" : "");
 // no optimistic local state to get out of sync.
 const swallow = () => {};
 const toggleMute = () => setMuted(!status.value?.muted).catch(swallow);
-const setSttMode = (mode: "batch" | "live") => setMode(mode).catch(swallow);
-const setTtsMode = (mode: "batch" | "live") => setSettings({ tts_mode: mode }).catch(swallow);
-const setSilence = (event: Event) =>
-  setSettings({ end_silence_ms: Number((event.target as HTMLSelectElement).value) }).catch(swallow);
-const setSensitivity = (event: Event) =>
-  setSettings({ mic_sensitivity: Number((event.target as HTMLSelectElement).value) }).catch(swallow);
-const setSmartTurn = (event: Event) =>
-  setSettings({ smart_turn: Number((event.target as HTMLSelectElement).value) }).catch(swallow);
-
 // Per-conversation mute: toggles the VIEWED tab; the next poll reflects it.
 const toggleAgentMute = () => {
   const agent = viewedAgent.value;
@@ -93,8 +87,6 @@ const toggleAgentMute = () => {
   const muted = (status.value?.muted_agents ?? []).includes(agent);
   setAgentMuted(agent, !muted).catch(swallow);
 };
-const setDetection = (mode: "auto" | "ptt") =>
-  setSettings({ detection_mode: mode }).catch(swallow);
 // The button toggles: playing this very bubble → stop it (the queue moves
 // on by itself); otherwise queue a replay that outranks current playback.
 const replay = (utterance: Utterance) => {
@@ -263,9 +255,6 @@ const runChecks = async () => {
   }
 };
 
-const setLanguage = (event: Event) =>
-  setSettings({ language: (event.target as HTMLSelectElement).value }).catch(swallow);
-
 // Microphone picker: the list refreshes when the select gains focus, so a
 // freshly connected headset shows up without reloading the page.
 const devices = ref<InputDevice[]>([]);
@@ -317,26 +306,20 @@ const grantHotkeys = () => requestHotkeyPermission().catch(swallow);
 // next snapshot carries the stored map plus any problem to show (#104).
 const setHotkey = (action: string, chord: string) => setSettings({ hotkeys: { [action]: chord } }).catch(swallow);
 
-const SILENCE_OPTIONS = [800, 1500, 2000, 3000, 4000];
-// User terms for the VAD speech threshold (never raw RMS): LOW for noisy
-// rooms (mic needs a clear voice), HIGH for quiet rooms / soft speakers.
-const SENSITIVITY_OPTIONS: Array<[number, string]> = [
-  [0, "MIN"], [25, "LOW"], [50, "MID"], [75, "HIGH"], [100, "MAX"],
-];
-const SMART_TURN_OPTIONS = [0, 0.5, 0.7, 0.9];
-// Languages supported by the Grok voice API (same set as the legacy UI).
-const LANGUAGES: Record<string, string> = {
-  "": "AUTO-DETECT",
-  en: "ENGLISH",
-  pl: "POLSKI",
-  de: "DEUTSCH",
-  es: "ESPAÑOL",
-  fr: "FRANÇAIS",
-  "pt-BR": "PORTUGUÊS (BR)",
-  it: "ITALIANO",
-  ja: "日本語",
-  zh: "中文",
-};
+const visibleAudioControls = useAudioControlVisibility();
+const settingsView = ref<InstanceType<typeof SettingsView> | null>(null);
+async function openAudioSettings() {
+  showSettings.value = true;
+  await nextTick();
+  await settingsView.value?.openAudioControls();
+}
+function changeAudio({id,value}: AudioChange) {
+  if (id === 'cues') { cuesEnabled.value = value === 'on'; return; }
+  if (id === 'recognition') { setMode(value as 'batch' | 'live').catch(swallow); return; }
+  const keys = {microphone:'input_device',language:'language',turn:'detection_mode',agent:'tts_mode',silence:'end_silence_ms',sensitivity:'mic_sensitivity',smart:'smart_turn'};
+  const numeric = ['silence','sensitivity','smart'].includes(id);
+  setSettings({[keys[id]]:numeric ? Number(value) : value}).catch(swallow);
+}
 </script>
 
 <template>
@@ -451,7 +434,7 @@ const LANGUAGES: Record<string, string> = {
             </button>
           </div>
         </header>
-    <div class="cols">
+    <div class="cols" :style="{ '--audio-panel-width': AUDIO_PANEL_WIDTH + 'px' }">
       <div class="col-left">
         <div class="microphone-actions" :class="{ 'with-ptt': status?.detection_mode === 'ptt' }">
           <!-- Panic-sized mute: quick muting must not require aiming at a
@@ -492,57 +475,8 @@ const LANGUAGES: Record<string, string> = {
         <HudPanel index="02" title="Audio spectrum" class="spectrum-panel">
           <SpectrumBars :level="level" />
         </HudPanel>
-        <HudPanel index="03" title="Audio controls" :class="{ locked: unconfigured }">
-          <div class="controls">
-            <!-- The two mode toggles sit together: same choice, two
-                 directions (Claude's voice out vs your voice in). -->
-            <div class="ctlrow" title="Agent speech: batch renders the whole clip first, live streams as it synthesizes">
-              <span class="lbl">Agent speech</span>
-              <button class="ctl small" :class="{ on: (status?.speech_output_mode ?? status?.tts_mode) === 'batch' }" @click="setTtsMode('batch')">Batch</button>
-              <button class="ctl small" :class="{ on: (status?.speech_output_mode ?? status?.tts_mode) === 'live' }" :disabled="status?.speech_live_available === false" :title="status?.speech_live_available === false ? 'This voice engine generates complete replies before playback.' : undefined" @click="setTtsMode('live')">Live</button>
-            </div>
-            <div class="ctlrow" title="Your speech: batch transcribes after you finish, live transcribes while you talk when supported by your engine">
-              <span class="lbl">Your speech</span>
-              <button class="ctl small" :class="{ on: (status?.recognition_mode ?? status?.mode) === 'batch' }" @click="setSttMode('batch')">Batch</button>
-              <button class="ctl small" :class="{ on: (status?.recognition_mode ?? status?.mode) === 'live' }" :disabled="status?.recognition_live_available === false" :title="status?.recognition_live_available === false ? 'This recognition engine transcribes after you finish speaking.' : undefined" @click="setSttMode('live')">Live</button>
-            </div>
-            <div class="ctlrow" title="Subtle blips on conversation events; pick which in Settings">
-              <span class="lbl">Sound cues</span>
-              <button class="ctl small" :class="{ on: cuesEnabled }" @click="cuesEnabled = true">On</button>
-              <button class="ctl small" :class="{ on: !cuesEnabled }" @click="cuesEnabled = false">Off</button>
-            </div>
-            <div class="ctlcol" title="How your turn ends: auto = the VAD detects silence; push to talk = you hold the big button">
-              <span class="lbl">Turn detection</span>
-              <div class="ctlbtns">
-                <button class="ctl small" :class="{ on: status?.detection_mode === 'auto' }" @click="setDetection('auto')">Auto</button>
-                <button class="ctl small" :class="{ on: status?.detection_mode === 'ptt' }" @click="setDetection('ptt')">Push to talk</button>
-              </div>
-            </div>
-            <div class="ctlrow">
-              <span class="lbl">End silence</span>
-              <select class="ctl small" aria-label="End silence" :value="status?.end_silence_ms" @change="setSilence">
-                <option v-for="ms in SILENCE_OPTIONS" :key="ms" :value="ms">{{ (ms / 1000).toFixed(1) }}s</option>
-              </select>
-            </div>
-            <div class="ctlrow" title="Noise gate: how loud a voice must be to trip the mic. Lower it in a noisy room (café, open office) so background sound stops triggering recordings.">
-              <span class="lbl">Sensitivity</span>
-              <select class="ctl small" aria-label="Microphone sensitivity" :value="status?.mic_sensitivity ?? 50" @change="setSensitivity">
-                <option v-for="[value, label] in SENSITIVITY_OPTIONS" :key="value" :value="value">{{ label }}</option>
-              </select>
-            </div>
-            <div class="ctlrow">
-              <span class="lbl">Smart turn</span>
-              <select class="ctl small" aria-label="Smart turn" :value="status?.smart_turn" @change="setSmartTurn">
-                <option v-for="v in SMART_TURN_OPTIONS" :key="v" :value="v">{{ v === 0 ? "Off" : v.toFixed(1) }}</option>
-              </select>
-            </div>
-            <div class="ctlrow" title="Language for speech recognition and synthesis; auto-detect handles mixed Polish/English">
-              <span class="lbl">Language</span>
-              <select class="ctl small" aria-label="Language" :value="status?.language ?? ''" @change="setLanguage">
-                <option v-for="(name, code) in LANGUAGES" :key="code" :value="code">{{ name }}</option>
-              </select>
-            </div>
-          </div>
+        <HudPanel index="03" :class="{ locked: unconfigured }">
+          <AudioControls :status="status" :devices="devices" :cues-enabled="cuesEnabled" :visible="visibleAudioControls" @change="changeAudio" @refresh-devices="loadDevices" @open-settings="openAudioSettings" />
         </HudPanel>
         <!-- Global, machine-wide cost/state: deliberately OUTSIDE the
              conversation frame — the daemon meters all conversations. -->
@@ -556,6 +490,7 @@ const LANGUAGES: Record<string, string> = {
         <HudPanel v-if="showSettings" index="08" title="Settings">
           <button class="settings-x" title="Close settings" @click="showSettings = false">✕</button>
           <SettingsView
+            ref="settingsView"
             :api-key-hint="status?.api_key_hint ?? ''"
             :devices="devices"
             :selected-device="status?.input_device ?? ''"
@@ -571,7 +506,9 @@ const LANGUAGES: Record<string, string> = {
             @toggle-cue="setCue"
             @set-hum="setHum"
             @run-checks="runChecks"
-          />
+          >
+            <template #audio-controls><AudioControls settings :status="status" :devices="devices" :cues-enabled="cuesEnabled" :visible="visibleAudioControls" @change="changeAudio" @refresh-devices="loadDevices" @visibility="visibleAudioControls = $event" /></template>
+          </SettingsView>
         </HudPanel>
         <!-- Tabs live OUTSIDE the conversation frame, protruding above it
              like folder tabs — the frame reads as "the selected tab's
