@@ -117,7 +117,8 @@ export const userUtteranceMachine = createMachine({
     rejected: { on: { READY: "ready", CANCEL: "cancelled" } },
     accepted: { on: { CONFIRM: "confirmed", UNCERTAIN: "uncertain" } },
     confirmed: { type: "final" },
-    delivered: { type: "final" },
+    // Hook pickup can be followed by a provider delivery receipt.
+    delivered: { on: { CONFIRM: "confirmed" } },
     empty: { type: "final" },
     dropped: { type: "final" },
     error: { type: "final" },

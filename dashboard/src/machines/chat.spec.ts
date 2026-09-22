@@ -91,7 +91,7 @@ describe("user lifecycle", () => {
   });
 
   it("keeps terminal states terminal", () => {
-    for (const state of ["delivered", "empty", "dropped", "error", "cancelled"]) {
+    for (const state of ["confirmed", "empty", "dropped", "error", "cancelled"]) {
       expect(legalEvents("user", state)).toEqual([]);
     }
   });
@@ -203,6 +203,11 @@ describe("validStatusChange (live transition audit)", () => {
     expect(
       validStatusChange("user", "transcribing (Grok STT)…", "transcribing (live)…"),
     ).toBe(true);
+  });
+
+  it("accepts a confirmation after hook pickup marked the message delivered", () => {
+    expect(validStatusChange("user", "delivered to QA", "delivery confirmed")).toBe(true);
+    expect(legalEvents("user", "delivered")).toEqual(["CONFIRM"]);
   });
 
   it("rejects resurrections from terminal states", () => {
