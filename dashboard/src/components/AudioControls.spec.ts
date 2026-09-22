@@ -7,7 +7,7 @@ describe('AudioControls',()=>{
   it('shows the defaults and opens settings without changing audio',async()=>{
     const w=mount(AudioControls,{props:{status:null,visible:[...DEFAULT_AUDIO_CONTROLS]}});
     expect(w.findAll('.audio-row').map(r=>r.find('label').text())).toEqual(['Microphone','Language','Turn detection']);
-    await w.get('[aria-label="Open audio settings"]').trigger('click');
+    await w.get('[aria-label="Open all audio controls"]').trigger('click');
     expect(w.emitted()).toMatchObject({openSettings:[[]]});
     expect(w.emitted('change')).toBeUndefined();
   });
@@ -25,7 +25,7 @@ describe('AudioControls',()=>{
     expect(w.emitted('change')).toBeUndefined();
     await w.setProps({settings:false,visible:[]});
     expect(w.findAll('.audio-row')).toHaveLength(0);
-    expect(w.find('[aria-label="Open audio settings"]').exists()).toBe(true);
+    expect(w.find('[aria-label="Open all audio controls"]').exists()).toBe(true);
   });
   it('offers the requested silence range and disables it during push to talk',()=>{
     const w=mount(AudioControls,{props:{status:{detection_mode:'ptt'} as DaemonStatus,visible:['silence']}});

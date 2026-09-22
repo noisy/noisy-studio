@@ -20,3 +20,12 @@ function preview(all = false) {
 }
 export const Defaults:StoryObj={render:preview()};
 export const AllControls:StoryObj={render:preview(true)};
+
+export const WideSettings: StoryObj<typeof AudioControls> = {
+  args: {status:null,visible:[...DEFAULT_AUDIO_CONTROLS],settings:true},
+  render: args => ({components:{AudioControls},setup:()=>({args}),template:'<div style="width:1100px;max-width:100%"><AudioControls v-bind="args" /></div>'}),
+};
+export const NarrowSettings: StoryObj<typeof AudioControls> = {
+  args: {status:null,visible:[...DEFAULT_AUDIO_CONTROLS],settings:true},
+  render: args => ({components:{AudioControls},setup:()=>({args}),template:'<div style="width:360px;max-width:100%"><AudioControls v-bind="args" /></div>'}),
+};
