@@ -1,0 +1,13 @@
+.audio-lab{padding:28px;color:var(--text, #bcdae0);background:var(--bg, #091117);min-height:100vh;font:14px system-ui;box-sizing:border-box}
+          .audio-lab *{box-sizing:border-box}.audio-lab h1{font-size:22px}.audio-lab h2{font-size:16px;margin:0}.audio-lab p{line-height:1.5;color:var(--muted,#849ba5)}
+          .audio-lab .board{display:grid;grid-template-columns:300px minmax(380px,760px);gap:28px;align-items:start;margin-top:24px}
+          .audio-lab section{border:1px solid var(--line,#29414c);background:var(--panel-solid,#0e1c24);padding:18px}
+          .audio-lab header{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:18px}
+          .audio-lab button,.audio-lab select{font:inherit;color:inherit;border:1px solid var(--line,#36545f);background:var(--bg,#091117);padding:7px 10px;border-radius:3px}
+          .audio-lab button{cursor:pointer}.audio-lab button:focus-visible,.audio-lab select:focus-visible,.audio-lab input:focus-visible{outline:2px solid var(--cyan,#65cbd8);outline-offset:3px}
+          .audio-lab .quick{display:grid;gap:8px;margin:18px 0}.audio-lab .quick select{width:100%}.audio-lab small{color:var(--muted,#849ba5)}
+          .audio-lab .setting{display:grid;grid-template-columns:minmax(180px,1fr) 140px 115px;align-items:center;gap:16px;padding:18px 0;border-top:1px solid var(--line,#29414c)}
+          .audio-lab .description{margin:6px 0 0;font-size:12px}.audio-lab .pin{display:flex;gap:8px;align-items:center;font-size:12px;cursor:pointer}.audio-lab input{accent-color:var(--cyan,#65cbd8)}
+          .audio-lab .inline .setting{grid-template-columns:minmax(180px,1fr) 140px}.audio-lab .inline .pin{grid-column:1/-1}
+          .audio-lab .column-label{text-align:right;font-size:12px;margin-bottom:8px}.audio-lab :disabled{opacity:.5}.audio-lab .note{font-size:12px}.audio-lab .placeholder{min-height:180px}
+          @media(max-width:800px){.audio-lab .board{grid-template-columns:1fr}.audio-lab .setting{grid-template-columns:1fr}.audio-lab .inline .setting{grid-template-columns:1fr}.audio-lab .column-label{text-align:left}}
