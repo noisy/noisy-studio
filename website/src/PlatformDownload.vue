@@ -22,7 +22,7 @@ function notify() { emit('notify', { platform: selected.value, email: email.valu
       <h3 v-if="!compact">Your next conversation<br>starts here.</h3>
       <p v-if="!compact" class="platform-description">Bring Noisy Studio into your coding workflow.</p>
       <DownloadButton :download-url="downloadUrl" />
-      <p v-if="downloadUrl" class="download-compatibility">Apple Silicon · Beta</p>
+      <p v-if="downloadUrl" class="download-compatibility">Apple Silicon · 3.0.0-beta.1</p>
     </template>
     <template v-else>
       <p v-if="!compact" class="platform-kicker">{{ name.toUpperCase() }} VERSION · COMING LATER</p>
