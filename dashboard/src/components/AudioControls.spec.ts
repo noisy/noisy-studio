@@ -27,9 +27,16 @@ describe('AudioControls',()=>{
     expect(w.findAll('.audio-row')).toHaveLength(0);
     expect(w.find('[aria-label="Open all audio controls"]').exists()).toBe(true);
   });
-  it('offers the requested silence range and disables it during push to talk',()=>{
-    const w=mount(AudioControls,{props:{status:{detection_mode:'ptt'} as DaemonStatus,visible:['silence']}});
-    expect(w.findAll('option').map(o=>o.attributes('value'))).toEqual(['0','500','1000','1500','2000','3000','4000','5000','6000','7000','8000','9000','10000']);
-    expect(w.get('select').attributes('disabled')).toBeDefined();
+  it.each([false,true])('keeps end silence editable during push to talk (settings=%s)',async(settings)=>{
+    const w=mount(AudioControls,{props:{status:{detection_mode:'ptt'} as DaemonStatus,visible:['silence'],settings}});
+    expect(w.findAll('.audio-row').find(r=>r.text().includes('End silence'))!.findAll('option').map(o=>o.attributes('value'))).toEqual(['0','500','1000','1500','2000','3000','4000','5000','6000','7000','8000','9000','10000']);
+    const select = w.findAll('.audio-row').find(r=>r.text().includes('End silence'))!.get('select');
+    expect(select.attributes('disabled')).toBeUndefined();
+    expect(w.text()).toContain('Applies only when Turn detection is Auto.');
+    await select.setValue('10000');
+    expect(w.emitted('change')).toEqual([[{id:'silence',value:'10000'}]]);
+    await w.setProps({status:{detection_mode:'auto',end_silence_ms:10000} as DaemonStatus});
+    expect(w.text()).not.toContain('Applies only when Turn detection is Auto.');
+    expect((select.element as HTMLSelectElement).value).toBe('10000');
   });
 });

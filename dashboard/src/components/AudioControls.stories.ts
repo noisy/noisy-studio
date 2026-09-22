@@ -29,3 +29,7 @@ export const NarrowSettings: StoryObj<typeof AudioControls> = {
   args: {status:null,visible:[...DEFAULT_AUDIO_CONTROLS],settings:true},
   render: args => ({components:{AudioControls},setup:()=>({args}),template:'<div style="width:360px;max-width:100%"><AudioControls v-bind="args" /></div>'}),
 };
+
+export const PushToTalkSilence: StoryObj<typeof AudioControls> = {
+  args: {status:{detection_mode:'ptt',end_silence_ms:2000} as DaemonStatus,visible:['silence'],settings:true},
+};
