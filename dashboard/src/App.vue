@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import "./styles/dashboard.css";
 import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-import { cancelTranscript, getDevices, runDiagnostics, saveApiKey, setAgentMuted, setCharacter, setMode, setMuted, setPtt, setSettings, setVoiceMuted, speakText, stopPlayback, type DiagnosticChecks, togglePlaybackPause, interruptPlayback, skipUnheard, scheduleShutdown, cancelShutdown, postponeShutdown, requestHotkeyPermission } from "./api/client";
+import { cancelTranscript, getDevices, runDiagnostics, saveApiKey, setAgentMuted, setMode, setMuted, setPtt, setSettings, setVoiceMuted, speakText, stopPlayback, type DiagnosticChecks, togglePlaybackPause, interruptPlayback, skipUnheard, scheduleShutdown, cancelShutdown, postponeShutdown, requestHotkeyPermission } from "./api/client";
 import type { InputDevice } from "./types";
 import { replaySpeechText } from "./components/bubbleStatus";
 import type { Character, Utterance } from "./types";
@@ -29,7 +29,7 @@ import { useAudioCues } from "./composables/useAudioCues";
 import { useDaemonState } from "./composables/useDaemonState";
 import { useMicStream } from "./composables/useMicStream";
 
-const { status, utterances, utterancesFor, character, offline, viewedAgent, errors, selectAgent, dismissAgent, reorderAgents } =
+const { status, utterances, utterancesFor, character, characterPending, characterError, changeCharacter, offline, viewedAgent, errors, selectAgent, dismissAgent, reorderAgents } =
   useDaemonState();
 
 // Agents visibly "working": their live-activity line was updated in the
@@ -86,8 +86,6 @@ const setSensitivity = (event: Event) =>
 const setSmartTurn = (event: Event) =>
   setSettings({ smart_turn: Number((event.target as HTMLSelectElement).value) }).catch(swallow);
 
-const changeCharacter = (patch: Partial<Character>) =>
-  setCharacter({ ...patch, agent: viewedAgent.value ?? undefined }).catch(swallow);
 // Per-conversation mute: toggles the VIEWED tab; the next poll reflects it.
 const toggleAgentMute = () => {
   const agent = viewedAgent.value;
@@ -639,6 +637,8 @@ const LANGUAGES: Record<string, string> = {
               <section class="railbox">
                 <VoicePersona
                   :voice="character?.voice ?? ''"
+                  :pending="characterPending"
+                  :error="characterError"
                   :voice-labels="status?.voice_labels"
                   :speaking="!!viewedAgent && (status?.speaking_agents ?? []).includes(viewedAgent)"
                   :muted="!!viewedAgent && (status?.muted_agents ?? []).includes(viewedAgent)"

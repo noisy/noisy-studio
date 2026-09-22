@@ -513,6 +513,9 @@ def status_payload(state: ListenerState) -> dict:
                             "agents_meta": _stable_agents_meta(state),
                             # Each conversation's voice, so a client can draw its
                             # portrait without asking /character once per agent.
+                            "agent_characters": {
+                                name: state.character(name) for name in state.agents
+                            },
                             "agent_voices": {
                                 name: state.character(name).get("voice", "")
                                 for name in state.agents

@@ -8,3 +8,19 @@ def test_state_snapshot_digest_ignores_volatile_fields_only():
     assert snapshot_digest(base) == snapshot_digest(clocks_moved)
     assert snapshot_digest(base) != snapshot_digest(tab_added)
     assert snapshot_digest(base) != snapshot_digest(spoke)
+
+
+def test_character_change_updates_status_and_stream_digest():
+    from noisy_studio.listener.http_api import state_snapshot, status_payload
+    from noisy_studio.listener.state import ListenerState
+    from noisy_studio.listener.state_stream import snapshot_digest
+
+    state = ListenerState()
+    state.register_agent("a1")
+    before = state_snapshot(state)
+    saved = state.set_character({"voice": "iris", "humor": 80}, "a1")
+    after = state_snapshot(state)
+
+    assert after["status"]["agent_characters"]["a1"] == saved
+    assert status_payload(state)["agent_characters"]["a1"] == saved
+    assert snapshot_digest(before) != snapshot_digest(after)

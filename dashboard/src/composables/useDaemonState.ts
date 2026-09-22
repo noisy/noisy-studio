@@ -2,12 +2,14 @@
 
 import { onMounted, onUnmounted, ref, type Ref } from "vue";
 import {
-  getCharacter, getEvents, getStatus, getUtterances, setActiveAgent, dismissAgent as apiDismissAgent, reorderAgents as apiReorderAgents, type DaemonEvent,
+  getEvents, getStatus, getUtterances, setActiveAgent, dismissAgent as apiDismissAgent, reorderAgents as apiReorderAgents, type DaemonEvent,
 } from "../api/client";
 import { openStateStream, type StateSnapshot, type StreamHandle } from "../api/stateStream";
 import { validStatusChange } from "../machines/chat";
 import type { Character, DaemonStatus, Utterance } from "../types";
 import { canonicalCharacter } from "../character";
+
+import { conversationCharacter } from "./conversationCharacter";
 
 import { conversationTimeline } from "./conversationTimeline";
 
@@ -21,6 +23,9 @@ export interface DaemonState {
   utterancesFor: Ref<string | null>;
   allUtterances: Ref<Utterance[]>; // every agent — feeds unread badges
   character: Ref<Character | null>;
+  characterPending: Readonly<Ref<boolean>>;
+  characterError: Ref<string>;
+  changeCharacter: (patch: Partial<Character>) => void;
   offline: Ref<boolean>;
   viewedAgent: Ref<string | null>;
   errors: Ref<DaemonEvent[]>; // newest last, errors only
@@ -58,10 +63,15 @@ function createDaemonState(pollMs: number): SharedDaemonState {
   // Seed the avatar from the last session so the widget never opens on the
   // default (red) portrait while the first /character round-trip is in
   // flight - the swap read as a broken flash on every app start.
-  const character = ref<Character | null>(readCachedCharacter());
   const offline = ref(false);
   const viewedAgent = ref<string | null>(null);
   const errors = ref<DaemonEvent[]>([]);
+  const characters = conversationCharacter(viewedAgent, readCachedCharacter(), cacheCharacter, (detail) => {
+    errors.value = [...errors.value, {
+      seq: 0, ts: Date.now() / 1000, kind: "character_save_error", detail,
+    }].slice(-ERROR_LOG_SIZE);
+  });
+  const { character, pending: characterPending, error: characterError, change: changeCharacter } = characters;
   let lastEventSeq = 0;
 
   /* THE DAEMON'S active_agent IS THE SELECTION. There is no local pin.
@@ -120,17 +130,8 @@ function createDaemonState(pollMs: number): SharedDaemonState {
     allUtterances.value = all;
     utterances.value = conversationTimeline(all, agent, agent ? s.conversations?.[agent]?.created_at : undefined);
     utterancesFor.value = agent ?? null;
-    if (agent !== lastCharacterAgent || character.value === null) {
-      lastCharacterAgent = agent;
-      getCharacter(agent)
-        .then((c) => {
-          character.value = c;
-          cacheCharacter(c);
-        })
-        .catch(() => {});
-    }
+    characters.apply(s, askedAt);
   }
-  let lastCharacterAgent: string | undefined | null = null;
 
   /* Failures (STT/TTS errors) live in the daemon's event log, not in the
    * snapshot; fetch them on the side at a relaxed cadence. */
@@ -236,7 +237,7 @@ function createDaemonState(pollMs: number): SharedDaemonState {
     }
   }
 
-  return { status, utterances, utterancesFor, allUtterances, character, offline, viewedAgent, errors, selectAgent, dismissAgent, reorderAgents, subscribe, unsubscribe };
+  return { status, utterances, utterancesFor, allUtterances, character, characterPending, characterError, changeCharacter, offline, viewedAgent, errors, selectAgent, dismissAgent, reorderAgents, subscribe, unsubscribe };
 }
 
 /* ONE state per window, not one per component.

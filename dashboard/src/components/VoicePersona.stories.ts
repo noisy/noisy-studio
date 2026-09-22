@@ -22,3 +22,10 @@ export const Speaking: StoryObj<typeof VoicePersona> = {
 export const NoPortrait: StoryObj<typeof VoicePersona> = {
   args: { voice: "mystery", speaking: false },
 };
+
+export const Saving: StoryObj<typeof VoicePersona> = {
+  args: { voice: "iris", pending: true },
+};
+export const SaveFailed: StoryObj<typeof VoicePersona> = {
+  args: { voice: "leo", error: "Could not save character settings. Try again." },
+};

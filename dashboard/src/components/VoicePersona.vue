@@ -8,6 +8,8 @@ const props = defineProps<{
   voiceLabels?: Record<string, string>;
   speaking?: boolean;
   muted?: boolean;
+  pending?: boolean;
+  error?: string;
 }>();
 
 defineEmits<{ change: [voice: string]; "toggle-mute": [] }>();
@@ -31,11 +33,14 @@ defineEmits<{ change: [voice: string]; "toggle-mute": [] }>();
       >{{ muted ? "Unmute" : "Mute" }}</button>
     </div>
     <VoiceSelector :voice="voice" :voice-labels="voiceLabels" @change="(v) => $emit('change', v)" />
+    <p v-if="pending" class="save-feedback" role="status">Saving…</p>
+    <p v-else-if="error" class="save-feedback" role="alert">{{ error }}</p>
   </div>
 </template>
 
 <style scoped>
 
+.save-feedback { margin:0; font:12px var(--sans); color:var(--ink); }
 .persona { display:flex; flex-direction:column; gap:14px; }
 .frame { position:relative; display:flex; align-items:center; gap:8px; }
 .portrait { display:flex; flex:none; border:0; background:none; border-radius:18px; }

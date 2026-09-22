@@ -127,8 +127,9 @@ export function setAgentMuted(agent: string, muted: boolean): Promise<void> {
   return post("/mute-agent", { agent, muted });
 }
 
-export function setCharacter(patch: Partial<Character> & { agent?: string }): Promise<void> {
-  return post("/character", patch);
+export async function setCharacter(patch: Partial<Character> & { agent?: string }): Promise<Character> {
+  const body = await postJson<{ character: Character }>("/character", patch);
+  return canonicalCharacter(body.character);
 }
 
 /** Renew (held=true) or release (held=false) the push-to-talk lease. */
