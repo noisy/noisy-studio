@@ -21,8 +21,7 @@ function notify() { emit('notify', { platform: selected.value, email: email.valu
       <p v-if="!compact" class="platform-kicker">MADE FOR YOUR MAC</p>
       <h3 v-if="!compact">Your next conversation<br>starts here.</h3>
       <p v-if="!compact" class="platform-description">Bring Noisy Studio into your coding workflow.</p>
-      <DownloadButton :download-url="downloadUrl" />
-      <p v-if="downloadUrl" class="download-compatibility">Apple Silicon · 3.0.0-beta.1</p>
+      <DownloadButton :download-url="downloadUrl" :release-label="downloadUrl ? 'Apple Silicon · 3.0.0-beta.1' : undefined" />
     </template>
     <template v-else>
       <p v-if="!compact" class="platform-kicker">{{ name.toUpperCase() }} VERSION · COMING LATER</p>
@@ -38,7 +37,6 @@ function notify() { emit('notify', { platform: selected.value, email: email.valu
 </template>
 <style scoped>
 .platform-download { box-sizing:border-box; width:100%; max-width:470px; padding:32px; color:var(--ink); background:linear-gradient(145deg,var(--accent-surface),var(--bg1) 65%); border:1px solid var(--accent-border); border-radius:20px; font:15px/1.55 var(--sans); }
-.download-compatibility { margin:10px 0 0; color:var(--muted); font-size:12px; text-align:center; }
 .platform-kicker { color:var(--brand-accent); font-size:10px; font-weight:700; letter-spacing:.12em; margin:0 0 12px; }
 h3 { font-size:30px; line-height:1.2; letter-spacing:-.035em; margin:0 0 16px; }
 .platform-description { color:var(--muted); margin:0 0 24px; }
