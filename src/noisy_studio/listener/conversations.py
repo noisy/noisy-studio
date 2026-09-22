@@ -66,7 +66,7 @@ class Conversation:
     UNNAMED = UNNAMED_CONVERSATION
 
     def label(self) -> str:
-        return conversation_label(self.title)
+        return conversation_label(self.title, self.key, self.short_id, *self.aliases)
 
 
 class ConversationRegistry:
@@ -142,7 +142,7 @@ class ConversationRegistry:
             if event.kind == "session_started":
                 conversation.ended = False
                 conversation.hidden = False
-                if title := conversation_title(event.title):
+                if title := conversation_title(event.title, conversation.key, conversation.short_id, *conversation.aliases):
                     conversation.title = title
             elif event.kind == "session_ended":
                 conversation.ended = True
@@ -159,7 +159,7 @@ class ConversationRegistry:
                 if event.participant:
                     conversation.participants[event.participant] = now
             elif event.kind == "title_changed":
-                if title := conversation_title(event.title):
+                if title := conversation_title(event.title, conversation.key, conversation.short_id, *conversation.aliases):
                     conversation.title = title
             elif event.kind == "participant_started" and event.participant:
                 conversation.participants[event.participant] = now
@@ -182,7 +182,7 @@ class ConversationRegistry:
                 position=self._next_position(), short_id=key[:8],
             )
             self._by_key[conversation.key] = conversation
-        title = conversation_title(title)
+        title = conversation_title(title, conversation.key, conversation.short_id, *conversation.aliases)
         if title and title != key and title != key[:8]:
             conversation.title = title
         if unhide:
@@ -343,7 +343,7 @@ class ConversationRegistry:
             except TypeError:
                 continue
             conversation.harness = provider_name(conversation.harness)
-            conversation.title = conversation_title(conversation.title)
+            conversation.title = conversation_title(conversation.title, conversation.key, conversation.short_id, *conversation.aliases)
             # A listener from a previous daemon life is gone with it: the
             # tab starts deaf until its session's next hook says otherwise.
             conversation.deaf_reason = "daemon restarted"

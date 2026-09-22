@@ -165,7 +165,7 @@ async function refit() {
 const activeAgent = computed(() => props.agents.find(a => a.active));
 const sessionName = computed(
   () => activeAgent.value
-    ? conversationLabel(activeAgent.value.label || activeAgent.value.name)
+    ? conversationLabel(activeAgent.value.label, activeAgent.value.name)
     : 'Companion',
 );
 
@@ -469,9 +469,9 @@ watch(
         :key="a.name"
         class="head"
         :class="{ other: !a.active, current: a.active, unread: a.unread }"
-        :aria-label="conversationLabel(a.label || a.name)" :aria-pressed="!!a.active"
-        @mouseenter="showTip($event, conversationLabel(a.label || a.name))" @mouseleave="tip = null"
-        @focus="showTip($event, conversationLabel(a.label || a.name))" @blur="tip = null"
+        :aria-label="conversationLabel(a.label, a.name)" :aria-pressed="!!a.active"
+        @mouseenter="showTip($event, conversationLabel(a.label, a.name))" @mouseleave="tip = null"
+        @focus="showTip($event, conversationLabel(a.label, a.name))" @blur="tip = null"
         @click="$emit('select', a.name)"
       ><VoiceAvatar :voice="a.voice" :size="44" :set="avatarSet" /><span v-if="a.waiting" class="waiting">{{ a.waiting > 9 ? "9+" : a.waiting }}</span></button>
       <!-- No agent list (Storybook, single conversation): just the portrait. -->

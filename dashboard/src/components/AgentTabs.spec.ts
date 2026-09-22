@@ -114,12 +114,12 @@ describe("AgentTabs", () => {
   it("groups actives first (arrival order), then offline (most recently ended first)", () => {
     const wrapper = mount(AgentTabs, {
       props: {
-        agents: { old: "old", young: "young", dead1: "dead1", dead2: "dead2" },
+        agents: { old: "old title", young: "young title", dead1: "dead1 title", dead2: "dead2 title" },
         meta: {
-          young: { label: "young", online: true, activated_at: 200, offline_since: null },
-          old: { label: "old", online: true, activated_at: 100, offline_since: null },
-          dead1: { label: "dead1", online: false, activated_at: 50, offline_since: 500 },
-          dead2: { label: "dead2", online: false, activated_at: 60, offline_since: 900 },
+          young: { label: "young title", online: true, activated_at: 200, offline_since: null },
+          old: { label: "old title", online: true, activated_at: 100, offline_since: null },
+          dead1: { label: "dead1 title", online: false, activated_at: 50, offline_since: 500 },
+          dead2: { label: "dead2 title", online: false, activated_at: 60, offline_since: 900 },
         },
         active: "old",
         viewed: "old",
@@ -128,7 +128,7 @@ describe("AgentTabs", () => {
     });
 
     const labels = wrapper.findAll("button").map((b) => b.find(".tab-label").text());
-    expect(labels).toEqual(["old", "young", "dead2", "dead1"]);
+    expect(labels).toEqual(["old title", "young title", "dead2 title", "dead1 title"]);
   });
 
   it("greys out ended tabs, and every tab can be closed - the mic's too", async () => {
@@ -163,11 +163,11 @@ describe("AgentTabs", () => {
   it("puts user-pinned tabs first within their group, in pinned order", () => {
     const wrapper = mount(AgentTabs, {
       props: {
-        agents: { a: "a", b: "b", c: "c" },
+        agents: { a: "a title", b: "b title", c: "c title" },
         meta: {
-          a: { label: "a", online: true, activated_at: 1, offline_since: null, manual_pos: null },
-          b: { label: "b", online: true, activated_at: 2, offline_since: null, manual_pos: 1 },
-          c: { label: "c", online: true, activated_at: 3, offline_since: null, manual_pos: 0 },
+          a: { label: "a title", online: true, activated_at: 1, offline_since: null, manual_pos: null },
+          b: { label: "b title", online: true, activated_at: 2, offline_since: null, manual_pos: 1 },
+          c: { label: "c title", online: true, activated_at: 3, offline_since: null, manual_pos: 0 },
         },
         active: "a",
         viewed: "a",
@@ -176,7 +176,7 @@ describe("AgentTabs", () => {
     });
 
     const labels = wrapper.findAll("button").map((b) => b.find(".tab-label").text());
-    expect(labels).toEqual(["c", "b", "a"]);
+    expect(labels).toEqual(["c title", "b title", "a title"]);
   });
 
   it("emits the group's new order after a drag within the group", async () => {

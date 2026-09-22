@@ -1116,7 +1116,7 @@ class ListenerState:
     def agent_labels(self) -> dict:
         # Legacy names can be paths, even without a transcript suffix.
         with self._lock:
-            return {n: conversation_label(self._agent_labels.get(n, n)) for n in self._agents}
+            return {n: conversation_label(self._agent_labels.get(n, ""), n) for n in self._agents}
 
     @property
     def agents_meta(self) -> dict:
@@ -1136,7 +1136,7 @@ class ListenerState:
                 # the same lie as stamping its messages 'no listener'.
                 online = self._agent_alive_locked(name, now)
                 meta[name] = {
-                    "label": conversation_label(self._agent_labels.get(name, name)),
+                    "label": conversation_label(self._agent_labels.get(name, ""), name),
                     "online": online,
                     "activated_at": self._agent_activated.get(name, seen),
                     "offline_since": None if online else seen + AGENT_OFFLINE_AFTER_SECONDS,
@@ -1356,7 +1356,7 @@ class ListenerState:
         with self._lock:
             self._touch_agent_locked(name)
             if label:
-                label = conversation_label(label)
+                label = conversation_label(label, name)
                 # A fallback label (the shortened agent id) must not evict a
                 # real title: hooks re-register on every call, and the ones
                 # that cannot read the transcript would otherwise keep

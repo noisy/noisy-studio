@@ -72,3 +72,40 @@ def test_legacy_agent_metadata_hides_paths_without_changing_routing_identity():
                         "session-2": "New conversation", "session-3": "Release review"},
         "active": "/projects/session-1",
     }
+
+
+@pytest.mark.parametrize("title", [
+    "123456789abc", "12345678-1234-1234-1234-123456789abc",
+    "grok:12345678-1234-1234-1234-123456789abc", "opaque-session-key",
+])
+def test_id_titles_cannot_replace_real_names_or_reappear_after_restart(tmp_path, title):
+    path = tmp_path / "conversations.json"
+    registry = ConversationRegistry(path=path)
+    registry.adopt("opaque-session-key", "Release review")
+    registry.adopt("opaque-session-key", title)
+
+    assert ConversationRegistry(path=path).get("opaque-session-key").label() == "Release review"
+
+
+@pytest.mark.parametrize("title", ["abcdefgh", "qrstuvwx", "custom-short-id", "123456789abc"])
+def test_saved_identity_titles_become_unnamed_without_changing_identity(tmp_path, title):
+    path = tmp_path / "conversations.json"
+    path.write_text(json.dumps({"conversations": [{
+        "key": "abcdefgh-qrstuvwx", "short_id": "custom-short-id",
+        "aliases": ["alias-key"], "harness": "legacy", "created_at": 1,
+        "position": 0, "title": title,
+    }]}))
+    registry = ConversationRegistry(path=path)
+    conversation = registry.get("abcdefgh-qrstuvwx")
+
+    assert (conversation.title, conversation.label(), registry.resolve("alias-key")) == (
+        "", "New conversation", "abcdefgh-qrstuvwx",
+    )
+
+
+def test_registration_id_fallback_keeps_existing_human_label():
+    state = ListenerState()
+    state.register_agent("opaque-session-key", "Release review")
+    state.register_agent("opaque-session-key", "123456789abc")
+
+    assert state.agent_labels == {"opaque-session-key": "Release review"}

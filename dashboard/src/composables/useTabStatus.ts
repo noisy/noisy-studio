@@ -35,7 +35,7 @@ export function useTabStatus(status: Ref<DaemonStatus | null>): void {
       if (!s) return "⏸|Noisy Studio";
       const speaking = (s.speaking_agents ?? [])[0] ?? "";
       const labelFor = (key: string) => conversationLabel(
-        s.agents_meta?.[key]?.label || s.agent_labels?.[key],
+        s.agents_meta?.[key]?.label || s.agent_labels?.[key], key,
       );
       const active = s.active_agent ? labelFor(s.active_agent) : "Noisy Studio";
       if (s.muted) return `🔇|muted — ${active || "Noisy Studio"}`;
