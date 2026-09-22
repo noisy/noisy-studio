@@ -1,6 +1,6 @@
 {
   "name": "noisy-studio-companion",
-  "version": "3.0.0-alpha.9",
+  "version": "3.0.0-beta.1",
   "private": true,
   "description": "The Noisy Studio companion widget, always on top",
   "main": "main.js",

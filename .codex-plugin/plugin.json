@@ -1,6 +1,6 @@
 {
   "name": "noisy-studio",
-  "version": "3.0.0-alpha.9",
+  "version": "3.0.0-beta.1",
   "description": "Talk to Codex while it works, with per-session voice and incoming speech.",
   "author": {
     "name": "Krzysztof Szumny"

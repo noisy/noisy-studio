@@ -542,7 +542,7 @@ wheels = [
 
 [[package]]
 name = "noisy-studio"
-version = "3.0.0a9"
+version = "3.0.0-beta.1"
 source = { editable = "." }
 dependencies = [
     { name = "httpx" },
