@@ -33,6 +33,10 @@ describe('AudioControls',()=>{
     const select = w.findAll('.audio-row').find(r=>r.text().includes('End silence'))!.get('select');
     expect(select.attributes('disabled')).toBeUndefined();
     expect(w.text()).toContain('Applies only when Turn detection is Auto.');
+    if (!settings) {
+      expect(w.get('.control-label .notice-icon button').attributes('aria-label')).toContain('End silence:');
+      expect(w.find('.dashboard-notice').exists()).toBe(false);
+    }
     await select.setValue('10000');
     expect(w.emitted('change')).toEqual([[{id:'silence',value:'10000'}]]);
     await w.setProps({status:{detection_mode:'auto',end_silence_ms:10000} as DaemonStatus});
