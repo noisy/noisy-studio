@@ -161,6 +161,7 @@ class AgentProviders:
         self._providers = providers if providers is not None else {
             'claude': AgentProvider('claude', 'Claude Code', claude_delivery, ProviderCapabilities(True, True, True, 'transport')),
             'codex': AgentProvider('codex', 'Codex', HookDelivery(registry), capabilities),
+            'grok': AgentProvider('grok', 'Grok', HookDelivery(registry), capabilities),
         }
         self._registry = registry
 

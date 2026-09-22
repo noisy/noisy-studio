@@ -82,6 +82,7 @@ def test_legacy_provider_identifiers_resolve_to_the_same_provider():
 
     assert providers.get('claude') is providers.get('claude-hooks')
     assert providers.get('codex') is providers.get('codex-hooks')
+    assert providers.get('grok') is providers.get('grok-hooks')
 
 
 def test_confirmation_retires_only_its_original_pending_utterance(provider_world):

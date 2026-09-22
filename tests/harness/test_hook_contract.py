@@ -69,7 +69,7 @@ def test_3_resume_keeps_the_key_and_records_the_id_as_alias(named):
     for row in _rows(name, "resume.jsonl"):
         resumed = adapter.interpret(row)
         assert resumed.conversation == original.conversation
-        presented = str(row.get("session_id") or "")
+        presented = str(row.get("session_id") or row.get("sessionId") or "")
         aliases = {alias for event in resumed.events for alias in event.aliases}
         assert presented in aliases or presented == resumed.conversation
 
@@ -120,7 +120,7 @@ def test_7_speech_identity_comes_from_the_session_not_the_environment(named, mon
     monkeypatch.chdir(Path(__file__).parent)
     speak_rows = [r for r in _rows(name, "session.jsonl")
                   if r.get("hook_event_name") == "PreToolUse"
-                  and "speak" in str(r.get("tool_name", ""))]
+                  and "speak" in str(r.get("tool_name") or r.get("toolName") or "")]
     assert speak_rows, f"{name}/session.jsonl has no speak call"
     for row in speak_rows:
         stripped = {k: v for k, v in row.items() if k != "cwd"}

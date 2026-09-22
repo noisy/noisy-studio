@@ -14,8 +14,10 @@ import re
 from noisy_studio.harness.base import Delivery, Moment
 
 # Canonical Studio tools, including dev and plugin-namespaced registrations.
+# Claude and Codex prefix MCP tools with `mcp__`. Grok names them
+# `<server>__<tool>` (for example `noisy-studio-dev__speak`).
 IDENTITY_TOOLS = re.compile(
-    r"^mcp__[^\s]*noisy[_-]studio[^\s]*__(speak|announce|change_voice|set_speaker_style|acknowledge_delivery)$"
+    r"^(?:mcp__)?[^\s]*noisy[_-]studio[^\s]*__(speak|announce|change_voice|set_speaker_style|acknowledge_delivery)$"
 )
 
 THINKING = "THINKING…"

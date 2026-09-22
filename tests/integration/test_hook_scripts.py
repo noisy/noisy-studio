@@ -23,6 +23,7 @@ REPO = Path(__file__).resolve().parents[2]
 FIXTURES = REPO / "tests" / "fixtures" / "harness" / "claude-hooks"
 CLAUDE_HOOK = REPO / "hooks" / "claude_hook.py"
 CODEX_HOOK = REPO / "hooks" / "codex_hook.py"
+GROK_HOOK = REPO / "hooks" / "grok_hook.py"
 
 
 def _rows(name: str) -> list[dict]:
@@ -188,3 +189,59 @@ def test_codex_hook_reads_its_endpoint_from_the_settings_file(daemon, tmp_path):
     assert result.returncode == 2 and "codex, are you there" in result.stderr
     assert time.time() - began < 3.0
     assert not (tmp_path / ".config/noisy-studio/sessions.json").exists()
+
+
+def test_grok_hook_injects_identity_and_delivers_voice_without_a_person(daemon, tmp_path):
+    state, port = daemon
+    settings = tmp_path / "grok.json"
+    settings.write_text(json.dumps({"port": port, "listen_seconds": 1}))
+    env = {"NOISY_STUDIO_GROK_CONFIG": str(settings)}
+    session = "grok-session-1"
+    start = {
+        "hookEventName": "session_start",
+        "hook_event_name": "SessionStart",
+        "sessionId": session,
+        "cwd": str(tmp_path),
+        "source": "startup",
+        "sessionTitle": "Grok voice",
+    }
+    assert _run(GROK_HOOK, start, port, env).returncode == 0
+    assert state.agent_labels[session] == "Grok voice"
+
+    speak = {
+        "hookEventName": "pre_tool_use",
+        "hook_event_name": "PreToolUse",
+        "sessionId": session,
+        "toolName": "noisy-studio-dev__speak",
+        "toolInput": {"text": "hello there", "agent_id": "forged"},
+    }
+    injected = json.loads(_run(GROK_HOOK, speak, port, env).stdout)
+    assert injected["hookSpecificOutput"]["updatedInput"]["agent_id"] == session
+    assert injected["hookSpecificOutput"]["updatedInput"]["text"] == "hello there"
+
+    _queue(state, session, "are you receiving this")
+    delivered = _run(GROK_HOOK, {
+        "hook_event_name": "PostToolUse",
+        "sessionId": session,
+        "toolName": "read_file",
+    }, port, env)
+    assert delivered.returncode == 0
+    assert "are you receiving this" in delivered.stdout
+
+    _queue(state, session, "still here after the turn")
+    woke = _run(GROK_HOOK, {
+        "hook_event_name": "Stop",
+        "sessionId": session,
+        "reason": "end_turn",
+    }, port, env)
+    assert woke.returncode == 0
+    assert "still here after the turn" in woke.stdout
+    assert json.loads(woke.stdout)["decision"] == "block"
+
+    closing = _run(GROK_HOOK, {
+        "hook_event_name": "Stop",
+        "sessionId": session,
+        "reason": "shutdown",
+    }, port, {**env, "NOISY_STUDIO_REWAKE_WAIT_SECONDS": "30"})
+    assert closing.returncode == 0
+    assert closing.stdout == ""

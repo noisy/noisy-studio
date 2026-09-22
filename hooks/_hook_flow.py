@@ -46,7 +46,7 @@ def run(harness: str, payload: dict, listen_seconds: float | None = None) -> int
         body["listen_seconds"] = listen_seconds
     reply = _client.post("/harness/event", body)
     event_name = str(payload.get("hook_event_name") or "")
-    tool_name = str(payload.get("tool_name") or "")
+    tool_name = _tool_name(payload)
     identity_call = event_name == "PreToolUse" and "noisy" in tool_name and (
         tool_name.endswith(("__speak", "__announce", "__change_voice", "__set_speaker_style", "__acknowledge_delivery"))
     )
@@ -98,9 +98,7 @@ def _pre_tool_use(payload: dict, reply: dict) -> int:
     identity = reply.get("speech_identity")
     if not identity:
         return 0
-    arguments = payload.get("tool_input")
-    if not isinstance(arguments, dict):
-        arguments = {}
+    arguments = _tool_input(payload)
     output: dict = {
         "hookSpecificOutput": {
             "hookEventName": "PreToolUse",
@@ -218,6 +216,30 @@ def _wake(conversation: str, harness: str, texts: list[str], first_drain: dict) 
         }
     # Waking the model resumes the turn - relight the activity line.
     _client.post("/activity", {"agent": conversation, "text": "THINKING…"}, timeout=0.3)
+    if harness == "grok-hooks":
+        # Grok keeps the turn alive from a decision on stdout. Exit 2 would
+        # drop additionalContext, so the voice text has to ride the JSON and
+        # the process has to exit 0.
+        print(json.dumps({
+            "decision": "block",
+            "reason": delivery["system_message"],
+            "hookSpecificOutput": {
+                "hookEventName": "Stop",
+                "additionalContext": delivery["context"],
+            },
+        }))
+        return 0
     print(json.dumps({"systemMessage": delivery["system_message"]}))
     print(delivery["context"], file=sys.stderr)
     return int(delivery.get("exit_code", 2))
+
+
+def _tool_name(payload: dict) -> str:
+    return str(payload.get("tool_name") or payload.get("toolName") or "")
+
+
+def _tool_input(payload: dict) -> dict:
+    arguments = payload.get("tool_input")
+    if not isinstance(arguments, dict):
+        arguments = payload.get("toolInput")
+    return arguments if isinstance(arguments, dict) else {}
