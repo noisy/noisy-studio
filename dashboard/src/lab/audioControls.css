@@ -5,7 +5,16 @@
           .audio-lab header{display:flex;justify-content:space-between;gap:12px;align-items:center;margin-bottom:18px}
           .audio-lab button,.audio-lab select{font:inherit;color:inherit;border:1px solid var(--line,#36545f);background:var(--bg,#091117);padding:7px 10px;border-radius:3px}
           .audio-lab button{cursor:pointer}.audio-lab button:focus-visible,.audio-lab select:focus-visible,.audio-lab input:focus-visible{outline:2px solid var(--cyan,#65cbd8);outline-offset:3px}
-          .audio-lab .quick{display:grid;gap:8px;margin:18px 0}.audio-lab .quick select{width:100%}.audio-lab small{color:var(--muted,#849ba5)}
+          .audio-lab .quick-panel{padding:12px}
+          .audio-lab .quick-panel header{margin-bottom:12px;gap:8px}
+          .audio-lab .quick-panel h2{font-size:14px}
+          .audio-lab .quick-panel button,.audio-lab .quick-panel select{font-size:12px;padding:4px 7px;height:28px}
+          .audio-lab .quick{display:grid;grid-template-columns:96px minmax(0,1fr);align-items:center;gap:8px;margin:6px 0;font-size:12px}
+          .audio-lab .quick select{width:100%;min-width:0;text-overflow:ellipsis}
+          .audio-lab .quick.turn-control{grid-template-columns:1fr;gap:5px;margin-top:10px}
+          .audio-lab .turn-buttons{display:flex;gap:6px}
+          .audio-lab .turn-buttons button{flex:1}
+          .audio-lab .turn-buttons button[aria-pressed="true"]{border-color:var(--cyan,#65cbd8);background:color-mix(in srgb,var(--cyan,#65cbd8) 12%,transparent)}.audio-lab small{color:var(--muted,#849ba5)}
           .audio-lab .setting{display:grid;grid-template-columns:minmax(180px,1fr) 140px 115px;align-items:center;gap:16px;padding:18px 0;border-top:1px solid var(--line,#29414c)}
           .audio-lab .description{margin:6px 0 0;font-size:12px}.audio-lab .pin{display:flex;gap:8px;align-items:center;font-size:12px;cursor:pointer}.audio-lab input{accent-color:var(--cyan,#65cbd8)}
           .audio-lab .inline .setting{grid-template-columns:minmax(180px,1fr) 140px}.audio-lab .inline .pin{grid-column:1/-1}

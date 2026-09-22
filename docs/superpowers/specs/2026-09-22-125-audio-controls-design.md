@@ -11,3 +11,7 @@ Storybook Lab/AudioControls compares A (compact visibility column) with B (expli
 Recommendation: B makes it clearer that a checkbox changes visibility, not whether an audio feature is enabled. A is denser for large screens. Choose the presentation before implementing production components. Persistence scope, real device refresh, provider capability states, and production navigation wiring remain implementation decisions after design selection. Do not silently change Batch/Live behavior as part of this visibility change.
 
 Validation: build Storybook and visually inspect default, Settings, visibility changes, and all-hidden state.
+
+## Review refinement
+
+Krzysztof selected compact Settings (A). The dashboard preview now places each label and selector on one tight row. Turn detection alone uses a label followed by a row of Auto / Push to talk buttons, matching the existing panel’s density. Default visibility remains Microphone, Language, and Turn detection. AllControls uses the selected compact Settings layout.

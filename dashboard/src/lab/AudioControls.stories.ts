@@ -40,12 +40,12 @@ function render(variant: 'column' | 'inline', all = false) {
         <div class="board">
           <div>
             <p class="note">DASHBOARD PREVIEW</p>
-            <section aria-label="Dashboard audio controls">
+            <section class="quick-panel" aria-label="Dashboard audio controls">
               <header><h2>Audio controls</h2><button @click="openSettings" aria-label="Open Settings, Audio, Audio controls">Settings ↗</button></header>
-              <div v-for="c in visible" :key="c.id" class="quick">
-                <label :for="'quick-'+c.id">{{ c.label }}</label>
-                <select :id="'quick-'+c.id" v-model="values[c.id]" :disabled="inactive(c.id)"><option v-for="choice in c.choices" :key="choice">{{choice}}</option></select>
-                <small v-if="inactive(c.id)">Used in Auto mode</small>
+              <div v-for="c in visible" :key="c.id" class="quick" :class="{ 'turn-control': c.id === 'turn' }" :title="inactive(c.id) ? 'Used in Auto mode' : c.help">
+                <label :id="'quick-label-'+c.id" :for="c.id === 'turn' ? undefined : 'quick-'+c.id">{{ c.label }}</label>
+                <div v-if="c.id === 'turn'" class="turn-buttons" role="group" :aria-labelledby="'quick-label-'+c.id"><button v-for="choice in c.choices" :key="choice" :aria-pressed="values[c.id] === choice" @click="values[c.id] = choice">{{choice}}</button></div>
+                <select v-else :id="'quick-'+c.id" v-model="values[c.id]" :disabled="inactive(c.id)"><option v-for="choice in c.choices" :key="choice">{{choice}}</option></select>
               </div>
               <p v-if="!visible.length">No quick controls selected. Choose which to show in Settings.</p>
             </section>
@@ -71,4 +71,4 @@ function render(variant: 'column' | 'inline', all = false) {
 
 export const Compact: StoryObj = { render: render('column') };
 export const Explicit: StoryObj = { render: render('inline') };
-export const AllControls: StoryObj = { render: render('inline', true) };
+export const AllControls: StoryObj = { render: render('column', true) };
