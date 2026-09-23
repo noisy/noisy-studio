@@ -10,11 +10,11 @@ import poster from '../assets/todd/hero-poster.jpg';
 import activities from '../assets/todd/hero-activities.json';
 import type { ActivityBlock } from '@dashboard/components/marketing/presentationTiming';
 import { useStage } from './shared';
-import { toddCamera } from '../toddCamera';
+import { toddCamera, cornerCameraPreview } from '../toddCamera';
 const { frame, scale } = useStage();
 </script>
 <template>
-  <div ref="frame" class="hero-demo" :style="{ height: `${760 * scale}px` }">
+  <div ref="frame" class="hero-demo" :class="{ 'corner-camera': cornerCameraPreview }" :style="{ height: `${760 * scale}px` }">
     <RecordedHeroScene :recording-src="recording" :recording-take="take" :recording-poster="poster" :presentation-edits="[]" :activity-blocks="activities as ActivityBlock[]" v-bind="toddCamera" @interaction="websiteAnalytics.trackDemo('hero', $event)" :style="{ transform: `scale(${scale})` }" />
   </div>
 </template>
@@ -23,4 +23,10 @@ const { frame, scale } = useStage();
 .hero-demo > * { transform-origin: top left; }
 /* Enlarge the actor window without changing the video crop or crew scene. */
 .hero-demo :deep(.hero .recorded-camera) { width: 312px; }
+/* Keep the old top-right at (336, 560.5); extend to the stage edges. */
+.hero-demo.corner-camera :deep(.hero .recorded-camera) {
+  left: 0; bottom: 0; width: 336px; height: 199.5px; aspect-ratio: auto;
+  border-radius: 0 12px 0 0;
+}
+.hero-demo.corner-camera :deep(.recorded-camera video) { object-fit: cover; }
 </style>

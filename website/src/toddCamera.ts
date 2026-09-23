@@ -6,3 +6,7 @@ export const toddCamera = {
   cameraOffsetX: 100 * (1 - 2 * (3 / 14 - 0.02) * zoom / (zoom - 1)),
   cameraOffsetY: 100 * (1 - 2 * 0.20 * zoom / (zoom - 1)),
 };
+
+// Opt-in comparison; the normal website keeps the approved inset layout.
+export const cornerCameraPreview = typeof window !== 'undefined'
+  && new URLSearchParams(window.location.search).get('cameraLayout') === 'corner';
