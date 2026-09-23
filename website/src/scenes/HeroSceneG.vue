@@ -20,4 +20,6 @@ const { frame, scale } = useStage();
 <style scoped>
 .hero-demo { min-width: 0; position: relative; overflow: hidden; border-radius: 10px; }
 .hero-demo > * { transform-origin: top left; }
+/* Enlarge the actor window without changing the video crop or crew scene. */
+.hero-demo :deep(.hero .recorded-camera) { width: 312px; }
 </style>
