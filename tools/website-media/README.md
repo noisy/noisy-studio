@@ -77,7 +77,7 @@ existing agent MP3s at their recorded start timestamps with Todd's camera audio.
 It generates 854×480 H.264 CRF24 video, AAC128k audio, posters and copied journals.
 The resulting hero and crew videos are approximately 2.02 MB and 0.62 MB.
 
-The camera crop is a website prop (crew: 1.67× centered; hero: 1.929375× with top crop held at 20% and left at 21.43%), not baked into the
+The camera crop is a website prop (crew: 1.67× centered; hero: 1.929375× with top crop held at 20% and left at 19.43%), not baked into the
 export. Hero thinking/console blocks come from this delivery's activity events,
 not the previous take's manually edited timings. The original Studio journals contain scripted text. The website applies the
 separately captured Grok transcripts described below.
