@@ -14,7 +14,7 @@ const { frame, scale } = useStage();
 </script>
 <template>
   <div ref="frame" class="hero-demo" :style="{ height: `${760 * scale}px` }">
-    <RecordedHeroScene :recording-src="recording" :recording-take="take" :recording-poster="poster" :presentation-edits="[]" :activity-blocks="activities as ActivityBlock[]" :camera-zoom="1 / (1 - 2 * 0.15)" @interaction="websiteAnalytics.trackDemo('hero', $event)" :style="{ transform: `scale(${scale})` }" />
+    <RecordedHeroScene :recording-src="recording" :recording-take="take" :recording-poster="poster" :presentation-edits="[]" :activity-blocks="activities as ActivityBlock[]" :camera-zoom="1 / (1 - 2 * 0.25)" @interaction="websiteAnalytics.trackDemo('hero', $event)" :style="{ transform: `scale(${scale})` }" />
   </div>
 </template>
 <style scoped>
