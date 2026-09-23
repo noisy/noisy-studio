@@ -11,10 +11,14 @@ import activities from '../assets/todd/hero-activities.json';
 import type { ActivityBlock } from '@dashboard/components/marketing/presentationTiming';
 import { useStage } from './shared';
 const { frame, scale } = useStage();
+// 5% closer than the centered 20%-per-edge crop. Offset preserves the same
+// top boundary: original frame crop is top 20%, bottom 22.86%, sides 21.43%.
+const heroCameraZoom = 1.75;
+const heroCameraOffsetY = 100 / 15;
 </script>
 <template>
   <div ref="frame" class="hero-demo" :style="{ height: `${760 * scale}px` }">
-    <RecordedHeroScene :recording-src="recording" :recording-take="take" :recording-poster="poster" :presentation-edits="[]" :activity-blocks="activities as ActivityBlock[]" :camera-zoom="1 / (1 - 2 * 0.20)" @interaction="websiteAnalytics.trackDemo('hero', $event)" :style="{ transform: `scale(${scale})` }" />
+    <RecordedHeroScene :recording-src="recording" :recording-take="take" :recording-poster="poster" :presentation-edits="[]" :activity-blocks="activities as ActivityBlock[]" :camera-zoom="heroCameraZoom" :camera-offset-y="heroCameraOffsetY" @interaction="websiteAnalytics.trackDemo('hero', $event)" :style="{ transform: `scale(${scale})` }" />
   </div>
 </template>
 <style scoped>
