@@ -49,7 +49,7 @@ onBeforeUnmount(() => {
               transformOrigin: 'top left',
             }"
           >
-            <RecordedCrewScene :recording-src="recording" :recording-take="take" :recording-poster="poster" :camera-zoom="1.2" @interaction="websiteAnalytics.trackDemo('crew', $event)" playback-controls :camera="!compact" :compact="compact" />
+            <RecordedCrewScene :recording-src="recording" :recording-take="take" :recording-poster="poster" :camera-zoom="1 / (1 - 2 * 0.15)" @interaction="websiteAnalytics.trackDemo('crew', $event)" playback-controls :camera="!compact" :compact="compact" />
           </div>
         </div>
         <p class="voice-caption">
