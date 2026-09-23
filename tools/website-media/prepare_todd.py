@@ -42,7 +42,10 @@ def main():
             sys.path.insert(0, str(ROOT / 'tools/demo-recorder'))
             from repair_audio import repair_microphone
             cleaned_audio = Path(temporary.name) / 'actor.wav'
-            repair_microphone(camera, edits, cleaned_audio)
+            room_tone_reference = None
+            if scene == 'crew':
+                room_tone_reference = (args.delivery / 'Todd - Hero Search.mp4', output / 'hero-audio-edits.json')
+            repair_microphone(camera, edits, cleaned_audio, room_tone_reference)
             command += ['-ss', str(offset), '-i', str(cleaned_audio)]
             audio_input = 1
         replies = [e for e in take['events'] if e['type'] == 'agent-start']
@@ -75,6 +78,8 @@ def main():
         manifest['sources'].append({'scene':scene,'source_directory':str(args.delivery),'sha256':before,'camera_offset_seconds':offset,'duration_seconds':duration,'output_bytes':video.stat().st_size,'output_sha256':digest(video)})
         if edits.exists():
             manifest['sources'][-1]['audio_edits'] = {'file': edits.name, 'sha256': digest(edits)}
+        if edits.exists() and scene == 'crew':
+            manifest['sources'][-1]['room_tone_reference'] = {'source': 'Todd - Hero Search.mp4', 'source_sha256': digest(args.delivery / 'Todd - Hero Search.mp4'), 'plan_sha256': digest(output / 'hero-audio-edits.json'), 'replace_own_reference': True}
         print(scene,video.stat().st_size,'bytes',flush=True)
     (output/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
 

@@ -138,5 +138,8 @@ exporter; transcripts, crop settings and scenario timings are independent.
 The manifest records the applied plan's hash for reproduction.
 
 The crew export also applies `crew-audio-edits.json`: six user-marked intervals
-using the original Crew recording’s selected room tone. The same source-hash
+using the Hero Search recording’s selected room tone (5175–5863 ms).
+The rejected Crew room-tone interval (1755–2695 ms) is also repaired.
+Adjacent intervals are merged before crossfading, so their internal boundaries
+do not briefly reintroduce the noisy original. The same source-hash
 validation, crossfades and timing-preserving pipeline apply to both videos.

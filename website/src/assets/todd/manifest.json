@@ -27,11 +27,17 @@
       },
       "camera_offset_seconds": 3.109375,
       "duration_seconds": 19.97290000009537,
-      "output_bytes": 619599,
-      "output_sha256": "b533330d7bf9e98d07c0ae78c55b6164bbf9d0c5f5f510508555b349f457c4e0",
+      "output_bytes": 621103,
+      "output_sha256": "2492397603489492c2c4cc4f6cb8b3a866548a223c0a868599424702f3f39b1c",
       "audio_edits": {
         "file": "crew-audio-edits.json",
         "sha256": "891d410f43ae1a18417f4e447b547d3b047f2f1743c2275ef36b698cac9f5695"
+      },
+      "room_tone_reference": {
+        "source": "Todd - Hero Search.mp4",
+        "source_sha256": "2206716432851d63640dc0401cb4bd172b8a73b58fdff80cc82736a733fe1fa1",
+        "plan_sha256": "6a6ebbad721a4a93478328c21ae833627ead9997de5ae338ae935cbec414bca5",
+        "replace_own_reference": true
       }
     }
   ],
