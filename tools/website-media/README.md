@@ -53,3 +53,37 @@ not a claim about first-load traffic, LCP or measured page speed. Original maste
 may still appear in the build because shared default props reference them; only
 the website's selected delivery URLs are rendered. A later artifact-cleanup task
 can separate their build graphs without removing the originals from the repo.
+
+## Todd recordings (September 2026)
+
+The website now selects `website/src/assets/todd/` exports. The old recordings
+and their default Storybook scenes remain available. Keep the delivered camera
+MP4s, browser-reference WebMs and matching JSON files together and untouched.
+The original delivery currently lives outside Git at
+`/Users/krzysztofszumny/Desktop/fiver-todd-videos`; do not delete that directory.
+These small exports cannot replace the originals for future editing.
+
+To reproduce from the original delivery (Python 3 and FFmpeg required):
+
+```sh
+python3 tools/website-media/prepare_todd.py /path/to/fiver-todd-videos
+```
+
+Camera timestamps lead the browser journal by 3.609375 seconds for Hero Search
+and 3.109375 seconds for Crew. These offsets were measured by comparing the
+reference and camera audio for every actor turn; no clock stretch was needed.
+The exporter trims that lead-in, preserves the journal duration, and mixes the
+existing agent MP3s at their recorded start timestamps with Todd's camera audio.
+It generates 854×480 H.264 CRF24 video, AAC128k audio, posters and copied journals.
+The resulting hero and crew videos are approximately 2.02 MB and 0.62 MB.
+
+The camera crop is a website prop (currently 1.2×, centered), not baked into the
+export. Hero thinking/console blocks come from this delivery's activity events,
+not the previous take's manually edited timings. These Studio journals contain
+scripted text, not live incremental transcription.
+
+`website/src/assets/todd/manifest.json` records source/output hashes, offsets and
+encoding settings. The exporter checks that all three source files per scene
+remain unchanged. Commit generated delivery files with the component changes;
+retain the large originals separately. To revert, restore the website's previous
+recording imports and remove the new take/poster/activity overrides.

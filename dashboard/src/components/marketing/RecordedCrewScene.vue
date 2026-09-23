@@ -124,7 +124,7 @@ defineExpose({ restart, toggleSound, soundOn, seek, pause, play: () => setSound(
     <div class="recorded-camera">
       <video ref="video" :src="recordingSrc ?? recording" :poster="recordingPoster ?? poster" muted playsinline preload="metadata"
         :style="{ transform: cameraTransform }"
-        :aria-label="layout === 'hero' ? 'Recorded conversation with Krzysztof and Lux' : 'Recorded conversation with Krzysztof and Lux, Rex and Luna'"
+        :aria-label="layout === 'hero' ? 'Recorded conversation with Lux' : 'Recorded conversation with Lux, Rex and Luna'"
         @timeupdate="updateTime" @seeked="updateTime" @ended="ended" @playing="playing = true" @pause="playing = false"
         @error="playbackError = true" />
     </div>
