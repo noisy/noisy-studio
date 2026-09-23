@@ -11,14 +11,15 @@ import activities from '../assets/todd/hero-activities.json';
 import type { ActivityBlock } from '@dashboard/components/marketing/presentationTiming';
 import { useStage } from './shared';
 const { frame, scale } = useStage();
-// 5% closer than the centered 20%-per-edge crop. Offset preserves the same
-// top boundary: original frame crop is top 20%, bottom 22.86%, sides 21.43%.
-const heroCameraZoom = 1.75;
-const heroCameraOffsetY = 100 / 15;
+// Another 5% closer, preserving the previous top (20%) and left (3/14)
+// boundaries. Offsets use the shared camera's normalized overflow range.
+const heroCameraZoom = 1.75 * 1.05;
+const heroCameraOffsetX = 100 * (1 - 2 * (3 / 14) * heroCameraZoom / (heroCameraZoom - 1));
+const heroCameraOffsetY = 100 * (1 - 2 * 0.20 * heroCameraZoom / (heroCameraZoom - 1));
 </script>
 <template>
   <div ref="frame" class="hero-demo" :style="{ height: `${760 * scale}px` }">
-    <RecordedHeroScene :recording-src="recording" :recording-take="take" :recording-poster="poster" :presentation-edits="[]" :activity-blocks="activities as ActivityBlock[]" :camera-zoom="heroCameraZoom" :camera-offset-y="heroCameraOffsetY" @interaction="websiteAnalytics.trackDemo('hero', $event)" :style="{ transform: `scale(${scale})` }" />
+    <RecordedHeroScene :recording-src="recording" :recording-take="take" :recording-poster="poster" :presentation-edits="[]" :activity-blocks="activities as ActivityBlock[]" :camera-zoom="heroCameraZoom" :camera-offset-x="heroCameraOffsetX" :camera-offset-y="heroCameraOffsetY" @interaction="websiteAnalytics.trackDemo('hero', $event)" :style="{ transform: `scale(${scale})` }" />
   </div>
 </template>
 <style scoped>
