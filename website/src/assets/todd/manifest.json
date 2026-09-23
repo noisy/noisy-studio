@@ -27,8 +27,12 @@
       },
       "camera_offset_seconds": 3.109375,
       "duration_seconds": 19.97290000009537,
-      "output_bytes": 624469,
-      "output_sha256": "93c372bdb04e727a85f9f18bc265173dfc6f580dbe016233f983a8d57b6b4bdd"
+      "output_bytes": 619599,
+      "output_sha256": "b533330d7bf9e98d07c0ae78c55b6164bbf9d0c5f5f510508555b349f457c4e0",
+      "audio_edits": {
+        "file": "crew-audio-edits.json",
+        "sha256": "891d410f43ae1a18417f4e447b547d3b047f2f1743c2275ef36b698cac9f5695"
+      }
     }
   ],
   "settings": {

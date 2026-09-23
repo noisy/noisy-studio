@@ -136,3 +136,7 @@ WAV is temporary and the lightweight website derivative is regenerated.
 To undo cleanup, remove that plan from the export directory and rerun the
 exporter; transcripts, crop settings and scenario timings are independent.
 The manifest records the applied plan's hash for reproduction.
+
+The crew export also applies `crew-audio-edits.json`: six user-marked intervals
+using the original Crew recording’s selected room tone. The same source-hash
+validation, crossfades and timing-preserving pipeline apply to both videos.

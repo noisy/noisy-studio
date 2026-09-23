@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "kind": "demo-audio-edits",
+  "source": {
+    "name": "Todd - Crew.mp4",
+    "size": 74233406,
+    "sha256": "155198ab78a7d7bd52335e9396e5122d5fabe4de50087ce4e45aaf93877bd8a5",
+    "durationMs": 24924,
+    "sampleRate": 44100
+  },
+  "repairs": [
+    {
+      "startMs": 1,
+      "endMs": 1755
+    },
+    {
+      "startMs": 2695,
+      "endMs": 5728
+    },
+    {
+      "startMs": 7583,
+      "endMs": 10635
+    },
+    {
+      "startMs": 11267,
+      "endMs": 16954
+    },
+    {
+      "startMs": 16954,
+      "endMs": 21779
+    },
+    {
+      "startMs": 22604,
+      "endMs": 24924
+    }
+  ],
+  "roomTone": {
+    "startMs": 1755,
+    "endMs": 2695
+  }
+}
