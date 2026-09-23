@@ -1,5 +1,8 @@
 # Website delivery assets
 
+**Updating videos after a product/footage change? Start with [UPDATE-VIDEOS.md](UPDATE-VIDEOS.md).**
+It records both movie variants, the README settled opening, filename, and publishing steps.
+
 Keep originals. These are derived exports, not replacements for source recordings
 or artwork. Run from the repository root with Python 3, FFmpeg/ffprobe and cwebp:
 
@@ -272,7 +275,7 @@ for real-time capture, plus encoding. Original footage is never modified.
 For GitHub README, use the settled opening without the branded intro:
 
 ```sh
-node tools/website-media/render_hero.mjs '/path/to/Noisy Studio - Hands-free coding.mp4' 'http://127.0.0.1:5214/hero-export.html?readme'
+node tools/website-media/render_hero.mjs '/path/to/Demo.mp4' 'http://127.0.0.1:5214/hero-export.html?readme'
 ```
 
 This starts the console and widget in their final positions and removes capture

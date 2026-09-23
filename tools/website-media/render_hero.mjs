@@ -1,4 +1,4 @@
-/** Render the real Vue hero into a shareable MP4; see README.md. */
+/** Render the real Vue hero into a shareable MP4; see UPDATE-VIDEOS.md for approved openings and the full rebuild recipe. */
 import { createRequire } from 'node:module';
 import { mkdir, writeFile, mkdtemp } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
