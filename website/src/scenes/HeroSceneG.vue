@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue';
 import { websiteAnalytics } from '../analytics';
 import RecordedHeroScene from '@dashboard/components/marketing/RecordedHeroScene.vue';
 // Keep this a lightweight website copy when replacing it with actor footage.
@@ -11,11 +12,14 @@ import activities from '../assets/todd/hero-activities.json';
 import type { ActivityBlock } from '@dashboard/components/marketing/presentationTiming';
 import { useStage } from './shared';
 import { toddCamera } from '../toddCamera';
+const props = defineProps<{ manualPlayback?: boolean }>();
+const scene = ref<InstanceType<typeof RecordedHeroScene>>();
+defineExpose({ play: () => scene.value?.play() });
 const { frame, scale } = useStage();
 </script>
 <template>
   <div ref="frame" class="hero-demo" :style="{ height: `${760 * scale}px` }">
-    <RecordedHeroScene :recording-src="recording" :recording-take="take" :recording-poster="poster" :presentation-edits="[]" :activity-blocks="activities as ActivityBlock[]" v-bind="toddCamera" @interaction="websiteAnalytics.trackDemo('hero', $event)" :style="{ transform: `scale(${scale})` }" />
+    <RecordedHeroScene ref="scene" :manual-playback="props.manualPlayback" :recording-src="recording" :recording-take="take" :recording-poster="poster" :presentation-edits="[]" :activity-blocks="activities as ActivityBlock[]" v-bind="toddCamera" @interaction="websiteAnalytics.trackDemo('hero', $event)" :style="{ transform: `scale(${scale})` }" />
   </div>
 </template>
 <style scoped>

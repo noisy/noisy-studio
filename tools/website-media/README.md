@@ -238,3 +238,33 @@ Validated September 23 export sizes: hero 2,010,411 → 1,740,828 bytes (13.4%
 smaller); crew 618,716 → 421,601 bytes (31.9% smaller). Both retain the previous
 AAC packet hashes, exact video frame counts and stream durations. Combined MP4
 size is 2.16 MB, down from 2.63 MB. Original camera hashes are unchanged.
+
+## Shareable hero movie
+
+`website/hero-export.html` is a local authoring entry point, deliberately excluded
+from the production build inputs. It reuses `HeroSceneG.vue` with manual playback,
+adds a short Noisy Studio / Coming soon opening, and hides the interactive mute
+button. It does not change production autoplay or analytics behavior.
+
+Install Playwright into an isolated tools directory and use installed Chrome:
+
+```sh
+npm install --prefix /tmp/noisy-video-renderer playwright --no-audit --no-fund
+npm --prefix website run dev -- --host 127.0.0.1 --port 5214
+# In another terminal, from the repository root:
+node tools/website-media/render_hero.mjs /path/to/noisy-studio-hero.mp4
+```
+
+An optional third argument selects a different local export-page URL. Set
+`RENDER_NODE_MODULES` to a tools directory other than `/tmp/noisy-video-renderer`
+if needed. The renderer captures the real browser animation at 1600×900, uses
+actual frame timestamps to preserve elapsed time, and produces a 30fps H.264/AAC
+MP4. The source scene keeps its 1200×760 aspect ratio inside a 16:9 canvas, without
+cutting off the wallpaper or actor. Actor footage retains its website resolution.
+
+Audio is taken directly from the approved mixed hero MP4 and delayed to the
+captured media-start timestamp. The opening and short ending hold are silent.
+The sidecar `.mp4.json` records the capture offset and temporary frame directory
+for inspection. The exported movie and frame cache are intentionally outside Git;
+keep only the rendering code in the repository. Allow approximately 73 seconds
+for real-time capture, plus encoding. Original footage is never modified.
