@@ -124,22 +124,35 @@ restores selector zoom 910 ms before Rex's first reply, and resets it 660 ms
 before Luna's second reply, matching the original relative choreography. This
 zooms the widget/agent selector only; the actor camera crop stays independent.
 
-### Marked audio cleanup
+### Marked audio cleanup and reusable room tone
 
-`website/src/assets/todd/hero-audio-edits.json` is the user's repair plan for
-Todd's original Hero Search MP4. The exporter validates its source hash and size,
-replaces the nine marked actor-audio intervals using the selected room tone and
-12 ms crossfades, then applies the camera offset and mixes the agent clips.
-No samples are removed or shifted. The original MP4 is only read; the repaired
-WAV is temporary and the lightweight website derivative is regenerated.
+Both exports apply their `*-audio-edits.json` plans to the untouched actor audio.
+The original sample intervals were rejected after headphone review, so **both
+videos now use `tools/website-media/room-tone/todd-clean-room-tone.wav`**. Each
+old sample interval is also repaired, alongside the user's marked repairs.
+Adjacent intervals are merged before 12 ms crossfades, preventing the rejected
+noise from leaking back at internal boundaries. No samples are removed or shifted.
 
-To undo cleanup, remove that plan from the export directory and rerun the
-exporter; transcripts, crop settings and scenario timings are independent.
-The manifest records the applied plan's hash for reproduction.
+The reusable WAV is 12 seconds, mono 48 kHz float PCM at −74 dBFS RMS. It is
+**synthetic**, shaped from a smoothed median spectrum of quiet windows in both
+originals; no recorded clicks, breaths or other waveforms are copied. Its FFT
+construction is periodic, and the saved boundary is rotated to a tiny sample
+step. It is longer than every current repair, avoiding short audible repetitions.
+The sample's manifest records source hashes/windows, generator seed, output hash,
+level variation and boundary measurements. These measurements do not replace
+listening on headphones; audition the mixes before publishing.
 
-The crew export also applies `crew-audio-edits.json`: six user-marked intervals
-using the Hero Search recording’s selected room tone (5175–5863 ms).
-The rejected Crew room-tone interval (1755–2695 ms) is also repaired.
-Adjacent intervals are merged before crossfading, so their internal boundaries
-do not briefly reintroduce the noisy original. The same source-hash
-validation, crossfades and timing-preserving pipeline apply to both videos.
+Regenerate the reusable sample, then the site exports:
+
+```sh
+python tools/website-media/generate_room_tone.py /path/to/fiver-todd-videos
+python tools/website-media/prepare_todd.py /path/to/fiver-todd-videos
+```
+
+Use the project's Python environment with NumPy and FFmpeg installed. The WAV
+lives with authoring tools, not the website asset imports, so it does not add to
+page downloads. Keep it and its generator for future footage; reevaluate its
+level/spectral match if microphone or room changes. Original videos and marker
+files on the Desktop remain untouched. Git retains the earlier delivery mixes
+for comparison or rollback. To skip repairs for a scene, remove its plan from
+the export directory and rerun; captions, crop and scenario timing are independent.

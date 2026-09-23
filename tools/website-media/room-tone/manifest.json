@@ -1,0 +1,25 @@
+{
+  "method": "synthetic noise shaped by smoothed median background spectrum; no original waveform copied",
+  "seed": 230926,
+  "sampleRate": 48000,
+  "durationSeconds": 12,
+  "rmsDbfs": -74.00000000037952,
+  "peakDbfs": -59.96822738647461,
+  "levelVariation100msDb": 1.655714732460041,
+  "wrapStep": 5.820766091346741e-11,
+  "sources": [
+    {
+      "file": "Todd - Hero Search.mp4",
+      "sha256": "2206716432851d63640dc0401cb4bd172b8a73b58fdff80cc82736a733fe1fa1",
+      "startMs": 46952,
+      "endMs": 47952
+    },
+    {
+      "file": "Todd - Crew.mp4",
+      "sha256": "155198ab78a7d7bd52335e9396e5122d5fabe4de50087ce4e45aaf93877bd8a5",
+      "startMs": 3195,
+      "endMs": 4195
+    }
+  ],
+  "outputSha256": "8fbf75eeeadd10cdde154e4a2a0fc3934853e81412df668ee908b915cb7a4bfa"
+}

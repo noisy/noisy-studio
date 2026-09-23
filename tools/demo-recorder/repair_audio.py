@@ -92,18 +92,25 @@ def repair_microphone(source: Path, plan_path: Path, destination: Path, room_ton
     samples = np.frombuffer(raw, dtype='<f4').reshape(-1, channels)
     external_tone = None
     if room_tone_reference is not None:
-        tone_source, tone_plan_path = room_tone_reference
-        tone_plan = json.loads(tone_plan_path.read_text())
-        validate_source(tone_source, tone_plan)
+        tone_plan = None
+        if isinstance(room_tone_reference, tuple):
+            tone_source, tone_plan_path = room_tone_reference
+            tone_plan = json.loads(tone_plan_path.read_text())
+            validate_source(tone_source, tone_plan)
+        else:
+            tone_source = Path(room_tone_reference)
         tone_audio = subprocess.check_output([
             'ffmpeg', '-hide_banner', '-loglevel', 'error', '-i', str(tone_source),
             '-map', '0:a:0', '-ar', str(sample_rate), '-ac', str(channels),
             '-f', 'f32le', '-acodec', 'pcm_f32le', '-',
         ])
         tone_samples = np.frombuffer(tone_audio, dtype='<f4').reshape(-1, channels)
-        tone_range, _ = sample_ranges(tone_plan, sample_rate, len(tone_samples))
-        external_tone = tone_samples[slice(*tone_range)]
-        # The rejected crew reference must be repaired as well.
+        if tone_plan is not None:
+            tone_range, _ = sample_ranges(tone_plan, sample_rate, len(tone_samples))
+            external_tone = tone_samples[slice(*tone_range)]
+        else:
+            external_tone = tone_samples
+        # Replace the rejected reference interval as well as marked repairs.
         plan['repairs'].append(dict(plan['roomTone']))
     repaired = replace_intervals(samples, sample_rate, plan, external_tone)
     subprocess.run([
