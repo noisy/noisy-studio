@@ -13,7 +13,7 @@ import { useStage } from './shared';
 const { frame, scale } = useStage();
 // Another 5% closer, preserving the previous top (20%) and left (3/14)
 // boundaries. Offsets use the shared camera's normalized overflow range.
-const heroCameraZoom = 1.75 * 1.05;
+const heroCameraZoom = 1.75 * 1.05 * 1.05;
 const heroCameraOffsetX = 100 * (1 - 2 * (3 / 14) * heroCameraZoom / (heroCameraZoom - 1));
 const heroCameraOffsetY = 100 * (1 - 2 * 0.20 * heroCameraZoom / (heroCameraZoom - 1));
 </script>
