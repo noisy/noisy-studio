@@ -34,6 +34,19 @@ def with_streaming_transcripts(take, capture):
     return result
 
 
+def with_crew_focus(take):
+    """Restore the original selector focus around the Rex/Luna handover."""
+    result = deepcopy(take)
+    if any(e['type'] == 'camera-zoom' for e in result['events']):
+        return result
+    # Original crew choreography, relative to the replies (not absolute time).
+    for clip, kind, lead_ms in [('rex-1', 'camera-zoom', 910), ('luna-2', 'camera-reset', 660)]:
+        reply = next(e for e in result['events'] if e.get('clip') == clip and e['type'] == 'agent-start')
+        result['events'].append({'type': kind, 'atMs': max(0, reply['atMs'] - lead_ms), 'sequence': reply['sequence'] - 0.5})
+    result['events'].sort(key=lambda e: (e['atMs'], e['sequence']))
+    return result
+
+
 if __name__ == '__main__':
     import json
     from pathlib import Path
@@ -45,5 +58,7 @@ if __name__ == '__main__':
         journal = next(name for name in source['sha256'] if name.endswith('.json'))
         original = json.loads((Path(source['source_directory']) / journal).read_text())
         capture = json.loads((folder / f'{scene}-transcripts.json').read_text())
+        if scene == 'crew':
+            original = with_crew_focus(original)
         revised = with_streaming_transcripts(original, capture)
         (folder / f'{scene}.json').write_text(json.dumps(revised, indent=2) + '\n')

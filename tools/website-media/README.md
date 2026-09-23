@@ -118,3 +118,8 @@ avoid displaying duplicated Grok segments; raw captures remain intact.
 The application step
 reads the original journal and updates only transcript events and provenance.
 The video exporter also reapplies these saved captions on future rebuilds.
+
+The Todd crew export lacks the old camera-focus events. The authoring step
+restores selector zoom 910 ms before Rex's first reply, and resets it 660 ms
+before Luna's second reply, matching the original relative choreography. This
+zooms the widget/agent selector only; the actor camera crop stays independent.

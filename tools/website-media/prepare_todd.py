@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import subprocess
 
-from transcript_timing import with_streaming_transcripts
+from transcript_timing import with_streaming_transcripts, with_crew_focus
 
 ROOT = Path(__file__).resolve().parents[2]
 # Camera time = browser MediaRecorder time + offset. Waveform correlation of
@@ -44,6 +44,8 @@ def main():
         subprocess.run(command, check=True)
         subprocess.run(['ffmpeg','-v','error','-y','-ss','2','-i',str(video),'-frames:v','1',str(output/f'{scene}-poster.jpg')],check=True)
         # Use the delivered timeline, not the old actor's presentation edits.
+        if scene == 'crew':
+            take = with_crew_focus(take)
         capture = output / f'{scene}-transcripts.json'
         displayed_take = with_streaming_transcripts(take, json.loads(capture.read_text())) if capture.exists() else take
         (output/f'{scene}.json').write_text(json.dumps(displayed_take,indent=2)+'\n')
