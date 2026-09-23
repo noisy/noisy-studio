@@ -65,7 +65,7 @@
     ]
   },
   "clock": "milliseconds since MediaRecorder start event",
-  "transcriptSource": "script; not live transcription",
+  "transcriptSource": "xAI Grok streaming STT from actor camera audio",
   "media": {
     "mimeType": "video/webm;codecs=vp8,opus",
     "audio": "microphone only; agent clips are separate assets"
@@ -73,12 +73,12 @@
   "transcriptOffsetsMs": {},
   "events": [
     {
-      "sequence": 0,
+      "sequence": 1,
       "atMs": 1.5,
       "type": "recording-start"
     },
     {
-      "sequence": 1,
+      "sequence": 2,
       "atMs": 2530.4000000953674,
       "type": "user-start",
       "utterance": "u1",
@@ -86,42 +86,105 @@
       "voice": "Lux"
     },
     {
-      "sequence": 2,
-      "atMs": 2530.4000000953674,
       "type": "transcript",
       "utterance": "u1",
-      "text": "The search stopped working after the last change. It finds exact names, but part of a name gives me nothing.",
+      "voice": "Lux",
+      "text": "The search",
       "final": false,
-      "source": "script"
+      "atMs": 5695.493333097373,
+      "sequence": 3
     },
     {
-      "sequence": 3,
-      "atMs": 11521.599999904633,
       "type": "transcript",
       "utterance": "u1",
-      "text": "The search stopped working after the last change. It finds exact names, but part of a name gives me nothing.",
-      "final": true,
-      "source": "script"
+      "voice": "Lux",
+      "text": "The search stopped.",
+      "final": false,
+      "atMs": 6722.836458092614,
+      "sequence": 4
     },
     {
-      "sequence": 4,
+      "type": "transcript",
+      "utterance": "u1",
+      "voice": "Lux",
+      "text": "The search stopped working after the last",
+      "final": false,
+      "atMs": 7706.430583098379,
+      "sequence": 5
+    },
+    {
+      "type": "transcript",
+      "utterance": "u1",
+      "voice": "Lux",
+      "text": "The search stopped working after the last change.",
+      "final": false,
+      "atMs": 8734.115208096453,
+      "sequence": 6
+    },
+    {
+      "type": "transcript",
+      "utterance": "u1",
+      "voice": "Lux",
+      "text": "The search stopped working after the last change. It finds exact names.",
+      "final": false,
+      "atMs": 9785.798208094318,
+      "sequence": 7
+    },
+    {
+      "type": "transcript",
+      "utterance": "u1",
+      "voice": "Lux",
+      "text": "The search stopped working after the last change. It finds exact names, but",
+      "final": false,
+      "atMs": 10701.906750092574,
+      "sequence": 8
+    },
+    {
+      "sequence": 9,
       "atMs": 11521.599999904633,
       "type": "user-end",
       "utterance": "u1"
     },
     {
-      "sequence": 5,
+      "sequence": 10,
       "atMs": 11521.700000047684,
       "type": "activity-start",
       "text": "Thinking\u2026"
     },
     {
-      "sequence": 6,
+      "type": "transcript",
+      "utterance": "u1",
+      "voice": "Lux",
+      "text": "The search stopped working after the last change. It finds exact names, but part of the name",
+      "final": false,
+      "atMs": 11704.586542092555,
+      "sequence": 11
+    },
+    {
+      "type": "transcript",
+      "utterance": "u1",
+      "voice": "Lux",
+      "text": "The search stopped working after the last change. It finds exact names, but part of the name gives me nothing.",
+      "final": false,
+      "atMs": 12711.43058309576,
+      "sequence": 12
+    },
+    {
+      "type": "transcript",
+      "utterance": "u1",
+      "voice": "Lux",
+      "text": "The search stopped working after the last change. It finds exact names, but part of the name gives me nothing.",
+      "final": true,
+      "atMs": 12711.43058309576,
+      "sequence": 13
+    },
+    {
+      "sequence": 14,
       "atMs": 13648.799999952316,
       "type": "activity-end"
     },
     {
-      "sequence": 7,
+      "sequence": 15,
       "atMs": 13682.299999952316,
       "type": "agent-start",
       "voice": "Lux",
@@ -129,24 +192,24 @@
       "text": "The last change switched to exact matching. I'll bring back partial matches."
     },
     {
-      "sequence": 8,
+      "sequence": 16,
       "atMs": 18396.200000047684,
       "type": "agent-end",
       "clip": "hero-lux-search-1"
     },
     {
-      "sequence": 9,
+      "sequence": 17,
       "atMs": 18633.200000047684,
       "type": "activity-start",
       "text": "Editing src/search.ts"
     },
     {
-      "sequence": 10,
+      "sequence": 18,
       "atMs": 21967.299999952316,
       "type": "activity-end"
     },
     {
-      "sequence": 11,
+      "sequence": 19,
       "atMs": 22171.900000095367,
       "type": "user-start",
       "utterance": "u2",
@@ -154,42 +217,87 @@
       "voice": "Lux"
     },
     {
-      "sequence": 12,
-      "atMs": 22171.900000095367,
       "type": "transcript",
       "utterance": "u2",
-      "text": "Yes, and ignore capital letters too. If I type just part of a name, I still want to find it.",
+      "voice": "Lux",
+      "text": "Yeah, in",
       "final": false,
-      "source": "script"
+      "atMs": 24480.58008309413,
+      "sequence": 20
     },
     {
-      "sequence": 13,
-      "atMs": 28530.799999952316,
       "type": "transcript",
       "utterance": "u2",
-      "text": "Yes, and ignore capital letters too. If I type just part of a name, I still want to find it.",
-      "final": true,
-      "source": "script"
+      "voice": "Lux",
+      "text": "Yeah, and ignore capitalism.",
+      "final": false,
+      "atMs": 25445.474666091788,
+      "sequence": 21
     },
     {
-      "sequence": 14,
+      "type": "transcript",
+      "utterance": "u2",
+      "voice": "Lux",
+      "text": "Yeah, and ignore capital letters too.",
+      "final": false,
+      "atMs": 26442.858166097314,
+      "sequence": 22
+    },
+    {
+      "type": "transcript",
+      "utterance": "u2",
+      "voice": "Lux",
+      "text": "Yeah, and ignore capital letters too. if I type just",
+      "final": false,
+      "atMs": 27456.447875097685,
+      "sequence": 23
+    },
+    {
+      "sequence": 24,
       "atMs": 28530.799999952316,
       "type": "user-end",
       "utterance": "u2"
     },
     {
-      "sequence": 15,
+      "sequence": 25,
       "atMs": 28530.799999952316,
       "type": "activity-start",
       "text": "Editing src/search.ts"
     },
     {
-      "sequence": 16,
+      "type": "transcript",
+      "utterance": "u2",
+      "voice": "Lux",
+      "text": "Yeah, and ignore capital letters too. if I type just part of a name, I still.",
+      "final": false,
+      "atMs": 28555.912375093205,
+      "sequence": 26
+    },
+    {
+      "type": "transcript",
+      "utterance": "u2",
+      "voice": "Lux",
+      "text": "Yeah, and ignore capital letters too. if I type just part of a name, I still want to find it.",
+      "final": false,
+      "atMs": 29454.39387509355,
+      "sequence": 27
+    },
+    {
+      "type": "transcript",
+      "utterance": "u2",
+      "voice": "Lux",
+      "text": "Yeah, and ignore capital letters too. if I type just part of a name, I still wanna find it.",
+      "final": true,
+      "atMs": 29454.39387509355,
+      "sequence": 28
+    },
+    {
+      "sequence": 29,
       "atMs": 30904.400000095367,
       "type": "activity-end"
     },
     {
-      "sequence": 17,
+      "sequence": 30,
       "atMs": 30931.400000095367,
       "type": "agent-start",
       "voice": "Lux",
@@ -197,13 +305,13 @@
       "text": "Done. Partial names work again, with or without capital letters."
     },
     {
-      "sequence": 18,
+      "sequence": 31,
       "atMs": 35155.700000047684,
       "type": "agent-end",
       "clip": "hero-lux-search-2"
     },
     {
-      "sequence": 19,
+      "sequence": 32,
       "atMs": 36704,
       "type": "user-start",
       "utterance": "u3",
@@ -211,42 +319,78 @@
       "voice": "Lux"
     },
     {
-      "sequence": 20,
-      "atMs": 36704,
       "type": "transcript",
       "utterance": "u3",
-      "text": "Great. Add a test for both cases so we don't break this again.",
+      "voice": "Lux",
+      "text": "Great.",
       "final": false,
-      "source": "script"
+      "atMs": 38951.16008300311,
+      "sequence": 33
     },
     {
-      "sequence": 21,
-      "atMs": 42398.700000047684,
       "type": "transcript",
       "utterance": "u3",
-      "text": "Great. Add a test for both cases so we don't break this again.",
-      "final": true,
-      "source": "script"
+      "voice": "Lux",
+      "text": "Great add a test",
+      "final": false,
+      "atMs": 39969.000416002295,
+      "sequence": 34
     },
     {
-      "sequence": 22,
+      "type": "transcript",
+      "utterance": "u3",
+      "voice": "Lux",
+      "text": "Great add a test for both cases.",
+      "final": false,
+      "atMs": 40970.66979100264,
+      "sequence": 35
+    },
+    {
+      "type": "transcript",
+      "utterance": "u3",
+      "voice": "Lux",
+      "text": "Great add a test for both cases so we don't",
+      "final": false,
+      "atMs": 41972.6587910066,
+      "sequence": 36
+    },
+    {
+      "sequence": 37,
       "atMs": 42398.700000047684,
       "type": "user-end",
       "utterance": "u3"
     },
     {
-      "sequence": 23,
+      "sequence": 38,
       "atMs": 42398.700000047684,
       "type": "activity-start",
       "text": "Running tests"
     },
     {
-      "sequence": 24,
+      "type": "transcript",
+      "utterance": "u3",
+      "voice": "Lux",
+      "text": "Great add a test for both cases so we don't break this again.",
+      "final": false,
+      "atMs": 42908.157750005834,
+      "sequence": 39
+    },
+    {
+      "type": "transcript",
+      "utterance": "u3",
+      "voice": "Lux",
+      "text": "Great add a test for both cases so we don't break this again.",
+      "final": true,
+      "atMs": 42908.157750005834,
+      "sequence": 40
+    },
+    {
+      "sequence": 41,
       "atMs": 44967.09999990463,
       "type": "activity-end"
     },
     {
-      "sequence": 25,
+      "sequence": 42,
       "atMs": 44996.799999952316,
       "type": "agent-start",
       "voice": "Lux",
@@ -254,13 +398,13 @@
       "text": "Both tests pass. The fix is ready."
     },
     {
-      "sequence": 26,
+      "sequence": 43,
       "atMs": 47976,
       "type": "agent-end",
       "clip": "hero-lux-search-3"
     },
     {
-      "sequence": 27,
+      "sequence": 44,
       "atMs": 50640.90000009537,
       "type": "user-start",
       "utterance": "u4",
@@ -268,42 +412,69 @@
       "voice": "Lux"
     },
     {
-      "sequence": 28,
-      "atMs": 50640.90000009537,
       "type": "transcript",
       "utterance": "u4",
-      "text": "Great. My hands are full. Can you deploy that to production for me?",
+      "voice": "Lux",
+      "text": "Great",
       "final": false,
-      "source": "script"
+      "atMs": 52794.79033309553,
+      "sequence": 45
     },
     {
-      "sequence": 29,
-      "atMs": 55795.90000009537,
       "type": "transcript",
       "utterance": "u4",
-      "text": "Great. My hands are full. Can you deploy that to production for me?",
-      "final": true,
-      "source": "script"
+      "voice": "Lux",
+      "text": "Great , my hands are full.",
+      "final": false,
+      "atMs": 53798.64191609749,
+      "sequence": 46
     },
     {
-      "sequence": 30,
+      "type": "transcript",
+      "utterance": "u4",
+      "voice": "Lux",
+      "text": "Great , my hands are full, can you deploy",
+      "final": false,
+      "atMs": 54921.020083095296,
+      "sequence": 47
+    },
+    {
+      "sequence": 48,
       "atMs": 55795.90000009537,
       "type": "user-end",
       "utterance": "u4"
     },
     {
-      "sequence": 31,
+      "sequence": 49,
       "atMs": 55795.90000009537,
       "type": "activity-start",
       "text": "Thinking\u2026"
     },
     {
-      "sequence": 32,
+      "type": "transcript",
+      "utterance": "u4",
+      "voice": "Lux",
+      "text": "Great , my hands are full, can you deploy that to production?",
+      "final": false,
+      "atMs": 55822.049666096515,
+      "sequence": 50
+    },
+    {
+      "type": "transcript",
+      "utterance": "u4",
+      "voice": "Lux",
+      "text": "Great. My hands are full. Can you deploy that to production for me?",
+      "final": true,
+      "atMs": 57025.239166092884,
+      "sequence": 51
+    },
+    {
+      "sequence": 52,
       "atMs": 57614,
       "type": "activity-end"
     },
     {
-      "sequence": 33,
+      "sequence": 53,
       "atMs": 57653.700000047684,
       "type": "agent-start",
       "voice": "Lux",
@@ -311,24 +482,24 @@
       "text": "On it."
     },
     {
-      "sequence": 34,
+      "sequence": 54,
       "atMs": 58505.5,
       "type": "agent-end",
       "clip": "hero-lux-search-4"
     },
     {
-      "sequence": 35,
+      "sequence": 55,
       "atMs": 58607.5,
       "type": "activity-start",
       "text": "Deploying to production"
     },
     {
-      "sequence": 36,
+      "sequence": 56,
       "atMs": 60901,
       "type": "activity-end"
     },
     {
-      "sequence": 37,
+      "sequence": 57,
       "atMs": 61397.700000047684,
       "type": "agent-start",
       "voice": "Lux",
@@ -337,13 +508,13 @@
       "pauseBeforeMs": 2200
     },
     {
-      "sequence": 38,
+      "sequence": 58,
       "atMs": 64475.59999990463,
       "type": "agent-end",
       "clip": "hero-lux-search-production"
     },
     {
-      "sequence": 39,
+      "sequence": 59,
       "atMs": 65792.70000004768,
       "type": "user-start",
       "utterance": "u5",
@@ -351,31 +522,31 @@
       "voice": "Lux"
     },
     {
-      "sequence": 40,
-      "atMs": 65792.70000004768,
       "type": "transcript",
       "utterance": "u5",
-      "text": "Perfect. Thanks.",
+      "voice": "Lux",
+      "text": "Perfect, thanks.",
       "final": false,
-      "source": "script"
+      "atMs": 67947.26608405332,
+      "sequence": 60
     },
     {
-      "sequence": 41,
-      "atMs": 68742.79999995232,
-      "type": "transcript",
-      "utterance": "u5",
-      "text": "Perfect. Thanks.",
-      "final": true,
-      "source": "script"
-    },
-    {
-      "sequence": 42,
+      "sequence": 61,
       "atMs": 68742.79999995232,
       "type": "user-end",
       "utterance": "u5"
     },
     {
-      "sequence": 43,
+      "type": "transcript",
+      "utterance": "u5",
+      "voice": "Lux",
+      "text": "Perfect, thanks.",
+      "final": true,
+      "atMs": 68742.79999995232,
+      "sequence": 62
+    },
+    {
+      "sequence": 63,
       "atMs": 68746,
       "type": "recording-stop",
       "complete": true
@@ -383,13 +554,13 @@
   ],
   "presentation": [
     {
-      "sequence": 0,
+      "sequence": 1,
       "atMs": 1.5,
       "type": "recording-start",
       "displayAtMs": 1.5
     },
     {
-      "sequence": 1,
+      "sequence": 2,
       "atMs": 2530.4000000953674,
       "type": "user-start",
       "utterance": "u1",
@@ -398,47 +569,117 @@
       "displayAtMs": 2530.4000000953674
     },
     {
-      "sequence": 2,
-      "atMs": 2530.4000000953674,
       "type": "transcript",
       "utterance": "u1",
-      "text": "The search stopped working after the last change. It finds exact names, but part of a name gives me nothing.",
+      "voice": "Lux",
+      "text": "The search",
       "final": false,
-      "source": "script",
-      "displayAtMs": 2530.4000000953674
+      "atMs": 5695.493333097373,
+      "sequence": 3,
+      "displayAtMs": 5695.493333097373
     },
     {
-      "sequence": 3,
-      "atMs": 11521.599999904633,
       "type": "transcript",
       "utterance": "u1",
-      "text": "The search stopped working after the last change. It finds exact names, but part of a name gives me nothing.",
-      "final": true,
-      "source": "script",
-      "displayAtMs": 11521.599999904633
+      "voice": "Lux",
+      "text": "The search stopped.",
+      "final": false,
+      "atMs": 6722.836458092614,
+      "sequence": 4,
+      "displayAtMs": 6722.836458092614
     },
     {
-      "sequence": 4,
+      "type": "transcript",
+      "utterance": "u1",
+      "voice": "Lux",
+      "text": "The search stopped working after the last",
+      "final": false,
+      "atMs": 7706.430583098379,
+      "sequence": 5,
+      "displayAtMs": 7706.430583098379
+    },
+    {
+      "type": "transcript",
+      "utterance": "u1",
+      "voice": "Lux",
+      "text": "The search stopped working after the last change.",
+      "final": false,
+      "atMs": 8734.115208096453,
+      "sequence": 6,
+      "displayAtMs": 8734.115208096453
+    },
+    {
+      "type": "transcript",
+      "utterance": "u1",
+      "voice": "Lux",
+      "text": "The search stopped working after the last change. It finds exact names.",
+      "final": false,
+      "atMs": 9785.798208094318,
+      "sequence": 7,
+      "displayAtMs": 9785.798208094318
+    },
+    {
+      "type": "transcript",
+      "utterance": "u1",
+      "voice": "Lux",
+      "text": "The search stopped working after the last change. It finds exact names, but",
+      "final": false,
+      "atMs": 10701.906750092574,
+      "sequence": 8,
+      "displayAtMs": 10701.906750092574
+    },
+    {
+      "sequence": 9,
       "atMs": 11521.599999904633,
       "type": "user-end",
       "utterance": "u1",
       "displayAtMs": 11521.599999904633
     },
     {
-      "sequence": 5,
+      "sequence": 10,
       "atMs": 11521.700000047684,
       "type": "activity-start",
       "text": "Thinking\u2026",
       "displayAtMs": 11521.700000047684
     },
     {
-      "sequence": 6,
+      "type": "transcript",
+      "utterance": "u1",
+      "voice": "Lux",
+      "text": "The search stopped working after the last change. It finds exact names, but part of the name",
+      "final": false,
+      "atMs": 11704.586542092555,
+      "sequence": 11,
+      "displayAtMs": 11704.586542092555
+    },
+    {
+      "type": "transcript",
+      "utterance": "u1",
+      "voice": "Lux",
+      "text": "The search stopped working after the last change. It finds exact names, but part of the name gives me nothing.",
+      "final": false,
+      "atMs": 12711.43058309576,
+      "sequence": 12,
+      "displayAtMs": 12711.43058309576
+    },
+    {
+      "type": "transcript",
+      "utterance": "u1",
+      "voice": "Lux",
+      "text": "The search stopped working after the last change. It finds exact names, but part of the name gives me nothing.",
+      "final": true,
+      "atMs": 12711.43058309576,
+      "sequence": 13,
+      "displayAtMs": 12711.43058309576
+    },
+    {
+      "sequence": 14,
       "atMs": 13648.799999952316,
       "type": "activity-end",
       "displayAtMs": 13648.799999952316
     },
     {
-      "sequence": 7,
+      "sequence": 15,
       "atMs": 13682.299999952316,
       "type": "agent-start",
       "voice": "Lux",
@@ -447,27 +688,27 @@
       "displayAtMs": 13682.299999952316
     },
     {
-      "sequence": 8,
+      "sequence": 16,
       "atMs": 18396.200000047684,
       "type": "agent-end",
       "clip": "hero-lux-search-1",
       "displayAtMs": 18396.200000047684
     },
     {
-      "sequence": 9,
+      "sequence": 17,
       "atMs": 18633.200000047684,
       "type": "activity-start",
       "text": "Editing src/search.ts",
       "displayAtMs": 18633.200000047684
     },
     {
-      "sequence": 10,
+      "sequence": 18,
       "atMs": 21967.299999952316,
       "type": "activity-end",
       "displayAtMs": 21967.299999952316
     },
     {
-      "sequence": 11,
+      "sequence": 19,
       "atMs": 22171.900000095367,
       "type": "user-start",
       "utterance": "u2",
@@ -476,47 +717,97 @@
       "displayAtMs": 22171.900000095367
     },
     {
-      "sequence": 12,
-      "atMs": 22171.900000095367,
       "type": "transcript",
       "utterance": "u2",
-      "text": "Yes, and ignore capital letters too. If I type just part of a name, I still want to find it.",
+      "voice": "Lux",
+      "text": "Yeah, in",
       "final": false,
-      "source": "script",
-      "displayAtMs": 22171.900000095367
+      "atMs": 24480.58008309413,
+      "sequence": 20,
+      "displayAtMs": 24480.58008309413
     },
     {
-      "sequence": 13,
-      "atMs": 28530.799999952316,
       "type": "transcript",
       "utterance": "u2",
-      "text": "Yes, and ignore capital letters too. If I type just part of a name, I still want to find it.",
-      "final": true,
-      "source": "script",
-      "displayAtMs": 28530.799999952316
+      "voice": "Lux",
+      "text": "Yeah, and ignore capitalism.",
+      "final": false,
+      "atMs": 25445.474666091788,
+      "sequence": 21,
+      "displayAtMs": 25445.474666091788
     },
     {
-      "sequence": 14,
+      "type": "transcript",
+      "utterance": "u2",
+      "voice": "Lux",
+      "text": "Yeah, and ignore capital letters too.",
+      "final": false,
+      "atMs": 26442.858166097314,
+      "sequence": 22,
+      "displayAtMs": 26442.858166097314
+    },
+    {
+      "type": "transcript",
+      "utterance": "u2",
+      "voice": "Lux",
+      "text": "Yeah, and ignore capital letters too. if I type just",
+      "final": false,
+      "atMs": 27456.447875097685,
+      "sequence": 23,
+      "displayAtMs": 27456.447875097685
+    },
+    {
+      "sequence": 24,
       "atMs": 28530.799999952316,
       "type": "user-end",
       "utterance": "u2",
       "displayAtMs": 28530.799999952316
     },
     {
-      "sequence": 15,
+      "sequence": 25,
       "atMs": 28530.799999952316,
       "type": "activity-start",
       "text": "Editing src/search.ts",
       "displayAtMs": 28530.799999952316
     },
     {
-      "sequence": 16,
+      "type": "transcript",
+      "utterance": "u2",
+      "voice": "Lux",
+      "text": "Yeah, and ignore capital letters too. if I type just part of a name, I still.",
+      "final": false,
+      "atMs": 28555.912375093205,
+      "sequence": 26,
+      "displayAtMs": 28555.912375093205
+    },
+    {
+      "type": "transcript",
+      "utterance": "u2",
+      "voice": "Lux",
+      "text": "Yeah, and ignore capital letters too. if I type just part of a name, I still want to find it.",
+      "final": false,
+      "atMs": 29454.39387509355,
+      "sequence": 27,
+      "displayAtMs": 29454.39387509355
+    },
+    {
+      "type": "transcript",
+      "utterance": "u2",
+      "voice": "Lux",
+      "text": "Yeah, and ignore capital letters too. if I type just part of a name, I still wanna find it.",
+      "final": true,
+      "atMs": 29454.39387509355,
+      "sequence": 28,
+      "displayAtMs": 29454.39387509355
+    },
+    {
+      "sequence": 29,
       "atMs": 30904.400000095367,
       "type": "activity-end",
       "displayAtMs": 30904.400000095367
     },
     {
-      "sequence": 17,
+      "sequence": 30,
       "atMs": 30931.400000095367,
       "type": "agent-start",
       "voice": "Lux",
@@ -525,14 +816,14 @@
       "displayAtMs": 30931.400000095367
     },
     {
-      "sequence": 18,
+      "sequence": 31,
       "atMs": 35155.700000047684,
       "type": "agent-end",
       "clip": "hero-lux-search-2",
       "displayAtMs": 35155.700000047684
     },
     {
-      "sequence": 19,
+      "sequence": 32,
       "atMs": 36704,
       "type": "user-start",
       "utterance": "u3",
@@ -541,47 +832,87 @@
       "displayAtMs": 36704
     },
     {
-      "sequence": 20,
-      "atMs": 36704,
       "type": "transcript",
       "utterance": "u3",
-      "text": "Great. Add a test for both cases so we don't break this again.",
+      "voice": "Lux",
+      "text": "Great.",
       "final": false,
-      "source": "script",
-      "displayAtMs": 36704
+      "atMs": 38951.16008300311,
+      "sequence": 33,
+      "displayAtMs": 38951.16008300311
     },
     {
-      "sequence": 21,
-      "atMs": 42398.700000047684,
       "type": "transcript",
       "utterance": "u3",
-      "text": "Great. Add a test for both cases so we don't break this again.",
-      "final": true,
-      "source": "script",
-      "displayAtMs": 42398.700000047684
+      "voice": "Lux",
+      "text": "Great add a test",
+      "final": false,
+      "atMs": 39969.000416002295,
+      "sequence": 34,
+      "displayAtMs": 39969.000416002295
     },
     {
-      "sequence": 22,
+      "type": "transcript",
+      "utterance": "u3",
+      "voice": "Lux",
+      "text": "Great add a test for both cases.",
+      "final": false,
+      "atMs": 40970.66979100264,
+      "sequence": 35,
+      "displayAtMs": 40970.66979100264
+    },
+    {
+      "type": "transcript",
+      "utterance": "u3",
+      "voice": "Lux",
+      "text": "Great add a test for both cases so we don't",
+      "final": false,
+      "atMs": 41972.6587910066,
+      "sequence": 36,
+      "displayAtMs": 41972.6587910066
+    },
+    {
+      "sequence": 37,
       "atMs": 42398.700000047684,
       "type": "user-end",
       "utterance": "u3",
       "displayAtMs": 42398.700000047684
     },
     {
-      "sequence": 23,
+      "sequence": 38,
       "atMs": 42398.700000047684,
       "type": "activity-start",
       "text": "Running tests",
       "displayAtMs": 42398.700000047684
     },
     {
-      "sequence": 24,
+      "type": "transcript",
+      "utterance": "u3",
+      "voice": "Lux",
+      "text": "Great add a test for both cases so we don't break this again.",
+      "final": false,
+      "atMs": 42908.157750005834,
+      "sequence": 39,
+      "displayAtMs": 42908.157750005834
+    },
+    {
+      "type": "transcript",
+      "utterance": "u3",
+      "voice": "Lux",
+      "text": "Great add a test for both cases so we don't break this again.",
+      "final": true,
+      "atMs": 42908.157750005834,
+      "sequence": 40,
+      "displayAtMs": 42908.157750005834
+    },
+    {
+      "sequence": 41,
       "atMs": 44967.09999990463,
       "type": "activity-end",
       "displayAtMs": 44967.09999990463
     },
     {
-      "sequence": 25,
+      "sequence": 42,
       "atMs": 44996.799999952316,
       "type": "agent-start",
       "voice": "Lux",
@@ -590,14 +921,14 @@
       "displayAtMs": 44996.799999952316
     },
     {
-      "sequence": 26,
+      "sequence": 43,
       "atMs": 47976,
       "type": "agent-end",
       "clip": "hero-lux-search-3",
       "displayAtMs": 47976
     },
     {
-      "sequence": 27,
+      "sequence": 44,
       "atMs": 50640.90000009537,
       "type": "user-start",
       "utterance": "u4",
@@ -606,47 +937,77 @@
       "displayAtMs": 50640.90000009537
     },
     {
-      "sequence": 28,
-      "atMs": 50640.90000009537,
       "type": "transcript",
       "utterance": "u4",
-      "text": "Great. My hands are full. Can you deploy that to production for me?",
+      "voice": "Lux",
+      "text": "Great",
       "final": false,
-      "source": "script",
-      "displayAtMs": 50640.90000009537
+      "atMs": 52794.79033309553,
+      "sequence": 45,
+      "displayAtMs": 52794.79033309553
     },
     {
-      "sequence": 29,
-      "atMs": 55795.90000009537,
       "type": "transcript",
       "utterance": "u4",
-      "text": "Great. My hands are full. Can you deploy that to production for me?",
-      "final": true,
-      "source": "script",
-      "displayAtMs": 55795.90000009537
+      "voice": "Lux",
+      "text": "Great , my hands are full.",
+      "final": false,
+      "atMs": 53798.64191609749,
+      "sequence": 46,
+      "displayAtMs": 53798.64191609749
     },
     {
-      "sequence": 30,
+      "type": "transcript",
+      "utterance": "u4",
+      "voice": "Lux",
+      "text": "Great , my hands are full, can you deploy",
+      "final": false,
+      "atMs": 54921.020083095296,
+      "sequence": 47,
+      "displayAtMs": 54921.020083095296
+    },
+    {
+      "sequence": 48,
       "atMs": 55795.90000009537,
       "type": "user-end",
       "utterance": "u4",
       "displayAtMs": 55795.90000009537
     },
     {
-      "sequence": 31,
+      "sequence": 49,
       "atMs": 55795.90000009537,
       "type": "activity-start",
       "text": "Thinking\u2026",
       "displayAtMs": 55795.90000009537
     },
     {
-      "sequence": 32,
+      "type": "transcript",
+      "utterance": "u4",
+      "voice": "Lux",
+      "text": "Great , my hands are full, can you deploy that to production?",
+      "final": false,
+      "atMs": 55822.049666096515,
+      "sequence": 50,
+      "displayAtMs": 55822.049666096515
+    },
+    {
+      "type": "transcript",
+      "utterance": "u4",
+      "voice": "Lux",
+      "text": "Great. My hands are full. Can you deploy that to production for me?",
+      "final": true,
+      "atMs": 57025.239166092884,
+      "sequence": 51,
+      "displayAtMs": 57025.239166092884
+    },
+    {
+      "sequence": 52,
       "atMs": 57614,
       "type": "activity-end",
       "displayAtMs": 57614
     },
     {
-      "sequence": 33,
+      "sequence": 53,
       "atMs": 57653.700000047684,
       "type": "agent-start",
       "voice": "Lux",
@@ -655,27 +1016,27 @@
       "displayAtMs": 57653.700000047684
     },
     {
-      "sequence": 34,
+      "sequence": 54,
       "atMs": 58505.5,
       "type": "agent-end",
       "clip": "hero-lux-search-4",
       "displayAtMs": 58505.5
     },
     {
-      "sequence": 35,
+      "sequence": 55,
       "atMs": 58607.5,
       "type": "activity-start",
       "text": "Deploying to production",
       "displayAtMs": 58607.5
     },
     {
-      "sequence": 36,
+      "sequence": 56,
       "atMs": 60901,
       "type": "activity-end",
       "displayAtMs": 60901
     },
     {
-      "sequence": 37,
+      "sequence": 57,
       "atMs": 61397.700000047684,
       "type": "agent-start",
       "voice": "Lux",
@@ -685,14 +1046,14 @@
       "displayAtMs": 61397.700000047684
     },
     {
-      "sequence": 38,
+      "sequence": 58,
       "atMs": 64475.59999990463,
       "type": "agent-end",
       "clip": "hero-lux-search-production",
       "displayAtMs": 64475.59999990463
     },
     {
-      "sequence": 39,
+      "sequence": 59,
       "atMs": 65792.70000004768,
       "type": "user-start",
       "utterance": "u5",
@@ -701,34 +1062,34 @@
       "displayAtMs": 65792.70000004768
     },
     {
-      "sequence": 40,
-      "atMs": 65792.70000004768,
       "type": "transcript",
       "utterance": "u5",
-      "text": "Perfect. Thanks.",
+      "voice": "Lux",
+      "text": "Perfect, thanks.",
       "final": false,
-      "source": "script",
-      "displayAtMs": 65792.70000004768
+      "atMs": 67947.26608405332,
+      "sequence": 60,
+      "displayAtMs": 67947.26608405332
     },
     {
-      "sequence": 41,
-      "atMs": 68742.79999995232,
-      "type": "transcript",
-      "utterance": "u5",
-      "text": "Perfect. Thanks.",
-      "final": true,
-      "source": "script",
-      "displayAtMs": 68742.79999995232
-    },
-    {
-      "sequence": 42,
+      "sequence": 61,
       "atMs": 68742.79999995232,
       "type": "user-end",
       "utterance": "u5",
       "displayAtMs": 68742.79999995232
     },
     {
-      "sequence": 43,
+      "type": "transcript",
+      "utterance": "u5",
+      "voice": "Lux",
+      "text": "Perfect, thanks.",
+      "final": true,
+      "atMs": 68742.79999995232,
+      "sequence": 62,
+      "displayAtMs": 68742.79999995232
+    },
+    {
+      "sequence": 63,
       "atMs": 68746,
       "type": "recording-stop",
       "complete": true,

@@ -79,11 +79,42 @@ The resulting hero and crew videos are approximately 2.02 MB and 0.62 MB.
 
 The camera crop is a website prop (currently 1.2×, centered), not baked into the
 export. Hero thinking/console blocks come from this delivery's activity events,
-not the previous take's manually edited timings. These Studio journals contain
-scripted text, not live incremental transcription.
+not the previous take's manually edited timings. The original Studio journals contain scripted text. The website applies the
+separately captured Grok transcripts described below.
 
 `website/src/assets/todd/manifest.json` records source/output hashes, offsets and
 encoding settings. The exporter checks that all three source files per scene
 remain unchanged. Commit generated delivery files with the component changes;
 retain the large originals separately. To revert, restore the website's previous
 recording imports and remove the new take/poster/activity overrides.
+
+### Actual spoken captions and incremental updates
+
+The Todd website takes now use Grok transcriptions instead of the Studio script.
+To regenerate captions, use the project's Python environment (with `websockets`,
+`httpx` and `numpy`) and the already-configured xAI account. The command sends
+only actor utterances from the original camera audio to xAI; it never sends the
+mixed agent audio and never prints credentials:
+
+```sh
+PYTHONPATH=src python tools/website-media/transcribe_todd.py /path/to/fiver-todd-videos
+python tools/website-media/transcript_timing.py
+```
+
+If the configured account belongs to the development instance, set
+`NOISY_STUDIO_CONFIG_DIR` to that instance's config directory before running.
+Do not copy keys into scripts or commit them.
+
+`*-transcripts.json` preserves real streaming partial text and arrival timestamps,
+plus a Grok batch transcription for the final, punctuated caption. Audio is fed
+at recording speed. One second of decoder-only silence lets final words settle;
+it does not extend the media. Capture includes one extra second of original actor audio after the Studio
+end marker: Todd sometimes finished his sentence after pressing Space. Display
+updates use their arrival times, bounded only by the video duration. Final
+Grok punctuation is applied at the last captured update; a completed bubble can
+therefore continue to settle after the actor turn ends. This
+keeps all camera, agent reply and activity timings intact. Interim revisions longer than 1.5 times the completed line are suppressed to
+avoid displaying duplicated Grok segments; raw captures remain intact.
+The application step
+reads the original journal and updates only transcript events and provenance.
+The video exporter also reapplies these saved captions on future rebuilds.

@@ -54,7 +54,7 @@
     ]
   },
   "clock": "milliseconds since MediaRecorder start event",
-  "transcriptSource": "script; not live transcription",
+  "transcriptSource": "xAI Grok streaming STT from actor camera audio",
   "media": {
     "mimeType": "video/webm;codecs=vp8,opus",
     "audio": "microphone only; agent clips are separate assets"
@@ -62,12 +62,12 @@
   "transcriptOffsetsMs": {},
   "events": [
     {
-      "sequence": 0,
+      "sequence": 1,
       "atMs": 0.09999990463256836,
       "type": "recording-start"
     },
     {
-      "sequence": 1,
+      "sequence": 2,
       "atMs": 11.200000047683716,
       "type": "user-start",
       "utterance": "u1",
@@ -75,22 +75,13 @@
       "voice": "Lux"
     },
     {
-      "sequence": 2,
-      "atMs": 11.200000047683716,
       "type": "transcript",
       "utterance": "u1",
-      "text": "how's staging?",
+      "voice": "Lux",
+      "text": "How",
       "final": false,
-      "source": "script"
-    },
-    {
-      "sequence": 3,
-      "atMs": 4212.299999952316,
-      "type": "transcript",
-      "utterance": "u1",
-      "text": "how's staging?",
-      "final": true,
-      "source": "script"
+      "atMs": 4165.71470804367,
+      "sequence": 3
     },
     {
       "sequence": 4,
@@ -107,36 +98,36 @@
       "text": "Green! Ready to promote."
     },
     {
-      "sequence": 6,
+      "type": "transcript",
+      "utterance": "u1",
+      "voice": "Lux",
+      "text": "How's staging?",
+      "final": false,
+      "atMs": 5180.154000048351,
+      "sequence": 6
+    },
+    {
+      "type": "transcript",
+      "utterance": "u1",
+      "voice": "Lux",
+      "text": "How's staging?",
+      "final": true,
+      "atMs": 5180.154000048351,
+      "sequence": 7
+    },
+    {
+      "sequence": 8,
       "atMs": 6395.799999952316,
       "type": "agent-end",
       "clip": "lux-1"
     },
     {
-      "sequence": 7,
+      "sequence": 9,
       "atMs": 6396.900000095367,
       "type": "user-start",
       "utterance": "u2",
       "prompt": "do it",
       "voice": "Lux"
-    },
-    {
-      "sequence": 8,
-      "atMs": 6396.900000095367,
-      "type": "transcript",
-      "utterance": "u2",
-      "text": "do it",
-      "final": false,
-      "source": "script"
-    },
-    {
-      "sequence": 9,
-      "atMs": 8005.299999952316,
-      "type": "transcript",
-      "utterance": "u2",
-      "text": "do it",
-      "final": true,
-      "source": "script"
     },
     {
       "sequence": 10,
@@ -153,13 +144,31 @@
       "text": "on it!"
     },
     {
-      "sequence": 12,
+      "type": "transcript",
+      "utterance": "u2",
+      "voice": "Lux",
+      "text": "Do it.",
+      "final": false,
+      "atMs": 8557.82333409402,
+      "sequence": 12
+    },
+    {
+      "type": "transcript",
+      "utterance": "u2",
+      "voice": "Lux",
+      "text": "Do it.",
+      "final": true,
+      "atMs": 8557.82333409402,
+      "sequence": 13
+    },
+    {
+      "sequence": 14,
       "atMs": 8975.799999952316,
       "type": "agent-end",
       "clip": "lux-2"
     },
     {
-      "sequence": 13,
+      "sequence": 15,
       "atMs": 8982.700000047684,
       "type": "agent-start",
       "voice": "Rex",
@@ -168,13 +177,13 @@
       "handover": true
     },
     {
-      "sequence": 14,
+      "sequence": 16,
       "atMs": 11856.400000095367,
       "type": "agent-end",
       "clip": "rex-1"
     },
     {
-      "sequence": 15,
+      "sequence": 17,
       "atMs": 11908.599999904633,
       "type": "agent-start",
       "voice": "Luna",
@@ -183,13 +192,13 @@
       "handover": true
     },
     {
-      "sequence": 16,
+      "sequence": 18,
       "atMs": 14706.200000047684,
       "type": "agent-end",
       "clip": "luna-1"
     },
     {
-      "sequence": 17,
+      "sequence": 19,
       "atMs": 14730.099999904633,
       "type": "agent-start",
       "voice": "Luna",
@@ -197,13 +206,13 @@
       "text": "Package is big - probably the printer."
     },
     {
-      "sequence": 18,
+      "sequence": 20,
       "atMs": 17356.400000095367,
       "type": "agent-end",
       "clip": "luna-2"
     },
     {
-      "sequence": 19,
+      "sequence": 21,
       "atMs": 17359.099999904633,
       "type": "user-start",
       "utterance": "u3",
@@ -211,31 +220,31 @@
       "voice": "Luna"
     },
     {
-      "sequence": 20,
-      "atMs": 17359.099999904633,
       "type": "transcript",
       "utterance": "u3",
-      "text": "thanks",
+      "voice": "Luna",
+      "text": "Thanks.",
       "final": false,
-      "source": "script"
+      "atMs": 19530.62124990311,
+      "sequence": 22
     },
     {
-      "sequence": 21,
-      "atMs": 19965.299999952316,
-      "type": "transcript",
-      "utterance": "u3",
-      "text": "thanks",
-      "final": true,
-      "source": "script"
-    },
-    {
-      "sequence": 22,
+      "sequence": 23,
       "atMs": 19965.400000095367,
       "type": "user-end",
       "utterance": "u3"
     },
     {
-      "sequence": 23,
+      "type": "transcript",
+      "utterance": "u3",
+      "voice": "Luna",
+      "text": "Thanks.",
+      "final": true,
+      "atMs": 19965.400000095367,
+      "sequence": 24
+    },
+    {
+      "sequence": 25,
       "atMs": 19968.200000047684,
       "type": "recording-stop",
       "complete": true
@@ -243,13 +252,13 @@
   ],
   "presentation": [
     {
-      "sequence": 0,
+      "sequence": 1,
       "atMs": 0.09999990463256836,
       "type": "recording-start",
       "displayAtMs": 0.09999990463256836
     },
     {
-      "sequence": 1,
+      "sequence": 2,
       "atMs": 11.200000047683716,
       "type": "user-start",
       "utterance": "u1",
@@ -258,24 +267,14 @@
       "displayAtMs": 11.200000047683716
     },
     {
-      "sequence": 2,
-      "atMs": 11.200000047683716,
       "type": "transcript",
       "utterance": "u1",
-      "text": "how's staging?",
+      "voice": "Lux",
+      "text": "How",
       "final": false,
-      "source": "script",
-      "displayAtMs": 11.200000047683716
-    },
-    {
+      "atMs": 4165.71470804367,
       "sequence": 3,
-      "atMs": 4212.299999952316,
-      "type": "transcript",
-      "utterance": "u1",
-      "text": "how's staging?",
-      "final": true,
-      "source": "script",
-      "displayAtMs": 4212.299999952316
+      "displayAtMs": 4165.71470804367
     },
     {
       "sequence": 4,
@@ -294,40 +293,40 @@
       "displayAtMs": 4261.799999952316
     },
     {
+      "type": "transcript",
+      "utterance": "u1",
+      "voice": "Lux",
+      "text": "How's staging?",
+      "final": false,
+      "atMs": 5180.154000048351,
       "sequence": 6,
+      "displayAtMs": 5180.154000048351
+    },
+    {
+      "type": "transcript",
+      "utterance": "u1",
+      "voice": "Lux",
+      "text": "How's staging?",
+      "final": true,
+      "atMs": 5180.154000048351,
+      "sequence": 7,
+      "displayAtMs": 5180.154000048351
+    },
+    {
+      "sequence": 8,
       "atMs": 6395.799999952316,
       "type": "agent-end",
       "clip": "lux-1",
       "displayAtMs": 6395.799999952316
     },
     {
-      "sequence": 7,
+      "sequence": 9,
       "atMs": 6396.900000095367,
       "type": "user-start",
       "utterance": "u2",
       "prompt": "do it",
       "voice": "Lux",
       "displayAtMs": 6396.900000095367
-    },
-    {
-      "sequence": 8,
-      "atMs": 6396.900000095367,
-      "type": "transcript",
-      "utterance": "u2",
-      "text": "do it",
-      "final": false,
-      "source": "script",
-      "displayAtMs": 6396.900000095367
-    },
-    {
-      "sequence": 9,
-      "atMs": 8005.299999952316,
-      "type": "transcript",
-      "utterance": "u2",
-      "text": "do it",
-      "final": true,
-      "source": "script",
-      "displayAtMs": 8005.299999952316
     },
     {
       "sequence": 10,
@@ -346,14 +345,34 @@
       "displayAtMs": 8013.599999904633
     },
     {
+      "type": "transcript",
+      "utterance": "u2",
+      "voice": "Lux",
+      "text": "Do it.",
+      "final": false,
+      "atMs": 8557.82333409402,
       "sequence": 12,
+      "displayAtMs": 8557.82333409402
+    },
+    {
+      "type": "transcript",
+      "utterance": "u2",
+      "voice": "Lux",
+      "text": "Do it.",
+      "final": true,
+      "atMs": 8557.82333409402,
+      "sequence": 13,
+      "displayAtMs": 8557.82333409402
+    },
+    {
+      "sequence": 14,
       "atMs": 8975.799999952316,
       "type": "agent-end",
       "clip": "lux-2",
       "displayAtMs": 8975.799999952316
     },
     {
-      "sequence": 13,
+      "sequence": 15,
       "atMs": 8982.700000047684,
       "type": "agent-start",
       "voice": "Rex",
@@ -363,14 +382,14 @@
       "displayAtMs": 8982.700000047684
     },
     {
-      "sequence": 14,
+      "sequence": 16,
       "atMs": 11856.400000095367,
       "type": "agent-end",
       "clip": "rex-1",
       "displayAtMs": 11856.400000095367
     },
     {
-      "sequence": 15,
+      "sequence": 17,
       "atMs": 11908.599999904633,
       "type": "agent-start",
       "voice": "Luna",
@@ -380,14 +399,14 @@
       "displayAtMs": 11908.599999904633
     },
     {
-      "sequence": 16,
+      "sequence": 18,
       "atMs": 14706.200000047684,
       "type": "agent-end",
       "clip": "luna-1",
       "displayAtMs": 14706.200000047684
     },
     {
-      "sequence": 17,
+      "sequence": 19,
       "atMs": 14730.099999904633,
       "type": "agent-start",
       "voice": "Luna",
@@ -396,14 +415,14 @@
       "displayAtMs": 14730.099999904633
     },
     {
-      "sequence": 18,
+      "sequence": 20,
       "atMs": 17356.400000095367,
       "type": "agent-end",
       "clip": "luna-2",
       "displayAtMs": 17356.400000095367
     },
     {
-      "sequence": 19,
+      "sequence": 21,
       "atMs": 17359.099999904633,
       "type": "user-start",
       "utterance": "u3",
@@ -412,34 +431,34 @@
       "displayAtMs": 17359.099999904633
     },
     {
-      "sequence": 20,
-      "atMs": 17359.099999904633,
       "type": "transcript",
       "utterance": "u3",
-      "text": "thanks",
+      "voice": "Luna",
+      "text": "Thanks.",
       "final": false,
-      "source": "script",
-      "displayAtMs": 17359.099999904633
-    },
-    {
-      "sequence": 21,
-      "atMs": 19965.299999952316,
-      "type": "transcript",
-      "utterance": "u3",
-      "text": "thanks",
-      "final": true,
-      "source": "script",
-      "displayAtMs": 19965.299999952316
-    },
-    {
+      "atMs": 19530.62124990311,
       "sequence": 22,
+      "displayAtMs": 19530.62124990311
+    },
+    {
+      "sequence": 23,
       "atMs": 19965.400000095367,
       "type": "user-end",
       "utterance": "u3",
       "displayAtMs": 19965.400000095367
     },
     {
-      "sequence": 23,
+      "type": "transcript",
+      "utterance": "u3",
+      "voice": "Luna",
+      "text": "Thanks.",
+      "final": true,
+      "atMs": 19965.400000095367,
+      "sequence": 24,
+      "displayAtMs": 19965.400000095367
+    },
+    {
+      "sequence": 25,
       "atMs": 19968.200000047684,
       "type": "recording-stop",
       "complete": true,
