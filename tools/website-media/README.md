@@ -39,7 +39,7 @@ recording overrides from `website/src/scenes/HeroSceneG.vue` and
 `website/src/CrewSection.vue`; the shared components then use their retained full
 masters. No source restoration, audio reconstruction or re-recording is needed.
 
-## Current delivery sizes
+## Original pre-Todd delivery sizes (historical)
 
 | Asset | Original master | Website derivative |
 | --- | ---: | ---: |
@@ -74,11 +74,30 @@ and 3.109375 seconds for Crew. These offsets were measured by comparing the
 reference and camera audio for every actor turn; no clock stretch was needed.
 The exporter trims that lead-in, preserves the journal duration, and mixes the
 existing agent MP3s at their recorded start timestamps with Todd's camera audio.
-It generates 854×480 H.264 CRF24 video, AAC128k audio, posters and copied journals.
-The resulting hero and crew videos are approximately 2.02 MB and 0.62 MB.
+It generates cropped H.264 CRF26 video, AAC128k audio, posters and derived journals.
+Hero is 504×298; crew is 384×216. Consult the generated manifest for current byte sizes.
 
-The camera crop is a website prop (both scenes: 1.929375× with top crop at 20% and left at 19.43%, shared in `website/src/toddCamera.ts`), not baked into the
-export. Hero thinking/console blocks come from this delivery's activity events,
+The approved crop is **baked into the exports**, controlled by
+`tools/website-media/todd-framing.json`. Each rectangle is `[left, top, width,
+height]` as fractions of the untouched source, followed by output pixel size.
+FFmpeg rounds crops to chroma-compatible pixels. The former CSS zoom was
+1.929375×, with a 20% top crop and 19.4286% left crop. Hero additionally accounts
+for the approved taller frame's `object-fit: cover` horizontal crop; crew retains
+the 16:9 framing. Hero's observed inner frame was 334.329×197.832 CSS pixels,
+compared with the previous 854×480 full-frame export. The conversion uses
+`r = (334.329/197.832)/(854/480)`, then
+`left = (1-r)/2 + 0.194285714*r`, `width = r/1.929375`.
+Both use `top = 0.2`, `height = 1/1.929375`; crew uses `r = 1`.
+
+The website passes identity camera transforms in `website/src/toddCamera.ts`;
+**do not reapply the old CSS zoom**. The approved inward hero layout is now the
+default, including its raised console and centered opening widget. Old A/B/C
+query parameters no longer change the layout. These exports are intentionally
+small, sized for the embedded camera windows rather than full-screen playback.
+If enlarging those windows significantly, regenerate from the originals at a
+higher resolution instead of scaling up a previously encoded derivative.
+
+Hero thinking/console blocks come from this delivery's activity events,
 not the previous take's manually edited timings. The original Studio journals contain scripted text. The website applies the
 separately captured Grok transcripts described below.
 
@@ -156,3 +175,66 @@ level/spectral match if microphone or room changes. Original videos and marker
 files on the Desktop remain untouched. Git retains the earlier delivery mixes
 for comparison or rollback. To skip repairs for a scene, remove its plan from
 the export directory and rerun; captions, crop and scenario timing are independent.
+
+### Complete rebuild and future changes
+
+Run from the repository root. Requirements: Python 3 with NumPy, plus FFmpeg and
+ffprobe on PATH. The ordinary rebuild is local and needs no API credentials:
+
+```sh
+python tools/website-media/prepare_todd.py /path/to/fiver-todd-videos
+npm --prefix website run build
+```
+
+Inputs to retain together:
+
+- Both original `Todd - Hero Search.mp4` and `Todd - Crew.mp4` camera masters.
+- The `hero-search*.json` and `crew*.json` Studio journals and their matching
+  `.webm` reference recordings (exactly one journal per prefix in the input directory).
+- Repository `website/src/assets/todd/*-audio-edits.json` repair plans and
+  `*-transcripts.json` captured streaming captions.
+- `tools/website-media/room-tone/` WAV, manifest and generator; the framing JSON.
+- Agent MP3s in `tools/demo-recorder/clips/hero-lux-*.mp3` and
+  `dashboard/src/components/marketing/crew-voice/`.
+
+The recipe, in order:
+
+1. Hash the original camera, journal and reference; read the recorded duration.
+2. Repair the original microphone using the saved intervals and room-tone WAV.
+   These markers use **original camera time**, before the synchronization trim.
+3. Trim the camera and repaired microphone by the documented camera offset.
+4. Crop the original 4K image, then downsize with Lanczos. Encode once to H.264.
+5. Delay each original agent clip to its journal timestamp, mix with the repaired
+   microphone, limit peaks, and encode AAC. No speech or silence is cut out.
+6. Validate dimensions, duration and unchanged original hashes before replacing
+   each website derivative. Extract its poster at two seconds.
+7. Reapply saved partial transcriptions and crew focus events; derive activity
+   markers from the original journal. Save provenance, hashes and framing in
+   `website/src/assets/todd/manifest.json`.
+
+For framing changes, edit only `todd-framing.json` and rebuild. For audio cleanup,
+edit the repository repair plan using the original camera clock and rebuild.
+Regenerate room tone only when its character/level needs changing. Captions need
+no new API request for a routine rebuild: saved streaming captures are reused.
+For a new actor/take, redo waveform alignment, repair markers and transcription;
+old markers cannot safely be reused on a different recording.
+
+The generator owns the derived journals/activity files: do not hand-edit those
+outputs and expect edits to survive regeneration. Future timing refinements must
+be made in the source journal or a separately persisted presentation plan.
+
+**Original preservation:** the professional camera masters are outside Git in
+the delivery directory, not archived by this repository. Keep a separate backup
+of that whole directory before removing/moving it; the manifest's hashes verify
+identity but are not a backup. Existing raw recordings of the previous actor are
+unrelated and cannot reconstruct Todd's videos.
+
+For rollback, restore the media, posters, manifest and website camera settings
+from the same Git commit. Restoring only the old video while retaining identity
+transforms would show the uncropped image. No deployment is performed by these
+scripts.
+
+Validated September 23 export sizes: hero 2,010,411 → 1,740,828 bytes (13.4%
+smaller); crew 618,716 → 421,601 bytes (31.9% smaller). Both retain the previous
+AAC packet hashes, exact video frame counts and stream durations. Combined MP4
+size is 2.16 MB, down from 2.63 MB. Original camera hashes are unchanged.

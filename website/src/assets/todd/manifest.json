@@ -2,6 +2,18 @@
   "sources": [
     {
       "scene": "hero",
+      "framing": {
+        "crop_fraction_xywh": [
+          0.20961337594066345,
+          0.2,
+          0.4923163143396893,
+          0.5183025591188856
+        ],
+        "output_pixels": [
+          504,
+          298
+        ]
+      },
       "source_directory": "/Users/krzysztofszumny/Desktop/fiver-todd-videos",
       "sha256": {
         "Todd - Hero Search.mp4": "2206716432851d63640dc0401cb4bd172b8a73b58fdff80cc82736a733fe1fa1",
@@ -10,8 +22,8 @@
       },
       "camera_offset_seconds": 3.609375,
       "duration_seconds": 68.75109999990464,
-      "output_bytes": 2010411,
-      "output_sha256": "b6688105a0c8f2782bfa3bb0717938bcf010d2eb0ec0b6c8d36026dcd1d33548",
+      "output_bytes": 1740828,
+      "output_sha256": "c2c60917c54f52dc6b742b2e0d918cb23fb0d80641af90eda0cce50fbb24f5c9",
       "audio_edits": {
         "file": "hero-audio-edits.json",
         "sha256": "6a6ebbad721a4a93478328c21ae833627ead9997de5ae338ae935cbec414bca5"
@@ -24,6 +36,18 @@
     },
     {
       "scene": "crew",
+      "framing": {
+        "crop_fraction_xywh": [
+          0.19428571428571428,
+          0.2,
+          0.5183025591188856,
+          0.5183025591188856
+        ],
+        "output_pixels": [
+          384,
+          216
+        ]
+      },
       "source_directory": "/Users/krzysztofszumny/Desktop/fiver-todd-videos",
       "sha256": {
         "Todd - Crew.mp4": "155198ab78a7d7bd52335e9396e5122d5fabe4de50087ce4e45aaf93877bd8a5",
@@ -32,8 +56,8 @@
       },
       "camera_offset_seconds": 3.109375,
       "duration_seconds": 19.97290000009537,
-      "output_bytes": 618716,
-      "output_sha256": "a491dff7e29dd83e8cf012fd9ab82865206f9de57a1e717522477fda88bb4957",
+      "output_bytes": 421601,
+      "output_sha256": "d35dc74d1d7455b3a1b9112b599438d7f591e4444730030772e6d1695f8b8154",
       "audio_edits": {
         "file": "crew-audio-edits.json",
         "sha256": "891d410f43ae1a18417f4e447b547d3b047f2f1743c2275ef36b698cac9f5695"
@@ -46,7 +70,7 @@
     }
   ],
   "settings": {
-    "video": "854x480 H.264 CRF24",
+    "video": "cropped H.264 CRF26; per-scene dimensions in framing",
     "audio": "actor microphone + original agent clips, AAC128k",
     "sync": "constant waveform alignment; no stretch"
   }

@@ -8,7 +8,7 @@ import RecordedCrewScene from "@dashboard/components/marketing/RecordedCrewScene
 import recording from './assets/todd/crew.mp4';
 import take from './assets/todd/crew.json';
 import poster from './assets/todd/crew-poster.jpg';
-import { toddCamera, cornerCameraPreview } from './toddCamera';
+import { toddCamera } from './toddCamera';
 import VoiceCarousel from "./VoiceCarousel.vue";
 const frame = ref<HTMLElement | null>(null);
 const scale = ref(0.7);
@@ -42,7 +42,6 @@ onBeforeUnmount(() => {
         <div
           ref="frame"
           class="voice-stage"
-          :class="{ 'corner-camera': cornerCameraPreview }"
           :style="{ height: `${440 * scale}px` }"
         >
           <div
@@ -100,10 +99,4 @@ onBeforeUnmount(() => {
     max-width: 640px;
   }
 }
-/* Keep the old bottom-right at (208, 124); extend up and left. */
-.voice-stage.corner-camera :deep(.recorded-camera) {
-  left: 0; top: 0; width: 208px; height: 124px; aspect-ratio: auto;
-  border-radius: 0 0 12px 0;
-}
-.voice-stage.corner-camera :deep(.recorded-camera video) { object-fit: cover; }
 </style>

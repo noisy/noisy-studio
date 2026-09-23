@@ -23,7 +23,8 @@ def main():
     args = parser.parse_args()
     output = ROOT / 'website/src/assets/todd'
     output.mkdir(parents=True, exist_ok=True)
-    manifest = {'sources': [], 'settings': {'video': '854x480 H.264 CRF24', 'audio': 'actor microphone + original agent clips, AAC128k', 'sync': 'constant waveform alignment; no stretch'}}
+    framing = json.loads((Path(__file__).with_name('todd-framing.json')).read_text())
+    manifest = {'sources': [], 'settings': {'video': 'cropped H.264 CRF26; per-scene dimensions in framing', 'audio': 'actor microphone + original agent clips, AAC128k', 'sync': 'constant waveform alignment; no stretch'}}
     for scene, prefix, title, offset in SCENES:
         camera = args.delivery / f'Todd - {title}.mp4'
         journal, = args.delivery.glob(prefix + '*.json')
@@ -50,13 +51,27 @@ def main():
         for e in replies:
             folder = ROOT / ('tools/demo-recorder/clips' if e['clip'].startswith('hero-lux-') else 'dashboard/src/components/marketing/crew-voice')
             command += ['-i', str(folder / (e['clip'] + '.mp3'))]
-        filters = ['[0:v]setpts=PTS-STARTPTS,scale=854:480:flags=lanczos[v]', f'[{audio_input}:a]asetpts=PTS-STARTPTS[a0]']
+        frame = framing[scene]
+        x, y, width, height = frame['crop_fraction_xywh']
+        out_width, out_height = frame['output_pixels']
+        video_filter = (f'[0:v]setpts=PTS-STARTPTS,'
+                        f'crop=iw*{width}:ih*{height}:iw*{x}:ih*{y},'
+                        f'scale={out_width}:{out_height}:flags=lanczos,setsar=1[v]')
+        filters = [video_filter, f'[{audio_input}:a]asetpts=PTS-STARTPTS[a0]']
         for i, event in enumerate(replies, 1):
             filters.append(f'[{i + audio_input}:a]adelay={event["atMs"]:.3f}:all=1[a{i}]')
         filters.append(''.join(f'[a{i}]' for i in range(len(replies)+1)) + f'amix=inputs={len(replies)+1}:duration=first:normalize=0,alimiter=limit=0.95:level=0:latency=1[a]')
-        video = output / f'{scene}.mp4'
-        command += ['-filter_complex',';'.join(filters),'-map','[v]','-map','[a]','-t',str(duration),'-c:v','libx264','-preset','slow','-crf','24','-pix_fmt','yuv420p','-c:a','aac','-b:a','128k','-movflags','+faststart',str(video)]
+        video = Path(temporary.name) / f'{scene}.mp4'
+        command += ['-filter_complex',';'.join(filters),'-map','[v]','-map','[a]','-t',str(duration),'-c:v','libx264','-preset','slow','-crf','26','-pix_fmt','yuv420p','-c:a','aac','-b:a','128k','-movflags','+faststart',str(video)]
         subprocess.run(command, check=True)
+        probe = json.loads(subprocess.check_output(['ffprobe', '-v', 'error', '-show_streams', '-show_format', '-of', 'json', str(video)]))
+        stream = next(s for s in probe['streams'] if s['codec_type'] == 'video')
+        assert [stream['width'], stream['height']] == frame['output_pixels']
+        assert abs(float(probe['format']['duration']) - duration) < 0.1
+        assert before == {p.name: digest(p) for p in sources}, 'Original modified'
+        destination = output / video.name
+        destination.write_bytes(video.read_bytes())
+        video = destination
         temporary.cleanup()
         subprocess.run(['ffmpeg','-v','error','-y','-ss','2','-i',str(video),'-frames:v','1',str(output/f'{scene}-poster.jpg')],check=True)
         # Use the delivered timeline, not the old actor's presentation edits.
@@ -73,7 +88,7 @@ def main():
             activities.append({'id':f'activity-{e["sequence"]}','startMs':e['atMs'],'endMs':end['atMs'],'status':'console' if e.get('text') in tasks else 'thinking', **({'consoleTask':tasks[e['text']]} if e.get('text') in tasks else {})})
         (output/f'{scene}-activities.json').write_text(json.dumps(activities,indent=2)+'\n')
         assert before == {p.name:digest(p) for p in sources}, 'Original modified'
-        manifest['sources'].append({'scene':scene,'source_directory':str(args.delivery),'sha256':before,'camera_offset_seconds':offset,'duration_seconds':duration,'output_bytes':video.stat().st_size,'output_sha256':digest(video)})
+        manifest['sources'].append({'scene':scene,'framing':frame,'source_directory':str(args.delivery),'sha256':before,'camera_offset_seconds':offset,'duration_seconds':duration,'output_bytes':video.stat().st_size,'output_sha256':digest(video)})
         if edits.exists():
             manifest['sources'][-1]['audio_edits'] = {'file': edits.name, 'sha256': digest(edits)}
         if edits.exists():
