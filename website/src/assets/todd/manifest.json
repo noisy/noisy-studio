@@ -10,8 +10,12 @@
       },
       "camera_offset_seconds": 3.609375,
       "duration_seconds": 68.75109999990464,
-      "output_bytes": 2023028,
-      "output_sha256": "f09e3a8ac102121209dda4c433af674f96ff7ac2abd2fb94056272f4e26ea299"
+      "output_bytes": 2018775,
+      "output_sha256": "e6a274e28bf5455aed8ffa4bebfac599bd31d30dbc5b61cdc94f55e427162608",
+      "audio_edits": {
+        "file": "hero-audio-edits.json",
+        "sha256": "6a6ebbad721a4a93478328c21ae833627ead9997de5ae338ae935cbec414bca5"
+      }
     },
     {
       "scene": "crew",

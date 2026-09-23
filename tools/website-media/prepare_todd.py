@@ -4,6 +4,8 @@ import hashlib
 import json
 from pathlib import Path
 import subprocess
+import sys
+import tempfile
 
 from transcript_timing import with_streaming_transcripts, with_crew_focus
 
@@ -31,17 +33,30 @@ def main():
         take = json.loads(journal.read_text())
         duration = take['durationMs'] / 1000
         command = ['ffmpeg', '-v', 'error', '-nostdin', '-y', '-ss', str(offset), '-i', str(camera)]
+        # Repair only actor audio before aligning it and mixing agent replies.
+        # Markers are on the untouched camera clock, not the trimmed web clock.
+        edits = output / f'{scene}-audio-edits.json'
+        temporary = tempfile.TemporaryDirectory(prefix='todd-audio-')
+        audio_input = 0
+        if edits.exists():
+            sys.path.insert(0, str(ROOT / 'tools/demo-recorder'))
+            from repair_audio import repair_microphone
+            cleaned_audio = Path(temporary.name) / 'actor.wav'
+            repair_microphone(camera, edits, cleaned_audio)
+            command += ['-ss', str(offset), '-i', str(cleaned_audio)]
+            audio_input = 1
         replies = [e for e in take['events'] if e['type'] == 'agent-start']
         for e in replies:
             folder = ROOT / ('tools/demo-recorder/clips' if e['clip'].startswith('hero-lux-') else 'dashboard/src/components/marketing/crew-voice')
             command += ['-i', str(folder / (e['clip'] + '.mp3'))]
-        filters = ['[0:v]setpts=PTS-STARTPTS,scale=854:480:flags=lanczos[v]', '[0:a]asetpts=PTS-STARTPTS[a0]']
+        filters = ['[0:v]setpts=PTS-STARTPTS,scale=854:480:flags=lanczos[v]', f'[{audio_input}:a]asetpts=PTS-STARTPTS[a0]']
         for i, event in enumerate(replies, 1):
-            filters.append(f'[{i}:a]adelay={event["atMs"]:.3f}:all=1[a{i}]')
+            filters.append(f'[{i + audio_input}:a]adelay={event["atMs"]:.3f}:all=1[a{i}]')
         filters.append(''.join(f'[a{i}]' for i in range(len(replies)+1)) + f'amix=inputs={len(replies)+1}:duration=first:normalize=0,alimiter=limit=0.95:level=0:latency=1[a]')
         video = output / f'{scene}.mp4'
         command += ['-filter_complex',';'.join(filters),'-map','[v]','-map','[a]','-t',str(duration),'-c:v','libx264','-preset','slow','-crf','24','-pix_fmt','yuv420p','-c:a','aac','-b:a','128k','-movflags','+faststart',str(video)]
         subprocess.run(command, check=True)
+        temporary.cleanup()
         subprocess.run(['ffmpeg','-v','error','-y','-ss','2','-i',str(video),'-frames:v','1',str(output/f'{scene}-poster.jpg')],check=True)
         # Use the delivered timeline, not the old actor's presentation edits.
         if scene == 'crew':
@@ -58,6 +73,8 @@ def main():
         (output/f'{scene}-activities.json').write_text(json.dumps(activities,indent=2)+'\n')
         assert before == {p.name:digest(p) for p in sources}, 'Original modified'
         manifest['sources'].append({'scene':scene,'source_directory':str(args.delivery),'sha256':before,'camera_offset_seconds':offset,'duration_seconds':duration,'output_bytes':video.stat().st_size,'output_sha256':digest(video)})
+        if edits.exists():
+            manifest['sources'][-1]['audio_edits'] = {'file': edits.name, 'sha256': digest(edits)}
         print(scene,video.stat().st_size,'bytes',flush=True)
     (output/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
 

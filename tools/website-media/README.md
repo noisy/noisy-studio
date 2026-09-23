@@ -123,3 +123,16 @@ The Todd crew export lacks the old camera-focus events. The authoring step
 restores selector zoom 910 ms before Rex's first reply, and resets it 660 ms
 before Luna's second reply, matching the original relative choreography. This
 zooms the widget/agent selector only; the actor camera crop stays independent.
+
+### Marked audio cleanup
+
+`website/src/assets/todd/hero-audio-edits.json` is the user's repair plan for
+Todd's original Hero Search MP4. The exporter validates its source hash and size,
+replaces the nine marked actor-audio intervals using the selected room tone and
+12 ms crossfades, then applies the camera offset and mixes the agent clips.
+No samples are removed or shifted. The original MP4 is only read; the repaired
+WAV is temporary and the lightweight website derivative is regenerated.
+
+To undo cleanup, remove that plan from the export directory and rerun the
+exporter; transcripts, crop settings and scenario timings are independent.
+The manifest records the applied plan's hash for reproduction.
