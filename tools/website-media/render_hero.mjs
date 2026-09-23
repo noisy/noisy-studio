@@ -10,6 +10,7 @@ const require = createRequire(resolve(process.env.RENDER_NODE_MODULES || '/tmp/n
 const { chromium } = require('playwright');
 const output = resolve(process.argv[2] || join(tmpdir(), 'noisy-studio-hero.mp4'));
 const url = process.argv[3] || 'http://127.0.0.1:5214/hero-export.html';
+const readme = new URL(url).searchParams.has('readme');
 const framesDir = await mkdtemp(join(tmpdir(), 'noisy-hero-frames-'));
 await mkdir(resolve(output, '..'), { recursive: true });
 const browser = await chromium.launch({
@@ -49,7 +50,7 @@ try {
   console.log(`Encoding ${frames.length} captured frames; intro/audio offset ${audioDelay.toFixed(3)}s`);
   const result = spawnSync('ffmpeg', ['-v', 'error', '-y', '-f', 'concat', '-safe', '0', '-i', concat,
     '-i', join(root, 'website/src/assets/todd/hero.mp4'),
-    '-filter_complex', `[0:v]fps=30,format=yuv420p[v];[1:a]adelay=${(audioDelay*1000).toFixed(3)}:all=1,apad[a]`,
+    '-filter_complex', `[0:v]${readme ? `trim=start=${audioDelay},setpts=PTS-STARTPTS,` : ''}fps=30,format=yuv420p[v];[1:a]adelay=${(readme ? 0 : audioDelay*1000).toFixed(3)}:all=1,apad[a]`,
     '-map', '[v]', '-map', '[a]', '-shortest', '-c:v', 'libx264', '-preset', 'slow', '-crf', '20',
     '-c:a', 'aac', '-b:a', '160k', '-movflags', '+faststart', output], { stdio: 'inherit' });
   if (result.status !== 0) throw new Error('FFmpeg export failed');

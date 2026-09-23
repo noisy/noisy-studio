@@ -268,3 +268,15 @@ The sidecar `.mp4.json` records the capture offset and temporary frame directory
 for inspection. The exported movie and frame cache are intentionally outside Git;
 keep only the rendering code in the repository. Allow approximately 73 seconds
 for real-time capture, plus encoding. Original footage is never modified.
+
+For GitHub README, use the settled opening without the branded intro:
+
+```sh
+node tools/website-media/render_hero.mjs '/path/to/Noisy Studio - Hands-free coding.mp4' 'http://127.0.0.1:5214/hero-export.html?readme'
+```
+
+This starts the console and widget in their final positions and removes capture
+warm-up. It keeps all speech: cutting four seconds off the ordinary hero would
+cut into Todd's first line. GitHub adds a filename disclosure wrapper even for direct HTML video embeds
+(verified in its rendered preview). Upload with a presentation-friendly filename
+instead of internal export/version names.

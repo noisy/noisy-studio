@@ -2,7 +2,8 @@
 import { onMounted, ref } from 'vue';
 import HeroScene from '../scenes/HeroSceneG.vue';
 const scene = ref<InstanceType<typeof HeroScene>>();
-const intro = ref(true);
+const readme = new URLSearchParams(location.search).has('readme');
+const intro = ref(!readme);
 onMounted(async () => {
   await document.fonts.ready;
   const video = document.querySelector('video')!;
@@ -23,7 +24,7 @@ onMounted(async () => {
 });
 </script>
 <template>
-  <main class="video-export">
+  <main class="video-export" :class="{ 'readme-export': readme }">
     <div class="scene"><HeroScene ref="scene" manual-playback /></div>
     <div v-if="intro" class="intro">
       <div class="lockup">
@@ -44,6 +45,8 @@ html, body, #app { width: 100%; height: 100%; margin: 0; overflow: hidden; backg
 .video-export .scene { width: min(100vw, calc(100vh * 1200 / 760)); }
 .video-export .hero-demo { border-radius: 0; }
 .video-export .scene-sound { display: none; }
+.readme-export .hero-terminal { opacity: 1 !important; transform: none !important; transition: none !important; }
+.readme-export .recorded-widget.aloft { transform: scale(1.2) !important; transition: none !important; }
 .intro { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: center; background: radial-gradient(ellipse at 50% 45%, #223236 0%, #141619 65%); }
 .lockup { display: flex; align-items: center; gap: 25px; }
 .lockup h1 { margin: 0; font-size: 76px; letter-spacing: -3px; color: #f3f5f7; }
