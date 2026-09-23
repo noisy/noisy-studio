@@ -36,4 +36,9 @@ const { frame, scale } = useStage();
 .hero-demo.inward-camera :deep(.recorded-camera video) { object-fit: cover; }
 /* Shift the entire console up by the added camera height, preserving its size. */
 .hero-demo.inward-camera :deep(.hero-terminal) { top: 49px; bottom: 113px; }
+/* Center the visible idle controls, rather than their transparent window.
+   Only the opening pose changes; the existing 3.2s transition is retained. */
+.hero-demo.inward-camera :deep(.hero .recorded-widget.aloft) {
+  transform: translate(-316px, -280px) scale(1.2);
+}
 </style>
