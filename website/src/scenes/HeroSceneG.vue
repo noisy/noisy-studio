@@ -10,16 +10,12 @@ import poster from '../assets/todd/hero-poster.jpg';
 import activities from '../assets/todd/hero-activities.json';
 import type { ActivityBlock } from '@dashboard/components/marketing/presentationTiming';
 import { useStage } from './shared';
+import { toddCamera } from '../toddCamera';
 const { frame, scale } = useStage();
-// Keep the zoom and top crop (20%); pan left by 2% of the source width.
-// Offsets use the shared camera's normalized overflow range.
-const heroCameraZoom = 1.75 * 1.05 * 1.05;
-const heroCameraOffsetX = 100 * (1 - 2 * (3 / 14 - 0.02) * heroCameraZoom / (heroCameraZoom - 1));
-const heroCameraOffsetY = 100 * (1 - 2 * 0.20 * heroCameraZoom / (heroCameraZoom - 1));
 </script>
 <template>
   <div ref="frame" class="hero-demo" :style="{ height: `${760 * scale}px` }">
-    <RecordedHeroScene :recording-src="recording" :recording-take="take" :recording-poster="poster" :presentation-edits="[]" :activity-blocks="activities as ActivityBlock[]" :camera-zoom="heroCameraZoom" :camera-offset-x="heroCameraOffsetX" :camera-offset-y="heroCameraOffsetY" @interaction="websiteAnalytics.trackDemo('hero', $event)" :style="{ transform: `scale(${scale})` }" />
+    <RecordedHeroScene :recording-src="recording" :recording-take="take" :recording-poster="poster" :presentation-edits="[]" :activity-blocks="activities as ActivityBlock[]" v-bind="toddCamera" @interaction="websiteAnalytics.trackDemo('hero', $event)" :style="{ transform: `scale(${scale})` }" />
   </div>
 </template>
 <style scoped>

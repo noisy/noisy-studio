@@ -8,6 +8,7 @@ import RecordedCrewScene from "@dashboard/components/marketing/RecordedCrewScene
 import recording from './assets/todd/crew.mp4';
 import take from './assets/todd/crew.json';
 import poster from './assets/todd/crew-poster.jpg';
+import { toddCamera } from './toddCamera';
 import VoiceCarousel from "./VoiceCarousel.vue";
 const frame = ref<HTMLElement | null>(null);
 const scale = ref(0.7);
@@ -49,7 +50,7 @@ onBeforeUnmount(() => {
               transformOrigin: 'top left',
             }"
           >
-            <RecordedCrewScene :recording-src="recording" :recording-take="take" :recording-poster="poster" :camera-zoom="1 / (1 - 2 * 0.20)" @interaction="websiteAnalytics.trackDemo('crew', $event)" playback-controls :camera="!compact" :compact="compact" />
+            <RecordedCrewScene :recording-src="recording" :recording-take="take" :recording-poster="poster" v-bind="toddCamera" @interaction="websiteAnalytics.trackDemo('crew', $event)" playback-controls :camera="!compact" :compact="compact" />
           </div>
         </div>
         <p class="voice-caption">
