@@ -10,3 +10,6 @@ export const toddCamera = {
 // Opt-in comparison; the normal website keeps the approved inset layout.
 export const cornerCameraPreview = typeof window !== 'undefined'
   && new URLSearchParams(window.location.search).get('cameraLayout') === 'corner';
+
+export const inwardCameraPreview = typeof window !== 'undefined'
+  && new URLSearchParams(window.location.search).get('cameraLayout') === 'inward';
