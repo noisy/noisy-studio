@@ -10,15 +10,15 @@
       },
       "camera_offset_seconds": 3.609375,
       "duration_seconds": 68.75109999990464,
-      "output_bytes": 2008300,
-      "output_sha256": "21fda0bcb27e7b67520123762f4cb89b20ef9edfe2137d6689a34491a34b17d1",
+      "output_bytes": 2010411,
+      "output_sha256": "b6688105a0c8f2782bfa3bb0717938bcf010d2eb0ec0b6c8d36026dcd1d33548",
       "audio_edits": {
         "file": "hero-audio-edits.json",
         "sha256": "6a6ebbad721a4a93478328c21ae833627ead9997de5ae338ae935cbec414bca5"
       },
       "room_tone_reference": {
         "source": "tools/website-media/room-tone/todd-clean-room-tone.wav",
-        "source_sha256": "8fbf75eeeadd10cdde154e4a2a0fc3934853e81412df668ee908b915cb7a4bfa",
+        "source_sha256": "b1101283dd89bf107f43560fce83a6dea5e1f57d8c97f96469b7208e4139bb04",
         "replace_own_reference": true
       }
     },
@@ -32,15 +32,15 @@
       },
       "camera_offset_seconds": 3.109375,
       "duration_seconds": 19.97290000009537,
-      "output_bytes": 618465,
-      "output_sha256": "4299b3698fe11e31237ce23a49dc100de2c61a47be4a97fa07d94153c065f65f",
+      "output_bytes": 618716,
+      "output_sha256": "a491dff7e29dd83e8cf012fd9ab82865206f9de57a1e717522477fda88bb4957",
       "audio_edits": {
         "file": "crew-audio-edits.json",
         "sha256": "891d410f43ae1a18417f4e447b547d3b047f2f1743c2275ef36b698cac9f5695"
       },
       "room_tone_reference": {
         "source": "tools/website-media/room-tone/todd-clean-room-tone.wav",
-        "source_sha256": "8fbf75eeeadd10cdde154e4a2a0fc3934853e81412df668ee908b915cb7a4bfa",
+        "source_sha256": "b1101283dd89bf107f43560fce83a6dea5e1f57d8c97f96469b7208e4139bb04",
         "replace_own_reference": true
       }
     }

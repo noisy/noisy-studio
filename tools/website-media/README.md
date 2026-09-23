@@ -133,7 +133,7 @@ old sample interval is also repaired, alongside the user's marked repairs.
 Adjacent intervals are merged before 12 ms crossfades, preventing the rejected
 noise from leaking back at internal boundaries. No samples are removed or shifted.
 
-The reusable WAV is 12 seconds, mono 48 kHz float PCM at −74 dBFS RMS. It is
+The reusable WAV is 12 seconds, mono 48 kHz float PCM at −80 dBFS RMS (reduced 6 dB after headphone review). It is
 **synthetic**, shaped from a smoothed median spectrum of quiet windows in both
 originals; no recorded clicks, breaths or other waveforms are copied. Its FFT
 construction is periodic, and the saved boundary is rotated to a tiny sample

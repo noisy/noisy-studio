@@ -3,10 +3,10 @@
   "seed": 230926,
   "sampleRate": 48000,
   "durationSeconds": 12,
-  "rmsDbfs": -74.00000000037952,
-  "peakDbfs": -59.96822738647461,
-  "levelVariation100msDb": 1.655714732460041,
-  "wrapStep": 5.820766091346741e-11,
+  "rmsDbfs": -80.00000000012494,
+  "peakDbfs": -65.96823120117188,
+  "levelVariation100msDb": 1.6557147443952362,
+  "wrapStep": 2.9103830456733704e-11,
   "sources": [
     {
       "file": "Todd - Hero Search.mp4",
@@ -21,5 +21,5 @@
       "endMs": 4195
     }
   ],
-  "outputSha256": "8fbf75eeeadd10cdde154e4a2a0fc3934853e81412df668ee908b915cb7a4bfa"
+  "outputSha256": "b1101283dd89bf107f43560fce83a6dea5e1f57d8c97f96469b7208e4139bb04"
 }

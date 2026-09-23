@@ -11,7 +11,7 @@ import numpy as np
 
 RATE = 48000
 DURATION_SECONDS = 12
-TARGET_DBFS = -74
+TARGET_DBFS = -80
 SEED = 230926
 ROOT = Path(__file__).resolve().parents[2]
 
