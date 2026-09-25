@@ -28,3 +28,6 @@ issues-drafts/
 
 # PyInstaller work dir (daemon freeze)
 /build/
+
+# Isolated issue worktrees
+.worktrees/
