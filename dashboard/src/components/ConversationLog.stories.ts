@@ -112,3 +112,9 @@ export const BriefMicrophoneFlapping: StoryObj<typeof ConversationLog> = {
     { ...microphoneHistory[1]!, detail: "×3" },
   ] },
 };
+
+import { voiceMessageStates } from '../storybook/voiceMessageStates';
+export const RecordingCard: StoryObj<typeof ConversationLog> = { args: { utterances: [voiceMessageStates.Recording] } };
+export const TranscribingCard: StoryObj<typeof ConversationLog> = { args: { utterances: [voiceMessageStates.Transcribing] } };
+export const LivePartialCard: StoryObj<typeof ConversationLog> = { args: { utterances: [voiceMessageStates.LivePartial] } };
+export const AwaitingAgentCard: StoryObj<typeof ConversationLog> = { args: { utterances: [voiceMessageStates.AwaitingAgent] } };

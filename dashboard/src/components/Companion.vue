@@ -21,6 +21,8 @@ export interface CompanionMessage {
    *  the widget must represent transcribing/queued/unheard identically. */
   statusKind?: import("./bubbleStatus").StatusKind;
   statusLabel?: string;
+  /** User recording/transcription stays visible even when the mic is idle. */
+  inFlight?: boolean;
 }
 
 /** One conversation in the rail, in the dashboard's own tab order. */
@@ -303,7 +305,8 @@ watch(
  * then the busy line, then what is still waiting its turn. The zones come
  * from machines/chat.ts - the widget must not invent its own rules about
  * what "delivered" means, which is exactly what it did before. */
-const history = computed(() => props.feed.filter((m) => m.zone !== "pending"));
+const history = computed(() => props.feed.filter((m) => m.zone !== "pending" && !m.inFlight));
+const composingMessages = computed(() => props.feed.filter((m) => m.inFlight));
 const pendingMessages = computed(() => props.feed.filter((m) => m.zone === "pending"));
 /** Room for two; the rest become a count, so a queue cannot fill a widget. */
 const WAITING_SHOWN = 2;
@@ -369,7 +372,7 @@ async function stickToBottom(smooth = true): Promise<void> {
  * Fitting has to finish before anything decides where the bottom is.
  */
 watch(
-  () => [props.feed.length, props.liveText, props.maxHeight, props.activity],
+  () => [props.feed.map(m => `${m.id}:${m.text}:${m.statusLabel}`).join("|"), props.liveText, props.maxHeight, props.activity],
   async () => {
     await refit();
     // Jump, do not glide: after a re-fit the layout has already moved, and a
@@ -426,7 +429,7 @@ watch(
         />
       </transition-group>
       <Bubble
-        v-if="mode === 'user' && liveText"
+        v-if="!composingMessages.length && mode === 'user' && liveText"
         class="livebubble"
         :class="sizeOf(liveText)"
         compact live
@@ -435,7 +438,7 @@ watch(
         who="" status-kind="rec" status-label="" time=""
         :text="liveText"
       />
-      <span v-else-if="mode === 'user'" class="listening">Listening…</span>
+      <span v-else-if="!composingMessages.length && mode === 'user'" class="listening">Listening…</span>
       <span v-else-if="!feed.length && !liveText && !activity" class="listening">Start talking. Your conversation will appear here.</span>
 
       <!-- The present: what the agent is doing between messages. -->
@@ -454,6 +457,20 @@ watch(
         :text="m.text"
       />
       <span v-if="waitingExtra" class="listening">+{{ waitingExtra }} waiting</span>
+
+      <!-- The dashboard composer is inline at the widget thread’s bottom. -->
+      <Bubble
+        v-for="m in composingMessages"
+        :key="`live-${m.id}`"
+        class="in-flight"
+        :class="sizeOf(m.text)"
+        compact
+        :live="m.statusKind === 'rec'"
+        side="left" accent="amber" who="You" time=""
+        :status-kind="m.statusKind ?? 'off'" :status-label="m.statusLabel ?? ''"
+        :text="m.text"
+      />
+
     </div>
 
     <!-- Drawn here, not in the rail: the rail scrolls and would clip it.
@@ -545,7 +562,7 @@ body.companion-transparent button { cursor:pointer; }
 .drag-hint { display:flex; flex:none; align-items:center; gap:5px; color:var(--muted); font-size:10px; white-space:nowrap; }
 .thread { order:-1; flex-basis:100%; min-width:0; min-height:0; overflow-y:auto; display:flex; flex-direction:column; gap:10px; padding:2px 4px 2px 1px; scrollbar-gutter:stable; }
 .msgs { display:flex; flex-direction:column; gap:10px; }
-.thread :deep(.pending) { border-style:dashed; }
+.thread :deep(.pending), .thread :deep(.in-flight) { border-style:dashed; }
 .thread :deep(.size-l .txt) { font-size:14px; }
 .thread :deep(.size-m .txt), .thread :deep(.size-s .txt) { font-size:13px; }
 .rail { flex:none; }

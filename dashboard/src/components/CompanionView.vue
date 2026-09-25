@@ -9,9 +9,8 @@
  */
 import { computed, ref } from "vue";
 import "../styles/companion-window.css";
-import Companion, { type CompanionAgent, type CompanionMessage } from "./Companion.vue";
+import Companion, { type CompanionAgent } from "./Companion.vue";
 import { useDaemonState } from "../composables/useDaemonState";
-import { statusChip } from "./bubbleStatus";
 import { orderAgents } from "./agentOrder";
 import { useConversationFeed } from "../composables/useConversationFeed";
 import { useMicStream } from "../composables/useMicStream";
@@ -32,46 +31,9 @@ const mine = computed(() =>
 // Live mic level, so the spectrum follows the voice instead of looping.
 const { level } = useMicStream();
 
-// The widget is a glance, not an archive: only committed lines, only the
-// last handful, oldest first so the freshest sits at the bottom.
-function toMessage(u: (typeof processed)["value"][number]): CompanionMessage {
-  const chip = statusChip(u.status, u.role === "user" ? "user" : "claude");
-  return {
-    id: u.id,
-    role: u.role as "user" | "claude",
-    text: u.text,
-    zone: u.role === "user" || u.role === "claude"
-      ? (pending.value.includes(u) ? "pending" : "done")
-      : "done",
-    statusKind: chip.kind,
-    statusLabel: chip.label,
-  };
-}
-/* SAME logic as the dashboard's ConversationLog (useConversationFeed):
- * processed above the line, pending below, identical zones and chips -
- * only the compact styling differs. */
-const feed = computed<CompanionMessage[]>(() =>
-  [...processed.value, ...pending.value]
-    .filter((u) => u.role === "user" || u.role === "claude")
-    .filter((u) => u.text.trim())
-    .slice(-12)
-    .map(toMessage),
-);
-
-/* What the user is saying RIGHT NOW.
- *
- * A card is in flight until the daemon marks it delivered, and it is not
- * enough to look for committed_at === 0: the daemon stamps that as soon as
- * the utterance enters the conversation, while the text keeps growing for a
- * while afterwards. So take the newest user card and treat it as live until
- * it reaches a terminal status.
- */
-/* Live = the user card still being composed. The state machine owns what
- * each status MEANS; the widget used to test the status text with a regex
- * of its own, which is how it disagreed with the dashboard. */
-const { processed, pending, liveTail } = useConversationFeed(mine);
-// Live = the composer's utterance, straight from the SHARED feed logic.
-const liveText = computed(() => liveTail.value?.text ?? "");
+// Placement differs from the dashboard composer, lifecycle semantics do not.
+const { cards } = useConversationFeed(mine);
+const feed = computed(() => cards.value.slice(-12));
 
 /* Document Picture-in-Picture: the only way a browser gets a genuinely
  * always-on-top window. It hosts real DOM, so the live component moves into
@@ -155,7 +117,6 @@ const mode = computed<"claude" | "user" | "idle">(() => {
         :offline="offline"
         :voice="character?.voice ?? 'rex'"
         :feed="feed"
-        :live-text="liveText"
         :max-height="220"
         :level="level"
         :activity="activity"

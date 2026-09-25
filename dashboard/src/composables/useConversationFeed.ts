@@ -9,6 +9,7 @@
  */
 import { computed, type Ref } from "vue";
 import { statusToState, timelineZone } from "../machines/chat";
+import { conversationCard } from "../conversationCard";
 import type { Utterance } from "../types";
 
 // Noise guard: utterances that never became real speech (empty, dropped)
@@ -27,8 +28,8 @@ function commitTime(u: Utterance): number {
   return u.committed_at || u.started_at;
 }
 
-// The in-progress user utterance lives in a reserved slot (the composer /
-// the widget's live bubble), not in the feed.
+// Dashboard placement: keep in-progress user utterances in the composer.
+// The widget receives the same cards and renders them inline.
 const LIVE_STATES = new Set(["recording", "transcribing"]);
 function isLiveUser(u: Utterance): boolean {
   return u.role === "user" && LIVE_STATES.has(statusToState("user", u.status) ?? "");
@@ -66,5 +67,9 @@ export function useConversationFeed(utterances: Ref<Utterance[]>) {
   const processed = computed(() => settled.value.filter((u) => zoneOf(u) !== "pending"));
   const pending = computed(() => settled.value.filter((u) => zoneOf(u) === "pending"));
 
-  return { ordered, liveTail, settled, processed, pending, zoneOf };
+  const cards = computed(() => ordered.value
+    .filter((u) => u.role === "user" || u.role === "claude")
+    .map((u) => conversationCard(u, zoneOf(u))));
+
+  return { ordered, liveTail, settled, processed, pending, zoneOf, cards };
 }

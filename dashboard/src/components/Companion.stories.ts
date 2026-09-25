@@ -278,3 +278,11 @@ export const PendingReplies: Story = {
 export const LongSessionName: Story = {
   args:{...base,feed:FEED,agents:[{name:'codex / investigate-checkout-performance-and-retry-handling',voice:'lux',active:true}]},
 };
+
+// Same fixtures as Dashboard/ConversationLog: only placement differs.
+import { voiceMessageStates } from '../storybook/voiceMessageStates';
+import { conversationCard } from '../conversationCard';
+export const RecordingCard: Story = { args: { mode: 'user', feed: [conversationCard(voiceMessageStates.Recording)] } };
+export const TranscribingCard: Story = { args: { mode: 'idle', feed: [conversationCard(voiceMessageStates.Transcribing)] } };
+export const LivePartialCard: Story = { args: { mode: 'idle', feed: [conversationCard(voiceMessageStates.LivePartial)] } };
+export const AwaitingAgentCard: Story = { args: { feed: [conversationCard(voiceMessageStates.AwaitingAgent)] } };
