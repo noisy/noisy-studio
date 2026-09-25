@@ -26,8 +26,9 @@ class MessageActions extends ChangeNotifier {
     try {
       await operation();
     } catch (_) {
-      if (!_disposed)
+      if (!_disposed) {
         onError('Could not $name. The desktop state may have changed.');
+      }
     } finally {
       if (!_disposed) {
         busy = false;

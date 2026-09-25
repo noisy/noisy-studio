@@ -105,8 +105,8 @@ class _CompanionState extends State<Companion> with WidgetsBindingObserver {
       actions!.addListener(refresh);
       demo = false;
       connected = true;
-      void connectionLost() {
-        if (mounted && current == generation) lost();
+      void connectionLost([Object? cause]) {
+        if (mounted && current == generation) lost(cause);
       }
 
       final connectionLease = PttLease(remote, onFailure: connectionLost)
@@ -130,28 +130,32 @@ class _CompanionState extends State<Companion> with WidgetsBindingObserver {
           snapshot = next;
           refresh();
         },
-        onError: (Object _) => connectionLost(),
-        onDone: connectionLost,
+        onError: (Object cause) => connectionLost(cause),
+        onDone: () {
+          if (connected) connectionLost();
+        },
       );
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('daemonAddress', address.text.trim());
-    } catch (_) {
+    } catch (cause) {
       if (!mounted || current != generation) return;
-      error = 'Could not connect. Check the address and that your desktop is reachable.';
+      error = cause is DaemonAccessException ? cause.toString() : 'Could not connect. Check the address and that your desktop is reachable.';
       connected = false;
     } finally {
       if (mounted && current == generation) setState(() => busy = false);
     }
   }
 
-  void lost() {
+  void lost([Object? cause]) {
     actions?.dispose();
     actions = null;
     selection?.dispose();
     selection = null;
     unawaited(lease?.stop());
     connected = false;
-    error = 'Connection lost. Recording stopped. Reconnect in Settings.';
+    error = cause is DaemonAccessException
+        ? cause.toString()
+        : 'Connection lost. Recording stopped. Reconnect in Settings.';
     refresh();
   }
 
@@ -161,8 +165,8 @@ class _CompanionState extends State<Companion> with WidgetsBindingObserver {
     try {
       await client?.post(path, body);
       return mounted && current == generation;
-    } catch (_) {
-      if (mounted && current == generation) lost();
+    } catch (cause) {
+      if (mounted && current == generation) lost(cause);
       return false;
     }
   }

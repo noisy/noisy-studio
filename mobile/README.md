@@ -19,7 +19,7 @@ scripts/check.sh
 flutter run                              # fixture mode by default
 flutter run -d chrome -t widgetbook/main.dart
 flutter build apk --debug
-# Read-only HTTP + WebSocket contract check (never starts recording):
+# Read-only single-origin HTTP contract check (never starts recording):
 dart run tool/check_connection.dart http://127.0.0.1:7765
 ```
 
@@ -31,8 +31,16 @@ See `DESIGN.md` for the desktop component/interaction mapping and sync command. 
 Settings accepts an HTTP(S) origin, remembers only its address, and connects only
 on request. The daemon must already be reachable. This app never changes its bind
 address. HTTP uses `/status`, `/utterances`, `/active-agent`, `/ptt`, `/mute`,
-`/interrupt`, `/settings`. WS snapshots arrive on `/state`, port HTTP + 1.
-No phone microphone audio or pairing code is sent. Local HTTP is permitted by both
+`/interrupt`, `/settings`. State refreshes once per second after the previous HTTP snapshot completes.
+Both reads and commands use exactly the supplied HTTP(S) origin; no second port
+or WebSocket proxy route is required. Each snapshot reads `/status` and
+`/utterances`; polling stops on failure, cancellation or disconnect. Reconnecting
+is explicit and never restarts push-to-talk.
+No phone microphone audio or pairing code is sent. An HTTPS proxy can provide transport encryption, but HTTPS alone is not
+authentication. Public deployment still requires the authenticated remote boundary
+tracked in #124; this app does not create a tunnel or implement proxy login.
+HTTP 401/403 explains that this client needs authenticated access.
+Local HTTP is permitted by both
 platform manifests for this preview. Web preview requires the daemon's CORS policy
 to allow its origin; native builds do not use browser CORS.
 

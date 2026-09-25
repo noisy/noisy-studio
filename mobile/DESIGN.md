@@ -22,7 +22,9 @@ status-prefix/chip tables from the desktop machine and bubble status sources. Th
 canonical files. Never re-crop the sprite into equal rows/columns. This preserves
 #160's geometry fix. No rendered image or metadata is invented per mobile voice.
 
-Transport, lease ownership and confirmed routing are unchanged. `Agent.voice` and
+Lease ownership and confirmed routing are unchanged. All state and command
+traffic uses the provided HTTP(S) origin, with non-overlapping one-second polling
+and explicit reconnection. A proxy does not need to expose a second WS port. `Agent.voice` and
 message presentation fields are additive mappings from the existing daemon data.
 The first version still controls desktop sound. Message actions are typed callbacks wired to the existing daemon replay, pause,
 and recall endpoints. Pause/resume and stop are explicitly global speech controls,

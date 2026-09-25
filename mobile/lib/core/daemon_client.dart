@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
-import 'package:web_socket_channel/web_socket_channel.dart';
 
 import 'models.dart';
 
@@ -10,13 +9,27 @@ abstract interface class DaemonCommands {
   Future<void> post(String path, Map<String, Object> body);
 }
 
+class DaemonAccessException implements Exception {
+  const DaemonAccessException(this.status);
+  final int status;
+  @override
+  String toString() =>
+      'Access denied (HTTP $status). This address requires authentication for this client before reconnecting.';
+}
+
 class DaemonClient implements DaemonCommands {
-  DaemonClient(String address, {http.Client? client})
-    : base = validateAddress(address),
-      _http = client ?? http.Client();
+  DaemonClient(
+    String address, {
+    http.Client? client,
+    this.pollInterval = const Duration(seconds: 1),
+  }) : base = validateAddress(address),
+       _http = client ?? http.Client();
   final Uri base;
   final http.Client _http;
-  WebSocketChannel? _socket;
+  final Duration pollInterval;
+  bool _closed = false;
+  StreamController<Snapshot>? _updates;
+  Timer? _pollTimer;
   static Uri validateAddress(String value) {
     final uri = Uri.tryParse(value.trim());
     if (uri == null ||
@@ -26,7 +39,7 @@ class DaemonClient implements DaemonCommands {
         uri.hasQuery ||
         uri.hasFragment ||
         (uri.path.isNotEmpty && uri.path != '/') ||
-        uri.port >= 65535) {
+        uri.port > 65535) {
       throw const FormatException(
         'Enter an HTTP or HTTPS address and port, without a path.',
       );
@@ -38,6 +51,9 @@ class DaemonClient implements DaemonCommands {
     final response = await _http
         .get(base.replace(path: path))
         .timeout(const Duration(seconds: 4));
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      throw DaemonAccessException(response.statusCode);
+    }
     if (response.statusCode != 200) {
       throw StateError('Desktop returned HTTP ${response.statusCode}');
     }
@@ -52,22 +68,37 @@ class DaemonClient implements DaemonCommands {
     });
   }
 
-  Stream<Snapshot> watch() async* {
-    final socket = WebSocketChannel.connect(
-      base.replace(
-        scheme: base.scheme == 'https' ? 'wss' : 'ws',
-        port: base.port + 1,
-        path: '/state',
-      ),
-    );
-    _socket = socket;
-    await socket.ready.timeout(const Duration(seconds: 4));
-    await for (final data in socket.stream.timeout(
-      const Duration(seconds: 6),
-    )) {
-      final json = jsonDecode(data as String) as Map<String, dynamic>;
-      if (json['type'] == 'snapshot') yield Snapshot.fromJson(json);
+  /// Polls only the supplied origin. No guessed WS port or tunnel configuration.
+  /// Each cycle completes before the next is scheduled; cancellation stops scheduling.
+  Stream<Snapshot> watch() {
+    if (_closed) throw StateError('Connection closed');
+    if (_updates != null) throw StateError('Already watching this connection');
+    var cancelled = false;
+    late final StreamController<Snapshot> controller;
+    Future<void> poll() async {
+      if (_closed || cancelled) return;
+      try {
+        final snapshot = await initial();
+        if (_closed || cancelled) return;
+        controller.add(snapshot);
+        _pollTimer = Timer(pollInterval, poll);
+      } catch (error, stack) {
+        if (!_closed && !cancelled) {
+          controller.addError(error, stack);
+          unawaited(controller.close());
+        }
+      }
     }
+
+    controller = StreamController<Snapshot>(
+      onListen: poll,
+      onCancel: () {
+        cancelled = true;
+        _pollTimer?.cancel();
+      },
+    );
+    _updates = controller;
+    return controller.stream;
   }
 
   Future<String?> selectAgent(String id) async {
@@ -95,6 +126,9 @@ class DaemonClient implements DaemonCommands {
           body: jsonEncode(body),
         )
         .timeout(const Duration(seconds: 2));
+    if (response.statusCode == 401 || response.statusCode == 403) {
+      throw DaemonAccessException(response.statusCode);
+    }
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StateError('Desktop returned HTTP ${response.statusCode}');
     }
@@ -102,7 +136,9 @@ class DaemonClient implements DaemonCommands {
   }
 
   Future<void> close() async {
-    await _socket?.sink.close();
+    _closed = true;
+    _pollTimer?.cancel();
     _http.close();
+    unawaited(_updates?.close());
   }
 }
