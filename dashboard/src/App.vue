@@ -20,6 +20,7 @@ import TurnHistory from "./components/TurnHistory.vue";
 import AudioControls from "./components/AudioControls.vue";
 import { AUDIO_PANEL_WIDTH, type AudioChange } from "./components/audioControls";
 import { useAudioControlVisibility } from "./composables/useAudioControlVisibility";
+import StageLive from "./components/StageLive.vue";
 import SettingsView from "./components/SettingsView.vue";
 import ShutdownBanner from "./components/ShutdownBanner.vue";
 import { useTabStatus } from "./composables/useTabStatus";
@@ -32,7 +33,7 @@ import { useAudioCues } from "./composables/useAudioCues";
 import { useDaemonState } from "./composables/useDaemonState";
 import { useMicStream } from "./composables/useMicStream";
 
-const { status, utterances, utterancesFor, character, characterPending, characterError, changeCharacter, offline, viewedAgent, errors, clearErrors, selectAgent, dismissAgent, reorderAgents } =
+const { status, utterances, allUtterances, utterancesFor, character, characterPending, characterError, changeCharacter, offline, viewedAgent, errors, clearErrors, selectAgent, dismissAgent, reorderAgents } =
   useDaemonState();
 
 // Agents visibly "working": their live-activity line was updated in the
@@ -159,14 +160,20 @@ function onKeyDown(event: KeyboardEvent) {
   startPtt();
 }
 function onKeyUp(event: KeyboardEvent) {
-  if (event.code !== "Space" || isTypingTarget(event.target)) return;
+  if (event.code !== "Space") return;
   stopPtt();
 }
+function releaseHiddenPtt() { if (document.hidden) stopPtt(); }
 onMounted(() => {
+  addEventListener("blur", stopPtt);
+  document.addEventListener("visibilitychange", releaseHiddenPtt);
   addEventListener("keydown", onKeyDown);
   addEventListener("keyup", onKeyUp);
 });
 onUnmounted(() => {
+  stopPtt();
+  removeEventListener("blur", stopPtt);
+  document.removeEventListener("visibilitychange", releaseHiddenPtt);
   removeEventListener("keydown", onKeyDown);
   removeEventListener("keyup", onKeyUp);
   clearInterval(pttTimer);
@@ -176,6 +183,14 @@ onUnmounted(() => {
 // the SETTINGS view (which swaps in for the comm log).
 const keyInput = ref("");
 const showSettings = ref(false);
+const showStage = ref(false);
+const stageButton = ref<HTMLButtonElement | null>(null);
+async function closeStage() {
+  stopPtt();
+  showStage.value = false;
+  await nextTick();
+  stageButton.value?.focus();
+}
 // The gate must not blink away mid-verification OR right after a
 // rejection: the daemon stores the candidate key while it live-checks it,
 // so the polled api_key_set reads true for a few seconds even for a key
@@ -392,16 +407,18 @@ function changeAudio({id,value}: AudioChange) {
     </div>
   </div>
 
-  <div class="hud" :inert="unconfigured">
     <!-- Graceful shutdown (#35): D5 bar picked in Storybook. -->
     <ShutdownBanner
       v-if="shutdownSeconds !== null"
       class="shutdown-bar"
+      :style="showStage ? { position: 'fixed', top: 0, left: 0, right: 0, zIndex: 120 } : undefined"
       :label="shutdownLabel"
       @restart-now="scheduleShutdown(0).catch(swallow)"
       @postpone="postponeShutdown(60).catch(swallow)"
       @cancel="cancelShutdown().catch(swallow)"
     />
+  <StageLive v-if="showStage && !unconfigured" :status="status" :utterances="allUtterances" :offline="offline" @exit="closeStage" />
+  <div v-show="!showStage || unconfigured" class="hud" :inert="unconfigured">
         <header class="topbar">
           <div class="topbar-logobox">
             <div class="logo" :class="{ dev: isDevInstance }">
@@ -423,6 +440,7 @@ function changeAudio({id,value}: AudioChange) {
           </div>
 
           <div class="sysstate">
+            <button ref="stageButton" class="ctl header-action" :disabled="unconfigured" @click="showStage = true">Stage ↗</button>
             <button class="ctl header-action settings-toggle" :aria-pressed="showSettings" @click="showSettings = !showSettings">Settings</button>
             <button
               class="ctl header-action header-mute" :disabled="offline" :aria-pressed="!!status?.voice_muted"
