@@ -323,23 +323,18 @@ def _error_card_fields(error: Exception) -> dict:
 
 
 def _hold_for_user_turn(state: ListenerState, utterance_id: int) -> None:
-    """Wait out an in-progress user utterance before taking the speaker.
-
-    Speaking now would talk over the user AND lose their words (the mic is
-    muted during playback). The daemon's VAD alone decides when their turn
-    is over — no debounce, no timeout, no polling; see
-    ListenerState.wait_for_user_silence for why this can't deadlock.
-    """
-    user_was_speaking = state.recording
-    if user_was_speaking:
-        detail = "user is speaking — holding playback"
-        state.add_event("speak_wait", detail)
+    """Wait for capture/PTT and log bounded, content-free turn diagnostics."""
+    status = state.user_turn_status(POST_TURN_GRACE_SECONDS)
+    detail = f"utterance={utterance_id} " + " ".join(
+        f"{key}={value}" for key, value in status.items() if key != "wait_s"
+    )
+    state.add_event("speak_turn", detail)
+    if status["decision"] == "hold":
         state.update_utterance(utterance_id, status="queued — waiting for you to finish")
-        _log(f"[speak] {detail}")
     held_since = time.monotonic()
     state.wait_for_user_silence(grace_s=POST_TURN_GRACE_SECONDS)
-    if user_was_speaking:
-        _log(f"[speak] user finished — held playback {time.monotonic() - held_since:.1f}s")
+    if status["decision"] == "hold":
+        state.add_event("speak_turn", f"utterance={utterance_id} decision=play held_ms={round((time.monotonic() - held_since) * 1000)}")
 
 
 def _streaming_available(state: ListenerState, provider: providers.TTSProvider) -> bool:
@@ -497,6 +492,21 @@ def _play_prepared(
         reason = "voice muted" if state.voice_muted else "conversation muted"
         state.update_utterance(utterance_id, status=f"unheard — {reason}")
         return prepared.voice
+    try:
+        audio = prepared.audio
+        if audio is None and not prepared.stream:
+            # The synth stage skipped this one (voice was muted then)
+            # but it is audible now — render at our turn, exactly like
+            # the pre-pipeline flow did.
+            audio = _synthesize_now(
+                state, prepared.provider or providers.active_tts(), text,
+                prepared.voice, prepared.language, prepared.speed,
+                utterance_id, source_id,
+            )
+    except Exception as error:
+        state.add_event("speak_error", str(error)[:200])
+        state.update_utterance(utterance_id, **_error_card_fields(error))
+        raise
     _hold_for_user_turn(state, utterance_id)
 
     # This is the real "the agent spoke aloud" moment — reset its
@@ -533,16 +543,6 @@ def _play_prepared(
 
     # Native speakers require echo muting during playback.
     try:
-        audio = prepared.audio
-        if audio is None and not prepared.stream:
-            # The synth stage skipped this one (voice was muted then)
-            # but it is audible now — render at our turn, exactly like
-            # the pre-pipeline flow did.
-            audio = _synthesize_now(
-                state, prepared.provider or providers.active_tts(), text,
-                prepared.voice, prepared.language, prepared.speed,
-                utterance_id, source_id,
-            )
         state.set_paused(True)
         state.set_claude_speaking(True, agent)
         if prepared.stream:
