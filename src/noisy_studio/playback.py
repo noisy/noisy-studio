@@ -29,11 +29,23 @@ _interrupt_generation = 0
 _playback_generation: ContextVar[int | None] = ContextVar("playback_generation", default=None)
 
 
+def interruption_generation() -> int:
+    with _player_lock:
+        return _interrupt_generation
+
+
+def was_interrupted(generation: int) -> bool:
+    with _player_lock:
+        return generation != _interrupt_generation
+
+
 @contextmanager
-def playback_scope():
+def playback_scope(generation: int | None = None):
     """An interrupt also cancels players still connecting or buffering."""
     with _player_lock:
-        token = _playback_generation.set(_interrupt_generation)
+        token = _playback_generation.set(
+            _interrupt_generation if generation is None else generation
+        )
     try:
         yield
     finally:

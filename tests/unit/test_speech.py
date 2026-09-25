@@ -483,9 +483,9 @@ def test_ptt_barge_in_before_capture_holds_queued_clip_through_recording_and_gra
     played = threading.Event()
     wait_for_silence = state.wait_for_user_silence
 
-    def wait(grace_s):
+    def wait(grace_s, **kwargs):
         waiting.set()
-        wait_for_silence(grace_s)
+        return wait_for_silence(grace_s, **kwargs)
 
     async def play(*args):
         played.set()
@@ -540,9 +540,9 @@ def test_user_starting_during_deferred_synthesis_is_waited_for(monkeypatch, batc
 
     wait_for_silence = state.wait_for_user_silence
 
-    def wait(grace_s):
+    def wait(grace_s, **kwargs):
         waiting.set()
-        wait_for_silence(grace_s)
+        return wait_for_silence(grace_s, **kwargs)
 
     async def play(*args):
         played.set()
@@ -594,3 +594,31 @@ def test_ptt_interrupt_during_stream_connection_cancels_the_late_player(monkeypa
         continue_connection.set()
         state.release_ptt()
         future.result(timeout=2)
+
+
+def test_ptt_between_turn_hold_and_playback_scope_cancels_late_player(monkeypatch, batch_pipeline):
+    from unittest.mock import Mock
+    from noisy_studio import playback
+    from noisy_studio.listener import daemon
+
+    state = ListenerState()
+    state.set_detection_mode("ptt")
+    _install_fake_synth(monkeypatch, [])
+    process = Mock()
+
+    def press_ptt_after_hold(*args):
+        state.refresh_ptt_hold()
+        # Hotkeys renew the lease; the next capture frame invokes barge-in.
+        assert state.paused
+        daemon._ptt_barge_in(state)
+
+    async def play(*args):
+        playback.register_player(process)
+        playback.unregister_player(process)
+
+    monkeypatch.setattr(state, "note_agent_spoke", press_ptt_after_hold)
+    monkeypatch.setattr(speech, "_play_audio", play)
+    speech.submit(state, "reply losing the handoff race").result(timeout=2)
+
+    process.kill.assert_called_once_with()
+    assert state.utterances()[0]["status"].startswith("unheard")

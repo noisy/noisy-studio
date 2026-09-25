@@ -4,6 +4,7 @@ import threading
 import time
 import zlib
 from collections import deque
+from collections.abc import Callable
 from dataclasses import replace, asdict, dataclass
 
 from noisy_studio.listener.conversations import ConversationRegistry
@@ -1638,7 +1639,10 @@ class ListenerState:
             "wait_s": wait_s,
         }
 
-    def wait_for_user_silence(self, grace_s: float = 0.0) -> None:
+    def wait_for_user_silence(
+        self, grace_s: float = 0.0, *, on_ready: Callable[[], int] | None = None,
+        claim_playback: bool = False,
+    ) -> int | None:
         """Wait for capture completion AND PTT release, then conversational grace.
 
         Echo pause is not an end-of-turn signal. The capture loop owns the
@@ -1650,7 +1654,14 @@ class ListenerState:
             while True:
                 wait_s = self._user_turn_status_locked(grace_s)["wait_s"]
                 if wait_s == 0:
-                    return
+                    # Capture the playback cancellation token before a new
+                    # PTT lease can slip between the decision and handoff.
+                    generation = on_ready() if on_ready is not None else None
+                    if claim_playback:
+                        # Enable capture-loop barge-in at the same handoff,
+                        # including hotkeys that only renew the PTT lease.
+                        self._paused = True
+                    return generation
                 self._turn_cond.wait(timeout=wait_s)
 
     @property

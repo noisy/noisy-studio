@@ -322,7 +322,7 @@ def _error_card_fields(error: Exception) -> dict:
     return fields | {"status": "error — likely transient, tap ↻ to retry"}
 
 
-def _hold_for_user_turn(state: ListenerState, utterance_id: int) -> None:
+def _hold_for_user_turn(state: ListenerState, utterance_id: int) -> int:
     """Wait for capture/PTT and log bounded, content-free turn diagnostics."""
     status = state.user_turn_status(POST_TURN_GRACE_SECONDS)
     detail = f"utterance={utterance_id} " + " ".join(
@@ -332,9 +332,13 @@ def _hold_for_user_turn(state: ListenerState, utterance_id: int) -> None:
     if status["decision"] == "hold":
         state.update_utterance(utterance_id, status="queued — waiting for you to finish")
     held_since = time.monotonic()
-    state.wait_for_user_silence(grace_s=POST_TURN_GRACE_SECONDS)
+    generation = state.wait_for_user_silence(
+        grace_s=POST_TURN_GRACE_SECONDS, on_ready=playback.interruption_generation,
+        claim_playback=True,
+    )
     if status["decision"] == "hold":
         state.add_event("speak_turn", f"utterance={utterance_id} decision=play held_ms={round((time.monotonic() - held_since) * 1000)}")
+    return generation
 
 
 def _streaming_available(state: ListenerState, provider: providers.TTSProvider) -> bool:
@@ -507,7 +511,7 @@ def _play_prepared(
         state.add_event("speak_error", str(error)[:200])
         state.update_utterance(utterance_id, **_error_card_fields(error))
         raise
-    _hold_for_user_turn(state, utterance_id)
+    generation = _hold_for_user_turn(state, utterance_id)
 
     # This is the real "the agent spoke aloud" moment — reset its
     # narration-nudge silence clock here, in-process (#16). The clock used to
@@ -532,6 +536,10 @@ def _play_prepared(
         nonlocal playback_completed, echo_guard_finished
         if echo_guard_finished:
             return
+        if playback.was_interrupted(generation):
+            if not state.utterance_is_unheard(source_id):
+                state.interrupt_playing_as_unheard("interrupted before playback completed")
+            return
         playback_completed = state.complete_playback(
             source_id, round(time.monotonic() - playing_since, 1)
         )
@@ -542,7 +550,7 @@ def _play_prepared(
         echo_guard_finished = True
 
     # Native speakers require echo muting during playback.
-    with playback.playback_scope():
+    with playback.playback_scope(generation):
         try:
             state.set_paused(True)
             state.set_claude_speaking(True, agent)
