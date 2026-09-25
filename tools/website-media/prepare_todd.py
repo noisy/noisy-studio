@@ -7,7 +7,7 @@ import subprocess
 import sys
 import tempfile
 
-from transcript_timing import with_streaming_transcripts, with_crew_focus
+from transcript_timing import with_streaming_transcripts, with_crew_focus, align_activities
 
 ROOT = Path(__file__).resolve().parents[2]
 # Camera time = browser MediaRecorder time + offset. Waveform correlation of
@@ -86,6 +86,7 @@ def main():
             if e['type'] != 'activity-start': continue
             end = next(x for x in take['events'] if x['type']=='activity-end' and x['atMs'] > e['atMs'])
             activities.append({'id':f'activity-{e["sequence"]}','startMs':e['atMs'],'endMs':end['atMs'],'status':'console' if e.get('text') in tasks else 'thinking', **({'consoleTask':tasks[e['text']]} if e.get('text') in tasks else {})})
+        activities = align_activities(activities, displayed_take)
         (output/f'{scene}-activities.json').write_text(json.dumps(activities,indent=2)+'\n')
         assert before == {p.name:digest(p) for p in sources}, 'Original modified'
         manifest['sources'].append({'scene':scene,'framing':frame,'source_directory':str(args.delivery),'sha256':before,'camera_offset_seconds':offset,'duration_seconds':duration,'output_bytes':video.stat().st_size,'output_sha256':digest(video)})

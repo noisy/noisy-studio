@@ -1,12 +1,15 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
 import RecordedHeroScene from '@dashboard/components/marketing/RecordedHeroScene.vue';
-import take from '@dashboard/components/marketing/recorded-hero/hero-recording.json';
-import manifest from '../../../tools/demo-recorder/takes/hero-v1/manifest.json';
+import take from '../assets/todd/hero.json';
+import recording from '../assets/todd/hero.mp4';
+import poster from '../assets/todd/hero-poster.jpg';
+import savedEdits from '../assets/todd/hero-presentation-edits.json';
+import { toddCamera } from '../toddCamera';
 import { CONSOLE_ACTIVITIES, activityWindows, idleWindows, type ActivityBlock, userTurns, validatePresentation, type ActivityKind, type PresentationEdits } from '@dashboard/components/marketing/presentationTiming';
-const sourceSha256 = manifest.files['original.webm'];
+const sourceSha256 = savedEdits.sourceSha256;
 const cacheKey = `demo-presentation:${sourceSha256}`;
-const edits = ref<PresentationEdits>({ version: 1, kind: 'demo-presentation-edits', sourceSha256, turns: [] });
+const edits = ref<PresentationEdits>(validatePresentation(structuredClone(savedEdits), take, sourceSha256));
 const turns = userTurns(take);
 const selected = ref('u1');
 const current = computed(() => turns.find(turn => turn.utterance === selected.value)!);
@@ -63,7 +66,7 @@ function previewTurn() { seek(Math.max(0, current.value.startMs - 300)); stopAt 
 function resetTurn() { try { edits.value = validatePresentation({...edits.value, turns: edits.value.turns.filter(edit => edit.utterance !== selected.value)}, take, sourceSha256); dirty.value = true; saveDraft(); error.value = ''; } catch(exception) { error.value = (exception as Error).message; } }
 function download() {
   const url = URL.createObjectURL(new Blob([JSON.stringify(edits.value, null, 2)], {type: 'application/json'}));
-  const link = document.createElement('a'); link.href = url; link.download = 'hero-v1.presentation-edits.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 10000);
+  const link = document.createElement('a'); link.href = url; link.download = 'todd-hero.presentation-edits.json'; link.click(); setTimeout(() => URL.revokeObjectURL(url), 10000);
   dirty.value = false; notice.value = 'Timing JSON saved. Keep it with the original hero recording.';
 }
 async function reopen(event: Event) {
@@ -84,11 +87,11 @@ onBeforeUnmount(() => {observer?.disconnect(); window.removeEventListener('befor
 </script>
 <template>
   <main>
-    <header><div><small>DEMO STUDIO / PRESENTATION TIMING</small><h1>Give the agent time to think.</h1></div><a href="http://127.0.0.1:8790/">← Demo Studio</a></header>
+    <header><div><small>DEMO STUDIO / TODD HERO TIMING</small><h1>Give the agent time to think.</h1></div><a href="/demo-studio/">← Demo Studio</a></header>
     <div class="toolbar"><button @click="togglePlay">{{ playing ? 'Pause' : 'Play with sound' }}</button><button @click="previewTurn">Play selected turn</button><button @click="download">Save timing JSON</button><label class="file-button">Reopen timing JSON<input type="file" accept=".json" @change="reopen"></label><span>{{ Math.round(time) }} / {{ Math.round(duration) }} ms</span></div>
     <p role="status">{{ notice }}</p><p v-if="error" class="error" role="alert">{{ error }}</p>
     <div class="workspace">
-      <div ref="frame" class="preview" :style="{height: `${760 * scale}px`}"><RecordedHeroScene ref="scene" manual-playback :presentation-edits="edits.turns" :activity-blocks="edits.activities ?? []" :style="{transform: `scale(${scale})`, transformOrigin: 'top left'}" @time="onTime" /></div>
+      <div ref="frame" class="preview" :style="{height: `${760 * scale}px`}"><RecordedHeroScene ref="scene" :recording-src="recording" :recording-poster="poster" :recording-take="take" v-bind="toddCamera" manual-playback :presentation-edits="edits.turns" :activity-blocks="edits.activities ?? []" :style="{transform: `scale(${scale})`, transformOrigin: 'top left'}" @time="onTime" /></div>
       <section class="controls"><nav aria-label="Choose user turn"><button v-for="(turn, i) in turns" :key="turn.utterance" :aria-pressed="selected === turn.utterance" @click="selected = turn.utterance">{{ i + 1 }}</button></nav>
         <p class="quote">“{{ current.text }}”</p>
         <label>Start of “you are speaking”<input type="range" :min="Math.ceil(current.startMs)" :max="edit.userEndMs - 1" step="1" :value="edit.userStartMs ?? Math.ceil(current.startMs)" @input="startChanged"></label>
@@ -127,6 +130,14 @@ onBeforeUnmount(() => {observer?.disconnect(); window.removeEventListener('befor
   </main>
 </template>
 <style>
-:root{color-scheme:dark;font:14px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#eee;background:#151619}*{box-sizing:border-box}body{margin:0}main{max-width:1450px;margin:auto;padding:24px}header{display:flex;align-items:center;justify-content:space-between}small{color:#cdb8ee;letter-spacing:1.4px;font-size:10px}h1{font-size:26px;margin:7px 0 16px}a{color:#cdb8ee;text-decoration:none}button,.file-button{font:inherit;padding:9px 12px;border:1px solid #484952;border-radius:7px;background:#292b33;color:#eee;cursor:pointer}button:hover{background:#3b3d48}button[aria-pressed=true]{background:#cab5ec;color:#19141f}.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.toolbar span{margin-left:auto;font:12px monospace}.file-button input{position:absolute;width:1px;height:1px;opacity:0}.workspace{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(300px,1fr);gap:20px;align-items:start}.preview{overflow:hidden;border-radius:12px}.controls{background:#202228;border:1px solid #393c46;padding:18px;border-radius:12px}.controls nav{display:flex;gap:6px}.quote{line-height:1.5;color:#eee;min-height:58px}.controls label{display:grid;gap:8px;margin:12px 0;color:#d1d2dc}.controls input[type=range]{width:100%}.end-time{display:flex;align-items:center;gap:8px}input[type=number],select{background:#13151a;color:#eee;border:1px solid #4a4d58;border-radius:6px;padding:8px;font:inherit}input[type=number]{width:110px}.hint,[role=status]{color:#a7abb7;font-size:12px;line-height:1.5}.error{color:#ffb2a5}.timeline{position:relative;margin:28px 0 8px 44px}.track{height:34px;position:relative;background:#101217;margin:5px 0;border-radius:5px}.track-label{position:absolute;left:-44px;top:10px;color:#aaa;font-size:11px}.segment{position:absolute;height:100%;padding:0;font-size:10px;white-space:nowrap;overflow:hidden;border:1px solid transparent;border-radius:4px}.user{background:#cab5ec33}.user i{position:absolute;inset:0 auto 0 0;background:#b49bd6}.user b{position:relative;color:#15141a}.user.selected{border-color:#eee}.agent{background:#829dc1;color:#10141c}.work{background:#d3b477;color:#191610}.cursor{position:absolute;width:2px;top:0;bottom:0;background:white;pointer-events:none}.scrub{width:calc(100% - 44px);margin-left:44px}@media(max-width:850px){.workspace{grid-template-columns:1fr}main{padding:16px}}
+:root{color-scheme:dark;font:14px -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:#eee;background:#151619}*{box-sizing:border-box}body{margin:0}
+</style>
+<style scoped>
+main{max-width:1450px;margin:auto;padding:24px}header{display:flex;align-items:center;justify-content:space-between}small{color:#cdb8ee;letter-spacing:1.4px;font-size:10px}h1{font-size:26px;margin:7px 0 16px}a{color:#cdb8ee;text-decoration:none}button,.file-button{font:inherit;padding:9px 12px;border:1px solid #484952;border-radius:7px;background:#292b33;color:#eee;cursor:pointer}button:hover{background:#3b3d48}button[aria-pressed=true]{background:#cab5ec;color:#19141f}.toolbar{display:flex;gap:10px;align-items:center;flex-wrap:wrap}.toolbar span{margin-left:auto;font:12px monospace}.file-button input{position:absolute;width:1px;height:1px;opacity:0}.workspace{display:grid;grid-template-columns:minmax(0,1.8fr) minmax(300px,1fr);gap:20px;align-items:start}.preview{overflow:hidden;border-radius:12px}.controls{background:#202228;border:1px solid #393c46;padding:18px;border-radius:12px}.controls nav{display:flex;gap:6px}.quote{line-height:1.5;color:#eee;min-height:58px}.controls label{display:grid;gap:8px;margin:12px 0;color:#d1d2dc}.controls input[type=range]{width:100%}.end-time{display:flex;align-items:center;gap:8px}input[type=number],select{background:#13151a;color:#eee;border:1px solid #4a4d58;border-radius:6px;padding:8px;font:inherit}input[type=number]{width:110px}.hint,[role=status]{color:#a7abb7;font-size:12px;line-height:1.5}.error{color:#ffb2a5}.timeline{position:relative;margin:28px 0 8px 44px}.track{height:34px;position:relative;background:#101217;margin:5px 0;border-radius:5px}.track-label{position:absolute;left:-44px;top:10px;color:#aaa;font-size:11px}.segment{position:absolute;height:100%;padding:0;font-size:10px;white-space:nowrap;overflow:hidden;border:1px solid transparent;border-radius:4px}.user{background:#cab5ec33}.user i{position:absolute;inset:0 auto 0 0;background:#b49bd6}.user b{position:relative;color:#15141a}.user.selected{border-color:#eee}.agent{background:#829dc1;color:#10141c}.work{background:#d3b477;color:#191610}.cursor{position:absolute;width:2px;top:0;bottom:0;background:white;pointer-events:none}.scrub{width:calc(100% - 44px);margin-left:44px}@media(max-width:850px){.workspace{grid-template-columns:1fr}main{padding:16px}}
 .activity-editor{margin:24px 0;padding:18px;border:1px solid #393c46;border-radius:12px;background:#202228}.activity-editor h2{font-size:18px;margin:0}.block-fields{display:flex;align-items:end;gap:10px;flex-wrap:wrap;margin:14px 0}.block-fields label{display:grid;gap:6px;font-size:12px}.block-row{display:flex;align-items:center;gap:10px;margin-top:10px}.block-row span{margin-right:auto;font:12px monospace}
+/* Match the approved website hero framing. */
+.preview :deep(.hero .recorded-camera) { left:24px; bottom:24px; width:336px; height:199.5px; aspect-ratio:auto; }
+.preview :deep(.recorded-camera video) { object-fit:cover; }
+.preview :deep(.hero-terminal) { top:49px; bottom:113px; }
+.preview :deep(.hero .recorded-widget.aloft) { transform:translate(-316px,-280px) scale(1.2); }
 </style>

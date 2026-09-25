@@ -1,0 +1,48 @@
+{
+  "version": 1,
+  "kind": "demo-presentation-edits",
+  "sourceSha256": "2206716432851d63640dc0401cb4bd172b8a73b58fdff80cc82736a733fe1fa1",
+  "turns": [],
+  "activities": [
+    {
+      "id": "activity-5",
+      "startMs": 12712,
+      "endMs": 13648,
+      "status": "thinking"
+    },
+    {
+      "id": "activity-9",
+      "startMs": 18634,
+      "endMs": 21967,
+      "status": "console",
+      "consoleTask": "u2"
+    },
+    {
+      "id": "activity-15",
+      "startMs": 29455,
+      "endMs": 30904,
+      "status": "console",
+      "consoleTask": "u2"
+    },
+    {
+      "id": "activity-23",
+      "startMs": 42909,
+      "endMs": 44967,
+      "status": "console",
+      "consoleTask": "u3"
+    },
+    {
+      "id": "activity-31",
+      "startMs": 57026,
+      "endMs": 57614,
+      "status": "thinking"
+    },
+    {
+      "id": "activity-35",
+      "startMs": 58608,
+      "endMs": 60901,
+      "status": "console",
+      "consoleTask": "u4"
+    }
+  ]
+}

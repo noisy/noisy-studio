@@ -1,4 +1,4 @@
-"""Apply captured STT updates without moving video or scenario boundaries."""
+"""Apply captured STT updates while keeping video and agent audio fixed."""
 from copy import deepcopy
 
 
@@ -8,6 +8,13 @@ def with_streaming_transcripts(take, capture):
     for identity, transcript in capture['utterances'].items():
         start = next(e for e in result['events'] if e['type'] == 'user-start' and e['utterance'] == identity)
         end = next(e for e in result['events'] if e['type'] == 'user-end' and e['utterance'] == identity)
+        # STT timestamps are receipt times, not word-level acoustic alignment.
+        # Keep the bubble active until the final caption, but never move a reply.
+        next_turn = min((e['atMs'] for e in result['events']
+                         if e['type'] in ('agent-start', 'user-start')
+                         and e['atMs'] > start['atMs']), default=result['durationMs'])
+        end['atMs'] = min(next_turn, result['durationMs'],
+                          max(end['atMs'], transcript['finalAtMs']))
         for index, update in enumerate(transcript['updates']):
             # Grok can briefly repeat a merged segment. Keep the previous
             # caption until it settles; preserve the raw update in the capture.
@@ -32,6 +39,22 @@ def with_streaming_transcripts(take, capture):
     if 'presentation' in result:
         result['presentation'] = [dict(event, displayAtMs=event['atMs']) for event in result['events']]
     return result
+
+
+def align_activities(activities, take):
+    """Keep work indicators out of the corrected speaking windows."""
+    aligned = []
+    for block in deepcopy(activities):
+        for start in take['events']:
+            if start['type'] != 'user-start':
+                continue
+            end = next(e for e in take['events'] if e['type'] == 'user-end'
+                       and e['utterance'] == start['utterance'])
+            if start['atMs'] <= block['startMs'] < end['atMs']:
+                block['startMs'] = end['atMs']
+        if block['startMs'] < block['endMs']:
+            aligned.append(block)
+    return aligned
 
 
 def with_crew_focus(take):
@@ -62,3 +85,14 @@ if __name__ == '__main__':
             original = with_crew_focus(original)
         revised = with_streaming_transcripts(original, capture)
         (folder / f'{scene}.json').write_text(json.dumps(revised, indent=2) + '\n')
+
+        activities_file = folder / f'{scene}-activities.json'
+        activities = align_activities(json.loads(activities_file.read_text()), revised)
+        activities_file.write_text(json.dumps(activities, indent=2) + '\n')
+        seed_file = folder / f'{scene}-presentation-edits.json'
+        if seed_file.exists():
+            from math import ceil, floor
+            seed = json.loads(seed_file.read_text())
+            seed['activities'] = [dict(block, startMs=ceil(block['startMs']), endMs=floor(block['endMs']))
+                                  for block in align_activities(seed['activities'], revised)]
+            seed_file.write_text(json.dumps(seed, indent=2) + '\n')

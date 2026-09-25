@@ -40,3 +40,11 @@ it('loads the approved hero timing without moving media events', () => {
   expect(adjusted.events.filter(event => event.type.startsWith('agent-') || event.type === 'transcript')).toEqual(take.events.filter(event => event.type.startsWith('agent-') || event.type === 'transcript'));
   expect([activityAt(take, plan.turns, 18000, plan.activities), activityAt(take, plan.turns, 62000, plan.activities)]).toEqual(['Editing src/search.ts', 'Deploying to production']);
 });
+
+import toddTake from '../../../../website/src/assets/todd/hero.json';
+import toddPresentation from '../../../../website/src/assets/todd/hero-presentation-edits.json';
+it('keeps Todd speaking through the last partial caption before showing thinking', () => {
+  const plan = validatePresentation(toddPresentation, toddTake, toddPresentation.sourceSha256);
+  expect(recordedCrewAt(toddTake, 12000).mode).toBe('user');
+  expect([activityAt(toddTake, plan.turns, 12000, plan.activities), activityAt(toddTake, plan.turns, 13000, plan.activities)]).toEqual([null, 'Thinking…']);
+});
