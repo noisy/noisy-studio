@@ -82,6 +82,7 @@ FRAME_WAIT_SECONDS = 2.0
 # Conversation history persistence: the log used to live only in memory,
 # so every daemon restart wiped the conversation from the dashboard.
 HISTORY_FILE = CONFIG_DIR / "history.json"
+_HISTORY_SAVE_LOCK = threading.Lock()
 # Transcripts waiting for an agent (#76): they used to live only in memory,
 # so every restart silently ate whatever the user had just said to a tab
 # that was not listening at that moment.
@@ -129,8 +130,8 @@ def _ptt_barge_in(state: ListenerState) -> bool:
 def _load_history(state: ListenerState) -> None:
     try:
         items = json.loads(HISTORY_FILE.read_text())
-        if isinstance(items, list):
-            state.load_utterances(items)
+        if isinstance(items, (list, dict)):
+            state.load_history(items)
     except (OSError, ValueError):
         pass
     try:
@@ -144,19 +145,26 @@ def _load_history(state: ListenerState) -> None:
 
 
 def _save_history(state: ListenerState) -> None:
-    try:
-        HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
-        HISTORY_FILE.write_text(json.dumps(state.snapshot_utterances()))
-        PENDING_FILE.write_text(json.dumps(state.snapshot_transcripts()))
-    except OSError:
-        pass
+    # The background saver and shutdown can overlap. Serialize snapshots and
+    # replacements so an older write cannot overwrite the final snapshot.
+    with _HISTORY_SAVE_LOCK:
+        try:
+            HISTORY_FILE.parent.mkdir(parents=True, exist_ok=True)
+            temporary = HISTORY_FILE.with_suffix(".json.tmp")
+            temporary.write_text(json.dumps(state.snapshot_history()))
+            temporary.replace(HISTORY_FILE)
+            pending_temporary = PENDING_FILE.with_suffix(".json.tmp")
+            pending_temporary.write_text(json.dumps(state.snapshot_transcripts()))
+            pending_temporary.replace(PENDING_FILE)
+        except OSError:
+            pass
 
 
 def _history_saver(state: ListenerState) -> None:
     last_saved = ""
     while True:
         threading.Event().wait(HISTORY_SAVE_SECONDS)
-        snapshot = json.dumps([state.snapshot_utterances(), state.snapshot_transcripts()])
+        snapshot = json.dumps([state.snapshot_history(), state.snapshot_transcripts()])
         if snapshot != last_saved:
             _save_history(state)
             last_saved = snapshot

@@ -8,6 +8,7 @@ from dataclasses import replace, asdict, dataclass
 
 from noisy_studio.listener.conversations import ConversationRegistry
 from noisy_studio.listener.microphone_sample import MicrophoneSample
+from noisy_studio.listener.history import ConversationHistory
 from noisy_studio.harness.provider import Receipt, Speech
 from noisy_studio.listener.character_traits import canonical_character_traits
 from noisy_studio.listener.conversation_labels import UNNAMED_CONVERSATION, conversation_label
@@ -99,9 +100,6 @@ class Transcript:
     delivery_state: str = "queued"
 
 
-UTTERANCE_LOG_SIZE = 100
-
-
 class ListenerState:
     def __init__(self) -> None:
         self._lock = threading.Lock()
@@ -157,7 +155,7 @@ class ListenerState:
         self._last_transcript_at = 0.0
         self._events: deque[dict] = deque(maxlen=EVENT_LOG_SIZE)
         self._event_seq = 0
-        self._utterances: deque[dict] = deque(maxlen=UTTERANCE_LOG_SIZE)
+        self._utterances = ConversationHistory()
         self._utterance_seq = 0
         self._session_cost_usd = {"user": 0.0, "claude": 0.0}
         # Volume behind the costs: audio seconds transcribed, chars spoken.
@@ -835,6 +833,29 @@ class ListenerState:
     def snapshot_utterances(self) -> list[dict]:
         with self._lock:
             return [dict(u) for u in self._utterances]
+
+    def snapshot_history(self) -> dict:
+        with self._lock:
+            return self._utterances.snapshot(self._utterance_seq)
+
+    def history_trimmed(self) -> dict[str, int]:
+        with self._lock:
+            return dict(self._utterances.trimmed)
+
+    def load_history(self, saved: list | dict) -> None:
+        if isinstance(saved, list):
+            self.load_utterances(saved)
+            return
+        if not isinstance(saved, dict) or saved.get("version") != 2:
+            return
+        rows = list(saved.get("system", []))
+        for cards in saved.get("conversations", {}).values():
+            rows.extend(cards)
+        self.load_utterances(sorted(rows, key=lambda row: row.get("id", 0)))
+        with self._lock:
+            self._utterance_seq = max(self._utterance_seq, int(saved.get("sequence", 0)))
+            for agent, count in saved.get("trimmed", {}).items():
+                self._utterances.trimmed[agent] = self._utterances.trimmed.get(agent, 0) + int(count)
 
     def snapshot_transcripts(self) -> list[dict]:
         """The transcripts still waiting for an agent, for persistence (#76)."""
