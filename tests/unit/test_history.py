@@ -110,3 +110,36 @@ def test_legacy_history_migrates_without_losing_surviving_cards(tmp_path, monkey
     assert restored.snapshot_utterances() == legacy
     assert json.loads(history_file.read_text())['conversations'] == {'a1': [legacy[0]], 'a2': [legacy[1]]}
     assert restored.create_utterance('user', 'recording') == 43
+
+
+def test_failed_atomic_replace_preserves_previously_saved_history(tmp_path, monkeypatch):
+    from pathlib import Path
+
+    history_file = tmp_path / 'history.json'
+    monkeypatch.setattr(daemon, 'HISTORY_FILE', history_file)
+    monkeypatch.setattr(daemon, 'PENDING_FILE', tmp_path / 'pending.json')
+    state = ListenerState()
+    state.create_utterance('claude', 'played', text='saved reply', agent='a1')
+    daemon._save_history(state)
+    previous = history_file.read_bytes()
+    state.create_utterance('claude', 'played', text='new reply', agent='a1')
+
+    def fail_replace(source, target):
+        raise OSError('Simulated interrupted replacement')
+
+    monkeypatch.setattr(Path, 'replace', fail_replace)
+    daemon._save_history(state)
+
+    assert history_file.read_bytes() == previous
+
+
+def test_late_card_update_does_not_restore_trimmed_history():
+    state = ListenerState()
+    first = state.create_utterance('claude', 'queued', agent='a1')
+    for _ in range(200):
+        state.create_utterance('claude', 'played', agent='a1')
+    retained = state.snapshot_utterances()
+
+    state.update_utterance(first, status='played')
+
+    assert state.snapshot_utterances() == retained

@@ -14,6 +14,8 @@ export interface HotkeyState {
 }
 
 export interface DaemonStatus {
+  /** Number of older cards removed by each conversation’s retention limit. */
+  history_trimmed?: Record<string, number>;
   audio_capabilities?: AudioCapabilities;
   conversations?: Record<string, { created_at?: number }>;
   /** Named speakers whose bubbles carry a palette tint (twitch purple / youtube red). */

@@ -4,6 +4,6 @@ Implement issue #157 with independently bounded conversation histories (200 card
 
 A larger disk archive and lazy loading are deliberately deferred: current WebSocket snapshots include all conversations and state recovery mutates their cards. Memory remains bounded per conversation, not globally. Already evicted legacy messages cannot be reconstructed. Closing a tab is not a history-clear operation; existing clear-history functionality does not exist.
 
-- [ ] Implement isolated retention and migration with restart/regression tests.
-- [ ] Add status metadata and trimmed-history component/story/test.
-- [ ] Run focused and broader checks; commit functional increments.
+- [x] Implement isolated retention and migration with restart/regression tests.
+- [x] Add status metadata and trimmed-history component/story/test.
+- [x] Run focused and broader checks; commit functional increments.

@@ -112,3 +112,7 @@ export const BriefMicrophoneFlapping: StoryObj<typeof ConversationLog> = {
     { ...microphoneHistory[1]!, detail: "×3" },
   ] },
 };
+
+export const TrimmedHistory: StoryObj<typeof ConversationLog> = {
+  args: { utterances: feed, historyTrimmed: true },
+};
