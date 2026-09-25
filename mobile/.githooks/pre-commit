@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# Opt in using git config core.hooksPath mobile/.githooks; does not replace hooks automatically.
+mobile/scripts/check.sh
