@@ -48,3 +48,5 @@ app.*.map.json
 .widget_preview/
 
 /lib/l10n/app_localizations*.dart
+
+/android/.kotlin/

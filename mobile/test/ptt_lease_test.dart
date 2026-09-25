@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/widgets.dart';
 import 'package:noisy_studio_mobile/core/daemon_client.dart';
 import 'package:noisy_studio_mobile/core/ptt_lease.dart';
 
@@ -19,6 +20,20 @@ class Commands implements DaemonCommands {
 }
 
 void main() {
+  testWidgets(
+    'backgrounding releases actual lease and resume never restarts it',
+    (tester) async {
+      final commands = Commands();
+      final lease = PttLease(commands);
+      await lease.start();
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.inactive);
+      await tester.pump();
+      tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
+      await tester.pump(const Duration(seconds: 3));
+      expect(commands.calls, [true, false]);
+      lease.dispose();
+    },
+  );
   testWidgets('cancel in flight finishes with release and no more renewals', (
     tester,
   ) async {

@@ -1,6 +1,6 @@
 {
-    "name": "noisy_studio_mobile",
-    "short_name": "noisy_studio_mobile",
+    "name": "Noisy Studio",
+    "short_name": "Noisy Studio",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

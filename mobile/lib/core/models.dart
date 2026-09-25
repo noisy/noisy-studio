@@ -40,10 +40,18 @@ class Snapshot {
     final speaking = s['speaking_agents'] as List? ?? [];
     final queued = s['queued_by_agent'] as Map<String, dynamic>? ?? {};
     final conversations = s['conversations'] as Map<String, dynamic>? ?? {};
+    final activity = s['activity'] as Map<String, dynamic>? ?? {};
+    final now = DateTime.now().millisecondsSinceEpoch / 1000;
     return Snapshot(
       agents: ids.map((id) {
         final m = meta[id] as Map<String, dynamic>? ?? {};
         final conversation = conversations[id] as Map<String, dynamic>? ?? {};
+        final a = activity[id] as Map<String, dynamic>? ?? {};
+        const workingFreshSeconds =
+            20; // Same activity window as the desktop tabs.
+        final working =
+            (a['text'] as String? ?? '').isNotEmpty &&
+            now - ((a['at'] as num?)?.toDouble() ?? 0) < workingFreshSeconds;
         final label = labels[id] as String? ?? m['label'] as String? ?? '';
         return Agent(
           id,
@@ -52,7 +60,7 @@ class Snapshot {
               ? AgentState.offline
               : speaking.contains(id)
               ? AgentState.speaking
-              : conversation['status'] == 'live'
+              : working
               ? AgentState.working
               : AgentState.waiting,
           harness: (conversation['harness'] as String? ?? 'Agent').replaceAll(

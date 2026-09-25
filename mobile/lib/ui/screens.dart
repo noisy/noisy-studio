@@ -8,6 +8,7 @@ ThemeData studioTheme(Brightness brightness) => ThemeData(
     brightness: brightness,
   ),
   useMaterial3: true,
+  fontFamily: 'Studio Sans',
 );
 
 class AudioNotice extends StatelessWidget {
@@ -72,6 +73,11 @@ class AgentsView extends StatelessWidget {
                         label: Text('${agent.unread} queued'),
                         child: CircleAvatar(
                           radius: 27,
+                          backgroundColor:
+                              agent.harness.toLowerCase().contains('claude')
+                              ? const Color(0xffdca580)
+                              : const Color(0xff8ed9c6),
+                          foregroundColor: const Color(0xff16221c),
                           child: Text(
                             agent.name.substring(0, 1),
                             style: const TextStyle(fontSize: 26),

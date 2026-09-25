@@ -1,16 +1,18 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
+import 'package:flutter/widgets.dart';
 
 import 'daemon_client.dart';
 
 /// Owns one local hold. Serializes renewal/release so a late start cannot outlive cancellation.
-class PttLease extends ChangeNotifier {
+class PttLease extends ChangeNotifier with WidgetsBindingObserver {
   PttLease(
     this.commands, {
     this.interval = const Duration(milliseconds: 500),
     this.onFailure,
-  });
+  }) {
+    WidgetsBinding.instance.addObserver(this);
+  }
   final DaemonCommands commands;
   final Duration interval;
   final VoidCallback? onFailure;
@@ -20,8 +22,7 @@ class PttLease extends ChangeNotifier {
   bool held = false;
   bool _disposed = false;
   Future<void> start() async {
-    if (_stopping != null) await _stopping;
-    if (held || _disposed) return;
+    if (_stopping != null || held || _disposed) return;
     held = true;
     notifyListeners();
     await _renew();
@@ -71,7 +72,13 @@ class PttLease extends ChangeNotifier {
   }
 
   @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed) unawaited(stop());
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _disposed = true;
     unawaited(stop());
     super.dispose();
