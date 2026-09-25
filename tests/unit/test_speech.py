@@ -560,3 +560,37 @@ def test_user_starting_during_deferred_synthesis_is_waited_for(monkeypatch, batc
     finally:
         state.set_recording(False)
         future.result(timeout=2)
+
+
+def test_ptt_interrupt_during_stream_connection_cancels_the_late_player(monkeypatch, batch_pipeline):
+    from unittest.mock import Mock
+    from noisy_studio import playback
+    from noisy_studio.listener import daemon
+
+    state = ListenerState()
+    state.set_detection_mode("ptt")
+    connecting = threading.Event()
+    continue_connection = threading.Event()
+    process = Mock()
+    monkeypatch.setattr(speech, "_tts_streaming", lambda *args: True)
+
+    async def connect_then_play(*args):
+        connecting.set()
+        assert await asyncio.to_thread(continue_connection.wait, 2)
+        playback.register_player(process)
+        playback.unregister_player(process)
+
+    monkeypatch.setattr(speech, "_stream_and_play", connect_then_play)
+    future = speech.submit(state, "connecting reply")
+    try:
+        assert connecting.wait(2)
+        state.refresh_ptt_hold()
+        assert daemon._ptt_barge_in(state)
+        continue_connection.set()
+        future.result(timeout=2)
+        process.kill.assert_called_once_with()
+        assert state.utterances()[0]["status"] == "unheard — interrupted by push-to-talk"
+    finally:
+        continue_connection.set()
+        state.release_ptt()
+        future.result(timeout=2)

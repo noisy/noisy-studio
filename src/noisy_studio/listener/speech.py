@@ -542,27 +542,28 @@ def _play_prepared(
         echo_guard_finished = True
 
     # Native speakers require echo muting during playback.
-    try:
-        state.set_paused(True)
-        state.set_claude_speaking(True, agent)
-        if prepared.stream:
-            asyncio.run(_stream_and_play(
-                state, text, prepared, utterance_id, source_id, playback_complete
-            ))
-        else:
-            asyncio.run(_play_audio(state, audio, prepared.cached, utterance_id))
-        playback_complete()
-    except Exception as error:
-        _log(f"[speak] error: {error}")
-        state.add_event("speak_error", str(error)[:200])
-        if not playback_completed:
-            state.update_utterance(utterance_id, **_error_card_fields(error))
-            raise
-        # A transport-close failure cannot make successfully played audio unheard.
-    finally:
-        state.set_playing_utterance_id(0)
-        state.set_claude_speaking(False, agent)
-        state.set_paused(False)
+    with playback.playback_scope():
+        try:
+            state.set_paused(True)
+            state.set_claude_speaking(True, agent)
+            if prepared.stream:
+                asyncio.run(_stream_and_play(
+                    state, text, prepared, utterance_id, source_id, playback_complete
+                ))
+            else:
+                asyncio.run(_play_audio(state, audio, prepared.cached, utterance_id))
+            playback_complete()
+        except Exception as error:
+            _log(f"[speak] error: {error}")
+            state.add_event("speak_error", str(error)[:200])
+            if not playback_completed:
+                state.update_utterance(utterance_id, **_error_card_fields(error))
+                raise
+            # A transport-close failure cannot make successfully played audio unheard.
+        finally:
+            state.set_playing_utterance_id(0)
+            state.set_claude_speaking(False, agent)
+            state.set_paused(False)
     played_seconds = time.monotonic() - playing_since
     _log(f"[speak] done in {played_seconds:.1f}s")
     state.add_event("speak_done", f"głos '{prepared.voice}'")

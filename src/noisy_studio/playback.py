@@ -1,6 +1,9 @@
 """Play synthesized audio through the local speakers."""
 
 import asyncio
+import threading
+from contextlib import contextmanager
+from contextvars import ContextVar
 import signal
 import shutil
 import sys
@@ -21,14 +24,37 @@ class PlaybackError(RuntimeError):
 
 # Currently-running player processes, so an interrupting speak can kill them.
 _active_players: set[asyncio.subprocess.Process] = set()
+_player_lock = threading.Lock()
+_interrupt_generation = 0
+_playback_generation: ContextVar[int | None] = ContextVar("playback_generation", default=None)
+
+
+@contextmanager
+def playback_scope():
+    """An interrupt also cancels players still connecting or buffering."""
+    with _player_lock:
+        token = _playback_generation.set(_interrupt_generation)
+    try:
+        yield
+    finally:
+        _playback_generation.reset(token)
 
 
 def register_player(process: asyncio.subprocess.Process) -> None:
-    _active_players.add(process)
+    with _player_lock:
+        generation = _playback_generation.get()
+        if generation is not None and generation != _interrupt_generation:
+            try:
+                process.kill()
+            except ProcessLookupError:
+                pass
+            return
+        _active_players.add(process)
 
 
 def unregister_player(process: asyncio.subprocess.Process) -> None:
-    _active_players.discard(process)
+    with _player_lock:
+        _active_players.discard(process)
 
 
 # Transport pause (dashboard ⏸): the player process is frozen in place
@@ -43,32 +69,35 @@ def toggle_pause() -> bool:
     No active player: reports unpaused - nothing to freeze, and a stale
     "paused" flag would wedge the NEXT clip's UI.
     """
-    global _paused
-    want_paused = not _paused
-    signalled = False
-    for process in list(_active_players):
-        try:
-            process.send_signal(signal.SIGSTOP if want_paused else signal.SIGCONT)
-            signalled = True
-        except ProcessLookupError:
-            _active_players.discard(process)
-    _paused = want_paused if signalled else False
-    return _paused
+    with _player_lock:
+        global _paused
+        want_paused = not _paused
+        signalled = False
+        for process in list(_active_players):
+            try:
+                process.send_signal(signal.SIGSTOP if want_paused else signal.SIGCONT)
+                signalled = True
+            except ProcessLookupError:
+                _active_players.discard(process)
+        _paused = want_paused if signalled else False
+        return _paused
 
 
 def stop_all_players() -> None:
     """Terminate every playing audio process (used by interrupt=True)."""
-    global _paused
-    _paused = False
-    for process in list(_active_players):
-        try:
-            # A SIGSTOPped process still dies to SIGKILL, but wake it first
-            # so its communicate() unblocks promptly.
-            process.send_signal(signal.SIGCONT)
-            process.kill()
-        except ProcessLookupError:
-            pass
-        _active_players.discard(process)
+    with _player_lock:
+        global _paused, _interrupt_generation
+        _interrupt_generation += 1
+        _paused = False
+        for process in list(_active_players):
+            try:
+                # A SIGSTOPped process still dies to SIGKILL, but wake it first
+                # so its communicate() unblocks promptly.
+                process.send_signal(signal.SIGCONT)
+                process.kill()
+            except ProcessLookupError:
+                pass
+            _active_players.discard(process)
 
 
 def _player_command(audio_path: Path) -> list[str]:
