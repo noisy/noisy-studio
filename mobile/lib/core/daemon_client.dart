@@ -70,8 +70,24 @@ class DaemonClient implements DaemonCommands {
     }
   }
 
+  Future<String?> selectAgent(String id) async {
+    final result = await _post('/active-agent', {'name': id});
+    if (!result.containsKey('active_agent') ||
+        (result['active_agent'] != null && result['active_agent'] is! String)) {
+      throw const FormatException('Missing active-agent confirmation');
+    }
+    return result['active_agent'] as String?;
+  }
+
   @override
   Future<void> post(String path, Map<String, Object> body) async {
+    await _post(path, body);
+  }
+
+  Future<Map<String, dynamic>> _post(
+    String path,
+    Map<String, Object> body,
+  ) async {
     final response = await _http
         .post(
           base.replace(path: path),
@@ -82,6 +98,7 @@ class DaemonClient implements DaemonCommands {
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw StateError('Desktop returned HTTP ${response.statusCode}');
     }
+    return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
   Future<void> close() async {

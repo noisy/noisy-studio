@@ -36,6 +36,11 @@ No phone microphone audio or pairing code is sent. Local HTTP is permitted by bo
 platform manifests for this preview. Web preview requires the daemon's CORS policy
 to allow its origin; native builds do not use browser CORS.
 
+Agent selection is serialized and Talk controls remain disabled until the latest
+server confirmation. Disconnecting or switching to demo invalidates old routing
+completions. The confirmed identity, including aliases or no active conversation,
+is authoritative.
+
 PTT renews every 500 ms after the previous acknowledgement. Release waits for an
 in-flight renewal. Backgrounding, navigation, routing changes, Auto mode, muting,
 disconnection and disposal cancel the local hold. Network loss disables controls;

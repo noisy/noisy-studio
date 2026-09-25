@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/daemon_client.dart';
+import 'core/agent_selection.dart';
 import 'core/models.dart';
 import 'core/ptt_lease.dart';
 import 'ui/screens.dart';
@@ -37,6 +38,7 @@ class _CompanionState extends State<Companion> with WidgetsBindingObserver {
   final address = TextEditingController();
   DaemonClient? client;
   PttLease? lease;
+  AgentSelection? selection;
   StreamSubscription<Snapshot>? subscription;
   bool demo = true, connected = true, busy = false, demoHeld = false;
   String? error;
@@ -56,13 +58,18 @@ class _CompanionState extends State<Companion> with WidgetsBindingObserver {
 
   Future<void> disconnect() async {
     generation++;
-    await lease?.stop();
-    lease?.dispose();
+    selection?.dispose();
+    selection = null;
+    final previousLease = lease;
+    final previousSubscription = subscription;
+    final previousClient = client;
     lease = null;
-    await subscription?.cancel();
     subscription = null;
-    await client?.close();
     client = null;
+    await previousLease?.stop();
+    previousLease?.dispose();
+    await previousSubscription?.cancel();
+    await previousClient?.close();
   }
 
   Future<void> connect() async {
@@ -72,8 +79,10 @@ class _CompanionState extends State<Companion> with WidgetsBindingObserver {
       connected = false;
       error = null;
     });
-    await disconnect();
+    final closing = disconnect();
     final current = generation;
+    await closing;
+    if (!mounted || current != generation) return;
     try {
       final remote = DaemonClient(address.text);
       client = remote;
@@ -82,21 +91,37 @@ class _CompanionState extends State<Companion> with WidgetsBindingObserver {
       snapshot = initial;
       demo = false;
       connected = true;
-      lease = PttLease(remote, onFailure: lost)..addListener(refresh);
+      void connectionLost() {
+        if (mounted && current == generation) lost();
+      }
+
+      final connectionLease = PttLease(remote, onFailure: connectionLost)
+        ..addListener(refresh);
+      lease = connectionLease;
+      selection = AgentSelection(
+        stopRecording: connectionLease.stop,
+        request: remote.selectAgent,
+        onConfirmed: (id) {
+          if (mounted && current == generation) applySelection(id);
+        },
+        onFailure: connectionLost,
+      )..addListener(refresh);
       subscription = remote.watch().listen(
         (next) {
+          if (!mounted || current != generation) return;
           if (next.activeId != snapshot.activeId || next.auto || next.muted) {
             unawaited(lease?.stop());
           }
           snapshot = next;
           refresh();
         },
-        onError: (Object _) => lost(),
-        onDone: lost,
+        onError: (Object _) => connectionLost(),
+        onDone: connectionLost,
       );
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('daemonAddress', address.text.trim());
     } catch (_) {
+      if (!mounted || current != generation) return;
       error = 'Could not connect. Check the address and that your desktop is reachable.';
       connected = false;
     } finally {
@@ -105,32 +130,45 @@ class _CompanionState extends State<Companion> with WidgetsBindingObserver {
   }
 
   void lost() {
+    selection?.dispose();
+    selection = null;
     unawaited(lease?.stop());
     connected = false;
     error = 'Connection lost. Recording stopped. Reconnect in Settings.';
     refresh();
   }
 
-  Future<void> command(String path, Map<String, Object> body) async {
-    if (demo) return;
+  Future<bool> command(String path, Map<String, Object> body) async {
+    if (demo) return true;
+    final current = generation;
     try {
       await client?.post(path, body);
+      return mounted && current == generation;
     } catch (_) {
-      lost();
+      if (mounted && current == generation) lost();
+      return false;
     }
   }
 
   Future<void> select(Agent agent) async {
-    await lease?.stop();
-    if (!demo) await command('/active-agent', {'name': agent.id});
-    if (!mounted) return;
+    if (!connected) return;
+    if (demo) {
+      release();
+      applySelection(agent.id);
+    } else {
+      await selection?.select(agent.id);
+    }
+  }
+
+  void applySelection(String? confirmedId) {
     setState(() {
       snapshot = Snapshot(
         agents: snapshot.agents,
         messages: snapshot.messages,
-        activeId: agent.id,
+        activeId: confirmedId,
         muted: snapshot.muted,
         auto: snapshot.auto,
+        recording: snapshot.recording,
       );
       tab = 1;
     });
@@ -143,6 +181,7 @@ class _CompanionState extends State<Companion> with WidgetsBindingObserver {
   }
 
   void hold() {
+    if (!connected || selection?.pending == true) return;
     if (demo) {
       demoHeld = true;
       refresh();
@@ -174,7 +213,7 @@ class _CompanionState extends State<Companion> with WidgetsBindingObserver {
       TalkView(
         snapshot: snapshot,
         agent: agent,
-        connected: connected,
+        connected: connected && selection?.pending != true,
         held: demo ? demoHeld : lease?.held == true,
         onHold: hold,
         onRelease: release,
@@ -182,9 +221,11 @@ class _CompanionState extends State<Companion> with WidgetsBindingObserver {
             (demo ? demoHeld : lease?.held == true) ? release() : hold(),
         onAuto: (value) async {
           release();
-          await command('/settings', {
+          if (!await command('/settings', {
             'detection_mode': value ? 'auto' : 'ptt',
-          });
+          })) {
+            return;
+          }
           if (demo) {
             snapshot = Snapshot(
               agents: snapshot.agents,
@@ -198,7 +239,7 @@ class _CompanionState extends State<Companion> with WidgetsBindingObserver {
         },
         onMute: () async {
           release();
-          await command('/mute', {'muted': !snapshot.muted});
+          if (!await command('/mute', {'muted': !snapshot.muted})) return;
           if (demo) {
             snapshot = Snapshot(
               agents: snapshot.agents,
@@ -219,8 +260,10 @@ class _CompanionState extends State<Companion> with WidgetsBindingObserver {
         error: error,
         onConnect: connect,
         onDemo: () async {
-          await disconnect();
-          if (!mounted) return;
+          final closing = disconnect();
+          final current = generation;
+          await closing;
+          if (!mounted || current != generation) return;
           setState(() {
             demo = true;
             connected = true;

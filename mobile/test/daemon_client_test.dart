@@ -7,6 +7,26 @@ import 'package:noisy_studio_mobile/core/daemon_client.dart';
 
 void main() {
   test(
+    'selection honors server alias resolution and rejects absent confirmation',
+    () async {
+      var valid = true;
+      final remote = DaemonClient(
+        'http://localhost:7765',
+        client: MockClient(
+          (_) async => http.Response(
+            valid ? '{"active_agent":"canonical-a1"}' : '{}',
+            200,
+          ),
+        ),
+      );
+      expect(await remote.selectAgent('alias-a1'), 'canonical-a1');
+      valid = false;
+      await expectLater(remote.selectAgent('alias-a1'), throwsFormatException);
+      await remote.close();
+    },
+  );
+
+  test(
     'reads actual HTTP schemas and posts held boolean without identity leakage',
     () async {
       final calls = <String>[];
