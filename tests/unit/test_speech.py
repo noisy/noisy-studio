@@ -1,5 +1,6 @@
 import asyncio
 import time
+import threading
 
 import pytest
 
@@ -470,3 +471,154 @@ def test_output_status_matches_the_playback_path(monkeypatch, supports_streaming
     monkeypatch.setattr(speech.providers, 'active_tts', lambda: SimpleNamespace(supports_streaming=supports_streaming))
 
     assert speech.output_status(state) == expected
+
+
+def test_ptt_barge_in_before_capture_holds_queued_clip_through_recording_and_grace(monkeypatch, batch_pipeline):
+    state = ListenerState()
+    state.set_detection_mode("ptt")
+    state.set_paused(True)
+    state.refresh_ptt_hold()
+    _install_fake_synth(monkeypatch, [])
+    waiting = threading.Event()
+    played = threading.Event()
+    wait_for_silence = state.wait_for_user_silence
+
+    def wait(grace_s, **kwargs):
+        waiting.set()
+        return wait_for_silence(grace_s, **kwargs)
+
+    async def play(*args):
+        played.set()
+
+    monkeypatch.setattr(state, "wait_for_user_silence", wait)
+    monkeypatch.setattr(speech, "POST_TURN_GRACE_SECONDS", 0.1)
+    monkeypatch.setattr(speech, "_play_audio", play)
+    future = speech.submit(state, "queued reply")
+    try:
+        assert waiting.wait(2)
+        assert not played.wait(0.05)
+        state.set_paused(False)
+        state.set_recording(True)
+        state.release_ptt()
+        assert not played.wait(0.15)
+        state.set_recording(False)
+        assert not played.wait(0.04)
+        future.result(timeout=2)
+        assert played.is_set()
+        decisions = [e["detail"] for e in state.events_since(0) if e["kind"] == "speak_turn"]
+        assert len(decisions) == 2
+        assert "decision=hold recording=False paused=True user_muted=False ptt_held=True" in decisions[0]
+        assert "decision=play held_ms=" in decisions[1]
+    finally:
+        state.release_ptt()
+        state.set_recording(False)
+        future.result(timeout=2)
+
+
+def test_immediate_playback_logs_the_turn_flags(monkeypatch, batch_pipeline):
+    state = ListenerState()
+    _install_fake_synth(monkeypatch, [])
+    _install_fake_play(monkeypatch, [])
+
+    speech.submit(state, "ready reply").result(timeout=2)
+
+    decisions = [e["detail"] for e in state.events_since(0) if e["kind"] == "speak_turn"]
+    assert len(decisions) == 1
+    assert "decision=play recording=False paused=False user_muted=False ptt_held=False" in decisions[0]
+
+
+def test_user_starting_during_deferred_synthesis_is_waited_for(monkeypatch, batch_pipeline):
+    state = ListenerState()
+    waiting = threading.Event()
+    played = threading.Event()
+    monkeypatch.setattr(speech, "POST_TURN_GRACE_SECONDS", 0)
+    monkeypatch.setattr(speech, "_prepare_audio", lambda *args: speech._PreparedSpeech("eve", "en", 1))
+
+    def synthesize(*args):
+        state.set_recording(True)
+        return tts.SynthesizedAudio(b"mp3-bytes", "audio/mpeg", 0)
+
+    wait_for_silence = state.wait_for_user_silence
+
+    def wait(grace_s, **kwargs):
+        waiting.set()
+        return wait_for_silence(grace_s, **kwargs)
+
+    async def play(*args):
+        played.set()
+
+    monkeypatch.setattr(speech, "_synthesize_now", synthesize)
+    monkeypatch.setattr(state, "wait_for_user_silence", wait)
+    monkeypatch.setattr(speech, "_play_audio", play)
+    future = speech.submit(state, "rendered after unmute")
+    try:
+        assert waiting.wait(2)
+        assert not played.wait(0.05)
+        state.set_recording(False)
+        future.result(timeout=2)
+        assert played.is_set()
+    finally:
+        state.set_recording(False)
+        future.result(timeout=2)
+
+
+def test_ptt_interrupt_during_stream_connection_cancels_the_late_player(monkeypatch, batch_pipeline):
+    from unittest.mock import Mock
+    from noisy_studio import playback
+    from noisy_studio.listener import daemon
+
+    state = ListenerState()
+    state.set_detection_mode("ptt")
+    connecting = threading.Event()
+    continue_connection = threading.Event()
+    process = Mock()
+    monkeypatch.setattr(speech, "_tts_streaming", lambda *args: True)
+
+    async def connect_then_play(*args):
+        connecting.set()
+        assert await asyncio.to_thread(continue_connection.wait, 2)
+        playback.register_player(process)
+        playback.unregister_player(process)
+
+    monkeypatch.setattr(speech, "_stream_and_play", connect_then_play)
+    future = speech.submit(state, "connecting reply")
+    try:
+        assert connecting.wait(2)
+        state.refresh_ptt_hold()
+        assert daemon._ptt_barge_in(state)
+        continue_connection.set()
+        future.result(timeout=2)
+        process.kill.assert_called_once_with()
+        assert state.utterances()[0]["status"] == "unheard — interrupted by push-to-talk"
+    finally:
+        continue_connection.set()
+        state.release_ptt()
+        future.result(timeout=2)
+
+
+def test_ptt_between_turn_hold_and_playback_scope_cancels_late_player(monkeypatch, batch_pipeline):
+    from unittest.mock import Mock
+    from noisy_studio import playback
+    from noisy_studio.listener import daemon
+
+    state = ListenerState()
+    state.set_detection_mode("ptt")
+    _install_fake_synth(monkeypatch, [])
+    process = Mock()
+
+    def press_ptt_after_hold(*args):
+        state.refresh_ptt_hold()
+        # Hotkeys renew the lease; the next capture frame invokes barge-in.
+        assert state.paused
+        daemon._ptt_barge_in(state)
+
+    async def play(*args):
+        playback.register_player(process)
+        playback.unregister_player(process)
+
+    monkeypatch.setattr(state, "note_agent_spoke", press_ptt_after_hold)
+    monkeypatch.setattr(speech, "_play_audio", play)
+    speech.submit(state, "reply losing the handoff race").result(timeout=2)
+
+    process.kill.assert_called_once_with()
+    assert state.utterances()[0]["status"].startswith("unheard")

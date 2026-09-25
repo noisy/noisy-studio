@@ -18,7 +18,7 @@ def completion_case(monkeypatch):
     state.register_agent('a1')
     state.set_active_agent('a1')
     clip = state.create_utterance('claude', 'queued', text='complete reply', agent='a1')
-    monkeypatch.setattr(speech, '_hold_for_user_turn', lambda *args: None)
+    monkeypatch.setattr(speech, '_hold_for_user_turn', lambda *args: playback.interruption_generation())
     monkeypatch.setattr(speech, 'ECHO_TAIL_SECONDS', 0)
     return state, clip
 

@@ -1,6 +1,8 @@
 import threading
 import time
 
+import pytest
+
 from noisy_studio.listener import state as state_module
 from noisy_studio.listener.state import VOICE_POOL, ListenerState
 
@@ -68,25 +70,21 @@ def test_wait_for_user_silence_blocks_until_recording_ends():
     assert done.wait(1.0)
 
 
-def test_wait_for_user_silence_treats_muted_mic_as_silence():
+@pytest.mark.parametrize("pause_method", ["set_paused", "set_user_muted"])
+def test_pause_cannot_override_capture_still_recording(pause_method):
     state = ListenerState()
     state.set_recording(True)
-    state.set_user_muted(True)
-
-    assert _finishes_within(state.wait_for_user_silence, seconds=1.0)
-
-
-def test_wait_for_user_silence_wakes_when_mic_gets_muted_mid_wait():
-    state = ListenerState()
-    state.set_recording(True)
+    getattr(state, pause_method)(True)
     done = threading.Event()
-    threading.Thread(
-        target=lambda: (state.wait_for_user_silence(), done.set()), daemon=True
-    ).start()
-
-    assert not done.wait(0.15)
-    state.set_user_muted(True)
-    assert done.wait(1.0)
+    worker = threading.Thread(target=lambda: (state.wait_for_user_silence(), done.set()))
+    worker.start()
+    try:
+        assert not done.wait(0.05)
+        state.set_recording(False)
+        assert done.wait(1)
+    finally:
+        state.set_recording(False)
+        worker.join(1)
 
 
 def test_wait_for_user_silence_grace_lets_the_user_add_a_thought():
@@ -728,3 +726,62 @@ def test_late_streaming_partial_cannot_reopen_a_cancelled_recording():
     state.update_transcription_partial(utterance, 'Late words')
 
     assert state.snapshot_utterances() == cancelled
+
+
+@pytest.mark.parametrize(
+    "recording, lease_remaining, seconds_since_end, expected",
+    [
+        (True, -1, 10, None),
+        (True, 2, 10, None),
+        (False, 2, 10, 2),
+        (False, -1, 0.5, 1),
+        (False, -1, 2, 0),
+    ],
+)
+def test_turn_wait_requires_capture_and_lease_to_end_before_grace(
+    recording, lease_remaining, seconds_since_end, expected,
+):
+    assert state_module.user_turn_wait_seconds(
+        recording, lease_remaining, seconds_since_end, 1.5,
+    ) == expected
+
+
+@pytest.mark.parametrize("release", [True, False], ids=["release", "lease-expiry"])
+def test_ptt_before_capture_waits_for_release_or_expiry_then_grace(monkeypatch, release):
+    monkeypatch.setattr(state_module, "PTT_LEASE_SECONDS", 0.15)
+    state = ListenerState()
+    state.set_detection_mode("ptt")
+    state.set_paused(True)
+    state.refresh_ptt_hold()
+    done = threading.Event()
+    worker = threading.Thread(target=lambda: (state.wait_for_user_silence(0.1), done.set()))
+    worker.start()
+    try:
+        assert not done.wait(0.05)
+        if release:
+            state.release_ptt()
+        assert not done.wait(0.04)
+        assert done.wait(1)
+    finally:
+        state.release_ptt()
+        worker.join(1)
+
+
+def test_lease_renewal_and_immediate_new_turn_extend_the_hold(monkeypatch):
+    now = [10.0]
+    monkeypatch.setattr(state_module.time, "monotonic", lambda: now[0])
+    state = ListenerState()
+    state.set_detection_mode("ptt")
+    state.refresh_ptt_hold()
+    now[0] += state_module.PTT_LEASE_SECONDS / 2
+    state.refresh_ptt_hold()
+    now[0] += state_module.PTT_LEASE_SECONDS / 2
+    assert state.user_turn_status(1.5)["decision"] == "hold"
+    state.release_ptt()
+    now[0] += 0.5
+    state.set_recording(True)
+    now[0] += 2
+    assert state.user_turn_status(1.5)["decision"] == "hold"
+    state.set_recording(False)
+    now[0] += 1.5
+    assert state.user_turn_status(1.5)["decision"] == "play"

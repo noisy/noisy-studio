@@ -19,3 +19,21 @@ def test_player_command_raises_when_no_player_available(monkeypatch):
 
     with pytest.raises(playback.PlaybackError, match="No audio player found"):
         playback._player_command(Path("/tmp/audio.mp3"))
+
+
+def test_interrupt_cancels_a_player_registered_after_connection_finishes():
+    from unittest.mock import Mock
+
+    process = Mock()
+    with playback.playback_scope():
+        playback.stop_all_players()
+        playback.register_player(process)
+    process.kill.assert_called_once_with()
+
+    next_process = Mock()
+    with playback.playback_scope():
+        playback.register_player(next_process)
+    try:
+        next_process.kill.assert_not_called()
+    finally:
+        playback.unregister_player(next_process)

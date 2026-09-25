@@ -322,24 +322,23 @@ def _error_card_fields(error: Exception) -> dict:
     return fields | {"status": "error — likely transient, tap ↻ to retry"}
 
 
-def _hold_for_user_turn(state: ListenerState, utterance_id: int) -> None:
-    """Wait out an in-progress user utterance before taking the speaker.
-
-    Speaking now would talk over the user AND lose their words (the mic is
-    muted during playback). The daemon's VAD alone decides when their turn
-    is over — no debounce, no timeout, no polling; see
-    ListenerState.wait_for_user_silence for why this can't deadlock.
-    """
-    user_was_speaking = state.recording
-    if user_was_speaking:
-        detail = "user is speaking — holding playback"
-        state.add_event("speak_wait", detail)
+def _hold_for_user_turn(state: ListenerState, utterance_id: int) -> int:
+    """Wait for capture/PTT and log bounded, content-free turn diagnostics."""
+    status = state.user_turn_status(POST_TURN_GRACE_SECONDS)
+    detail = f"utterance={utterance_id} " + " ".join(
+        f"{key}={value}" for key, value in status.items() if key != "wait_s"
+    )
+    state.add_event("speak_turn", detail)
+    if status["decision"] == "hold":
         state.update_utterance(utterance_id, status="queued — waiting for you to finish")
-        _log(f"[speak] {detail}")
     held_since = time.monotonic()
-    state.wait_for_user_silence(grace_s=POST_TURN_GRACE_SECONDS)
-    if user_was_speaking:
-        _log(f"[speak] user finished — held playback {time.monotonic() - held_since:.1f}s")
+    generation = state.wait_for_user_silence(
+        grace_s=POST_TURN_GRACE_SECONDS, on_ready=playback.interruption_generation,
+        claim_playback=True,
+    )
+    if status["decision"] == "hold":
+        state.add_event("speak_turn", f"utterance={utterance_id} decision=play held_ms={round((time.monotonic() - held_since) * 1000)}")
+    return generation
 
 
 def _streaming_available(state: ListenerState, provider: providers.TTSProvider) -> bool:
@@ -497,7 +496,22 @@ def _play_prepared(
         reason = "voice muted" if state.voice_muted else "conversation muted"
         state.update_utterance(utterance_id, status=f"unheard — {reason}")
         return prepared.voice
-    _hold_for_user_turn(state, utterance_id)
+    try:
+        audio = prepared.audio
+        if audio is None and not prepared.stream:
+            # The synth stage skipped this one (voice was muted then)
+            # but it is audible now — render at our turn, exactly like
+            # the pre-pipeline flow did.
+            audio = _synthesize_now(
+                state, prepared.provider or providers.active_tts(), text,
+                prepared.voice, prepared.language, prepared.speed,
+                utterance_id, source_id,
+            )
+    except Exception as error:
+        state.add_event("speak_error", str(error)[:200])
+        state.update_utterance(utterance_id, **_error_card_fields(error))
+        raise
+    generation = _hold_for_user_turn(state, utterance_id)
 
     # This is the real "the agent spoke aloud" moment — reset its
     # narration-nudge silence clock here, in-process (#16). The clock used to
@@ -522,6 +536,10 @@ def _play_prepared(
         nonlocal playback_completed, echo_guard_finished
         if echo_guard_finished:
             return
+        if playback.was_interrupted(generation):
+            if not state.utterance_is_unheard(source_id):
+                state.interrupt_playing_as_unheard("interrupted before playback completed")
+            return
         playback_completed = state.complete_playback(
             source_id, round(time.monotonic() - playing_since, 1)
         )
@@ -532,37 +550,28 @@ def _play_prepared(
         echo_guard_finished = True
 
     # Native speakers require echo muting during playback.
-    try:
-        audio = prepared.audio
-        if audio is None and not prepared.stream:
-            # The synth stage skipped this one (voice was muted then)
-            # but it is audible now — render at our turn, exactly like
-            # the pre-pipeline flow did.
-            audio = _synthesize_now(
-                state, prepared.provider or providers.active_tts(), text,
-                prepared.voice, prepared.language, prepared.speed,
-                utterance_id, source_id,
-            )
-        state.set_paused(True)
-        state.set_claude_speaking(True, agent)
-        if prepared.stream:
-            asyncio.run(_stream_and_play(
-                state, text, prepared, utterance_id, source_id, playback_complete
-            ))
-        else:
-            asyncio.run(_play_audio(state, audio, prepared.cached, utterance_id))
-        playback_complete()
-    except Exception as error:
-        _log(f"[speak] error: {error}")
-        state.add_event("speak_error", str(error)[:200])
-        if not playback_completed:
-            state.update_utterance(utterance_id, **_error_card_fields(error))
-            raise
-        # A transport-close failure cannot make successfully played audio unheard.
-    finally:
-        state.set_playing_utterance_id(0)
-        state.set_claude_speaking(False, agent)
-        state.set_paused(False)
+    with playback.playback_scope(generation):
+        try:
+            state.set_paused(True)
+            state.set_claude_speaking(True, agent)
+            if prepared.stream:
+                asyncio.run(_stream_and_play(
+                    state, text, prepared, utterance_id, source_id, playback_complete
+                ))
+            else:
+                asyncio.run(_play_audio(state, audio, prepared.cached, utterance_id))
+            playback_complete()
+        except Exception as error:
+            _log(f"[speak] error: {error}")
+            state.add_event("speak_error", str(error)[:200])
+            if not playback_completed:
+                state.update_utterance(utterance_id, **_error_card_fields(error))
+                raise
+            # A transport-close failure cannot make successfully played audio unheard.
+        finally:
+            state.set_playing_utterance_id(0)
+            state.set_claude_speaking(False, agent)
+            state.set_paused(False)
     played_seconds = time.monotonic() - playing_since
     _log(f"[speak] done in {played_seconds:.1f}s")
     state.add_event("speak_done", f"głos '{prepared.voice}'")

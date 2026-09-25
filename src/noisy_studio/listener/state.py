@@ -4,6 +4,7 @@ import threading
 import time
 import zlib
 from collections import deque
+from collections.abc import Callable
 from dataclasses import replace, asdict, dataclass
 
 from noisy_studio.listener.conversations import ConversationRegistry
@@ -100,6 +101,17 @@ class Transcript:
     delivery_state: str = "queued"
 
 
+def user_turn_wait_seconds(
+    recording: bool, lease_remaining: float, seconds_since_end: float, grace_s: float,
+) -> float | None:
+    """None waits for capture, a duration waits for lease/grace, zero may play."""
+    if recording:
+        return None
+    if lease_remaining > 0:
+        return lease_remaining
+    return max(0.0, grace_s - seconds_since_end)
+
+
 class ListenerState:
     def __init__(self) -> None:
         self._lock = threading.Lock()
@@ -182,6 +194,7 @@ class ListenerState:
         self._shutdown_at = 0.0
         self._detection_mode = "auto"  # auto (VAD) | ptt (push-to-talk)
         self._ptt_last_hold = float("-inf")  # monotonic time of last lease renewal
+        self._last_ptt_end = float("-inf")
         self._language = ""  # "" = auto-detect
         self._input_device = ""  # "" = system default microphone
         # Character is now PER AGENT: {agent_name: character_dict}. The special
@@ -612,10 +625,16 @@ class ListenerState:
     def refresh_ptt_hold(self) -> None:
         with self._lock:
             self._ptt_last_hold = time.monotonic()
+            self._turn_cond.notify_all()
 
     def release_ptt(self) -> None:
         with self._lock:
+            self._last_ptt_end = max(
+                self._last_ptt_end,
+                min(time.monotonic(), self._ptt_last_hold + PTT_LEASE_SECONDS),
+            )
             self._ptt_last_hold = float("-inf")
+            self._turn_cond.notify_all()
 
     @property
     def ptt_held(self) -> bool:
@@ -1613,34 +1632,58 @@ class ListenerState:
             self._recording = recording
             self._turn_cond.notify_all()
 
-    def wait_for_user_silence(self, grace_s: float = 0.0) -> None:
-        """Block until the user isn't mid-utterance.
+    def user_turn_status(self, grace_s: float = 0.0) -> dict:
+        """One locked snapshot for playback arbitration and its diagnostics."""
+        with self._lock:
+            return self._user_turn_status_locked(grace_s)
 
-        The VAD's end-of-utterance silence window (end_silence_ms /
-        smart_turn) is the single definition of "their turn is over", and
-        `recording` flips only when the audio loop says so. A paused or
-        muted mic cannot be recording, so a stale flag under pause/mute
-        counts as silence — that structural rule, not a timer, is what
-        makes this wait deadlock-free.
+    def _user_turn_status_locked(self, grace_s: float) -> dict:
+        now = time.monotonic()
+        lease_end = self._ptt_last_hold + PTT_LEASE_SECONDS
+        lease_remaining = lease_end - now if self._detection_mode == "ptt" else 0.0
+        turn_end = self._last_recording_end
+        if self._detection_mode == "ptt":
+            turn_end = max(turn_end, self._last_ptt_end, lease_end)
+        wait_s = user_turn_wait_seconds(
+            self._recording, lease_remaining, now - turn_end, grace_s,
+        )
+        return {
+            "decision": "play" if wait_s == 0 else "hold",
+            "recording": self._recording,
+            "paused": self._paused,
+            "user_muted": self._user_muted,
+            "ptt_held": lease_remaining > 0,
+            "ms_since_recording_end": (
+                round((now - self._last_recording_end) * 1000)
+                if self._last_recording_end != float("-inf") else None
+            ),
+            "wait_s": wait_s,
+        }
 
-        `grace_s` is conversational courtesy, not a failsafe: for that many
-        seconds after an utterance ends the wait keeps holding, so the user
-        can tack on a follow-up thought and be waited for again. It counts
-        from when the recording actually ended — a wait started long after
-        silence returns immediately.
+    def wait_for_user_silence(
+        self, grace_s: float = 0.0, *, on_ready: Callable[[], int] | None = None,
+        claim_playback: bool = False,
+    ) -> int | None:
+        """Wait for capture completion AND PTT release, then conversational grace.
+
+        Echo pause is not an end-of-turn signal. The capture loop owns the
+        recording flag, including finalization after an explicit mic mute.
+        Lease expiry uses a timed wake so a disconnected PTT client cannot
+        block the speaker forever; renewals and release notify immediately.
         """
         with self._turn_cond:
             while True:
-                while self._recording and not (self._paused or self._user_muted):
-                    self._turn_cond.wait()
-                if self._paused or self._user_muted:
-                    return
-                remaining = grace_s - (time.monotonic() - self._last_recording_end)
-                if remaining <= 0:
-                    return
-                # Wakes early if the user resumes speaking (outer loop holds
-                # again) or a flag changes; otherwise re-checks the grace.
-                self._turn_cond.wait(timeout=remaining)
+                wait_s = self._user_turn_status_locked(grace_s)["wait_s"]
+                if wait_s == 0:
+                    # Capture the playback cancellation token before a new
+                    # PTT lease can slip between the decision and handoff.
+                    generation = on_ready() if on_ready is not None else None
+                    if claim_playback:
+                        # Enable capture-loop barge-in at the same handoff,
+                        # including hotkeys that only renew the PTT lease.
+                        self._paused = True
+                    return generation
+                self._turn_cond.wait(timeout=wait_s)
 
     @property
     def paused(self) -> bool:
