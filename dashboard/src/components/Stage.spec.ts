@@ -1,6 +1,6 @@
 import { mount } from '@vue/test-utils';
 import { expect, it } from 'vitest';
-import StagePrototype from './StagePrototype.vue';
+import StagePrototype from './Stage.vue';
 
 const people = [
   { id: 'a1', name: 'Atlas', voice: 'atlas' },

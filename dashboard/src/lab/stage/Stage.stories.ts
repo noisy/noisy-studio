@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/vue3';
 import { ref } from 'vue';
-import StagePrototype, { type StagePerson } from './StagePrototype.vue';
+import StagePrototype, { type StagePerson } from '../../components/Stage.vue';
 
 const people: StagePerson[] = [
   { id: 'a1', name: 'Atlas', voice: 'atlas' },
