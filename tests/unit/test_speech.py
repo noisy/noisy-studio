@@ -622,3 +622,47 @@ def test_ptt_between_turn_hold_and_playback_scope_cancels_late_player(monkeypatc
 
     process.kill.assert_called_once_with()
     assert state.utterances()[0]["status"].startswith("unheard")
+
+
+@pytest.mark.parametrize("failure", [BrokenPipeError, OSError])
+def test_failed_log_after_turn_claim_releases_capture(monkeypatch, batch_pipeline, failure):
+    state = ListenerState()
+    _install_fake_synth(monkeypatch, [])
+    _install_fake_play(monkeypatch, [])
+
+    def fail_log(message):
+        if message.startswith("[speak] playing"):
+            assert state.paused
+            raise failure("diagnostic output unavailable")
+
+    monkeypatch.setattr(speech, "_log", fail_log)
+    with pytest.raises(failure, match="diagnostic output unavailable"):
+        speech.submit(state, "reply").result(timeout=2)
+
+    assert (state.paused, state.claude_speaking, state.playing_clip()) == (False, False, None)
+
+
+def test_failed_release_diagnostic_inside_hold_releases_capture(monkeypatch, batch_pipeline):
+    state = ListenerState()
+    state.set_recording(True)
+    _install_fake_synth(monkeypatch, [])
+    wait_for_silence = state.wait_for_user_silence
+    add_event = state.add_event
+    monkeypatch.setattr(speech, "POST_TURN_GRACE_SECONDS", 0)
+
+    def finish_recording_then_wait(grace_s, **kwargs):
+        state.set_recording(False)
+        return wait_for_silence(grace_s, **kwargs)
+
+    def fail_release_event(kind, detail):
+        if "held_ms=" in detail:
+            assert state.paused
+            raise OSError("release diagnostic failed")
+        return add_event(kind, detail)
+
+    monkeypatch.setattr(state, "wait_for_user_silence", finish_recording_then_wait)
+    monkeypatch.setattr(state, "add_event", fail_release_event)
+    with pytest.raises(OSError, match="release diagnostic failed"):
+        speech.submit(state, "held reply").result(timeout=2)
+
+    assert (state.paused, state.claude_speaking, state.playing_clip()) == (False, False, None)

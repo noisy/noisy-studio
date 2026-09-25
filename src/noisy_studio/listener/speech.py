@@ -511,83 +511,86 @@ def _play_prepared(
         state.add_event("speak_error", str(error)[:200])
         state.update_utterance(utterance_id, **_error_card_fields(error))
         raise
-    generation = _hold_for_user_turn(state, utterance_id)
+    # The turn handoff claims echo pause before metadata/logging runs.
+    # Cleanup must cover that entire lifetime, including a failed log write.
+    try:
+        generation = _hold_for_user_turn(state, utterance_id)
 
-    # This is the real "the agent spoke aloud" moment — reset its
-    # narration-nudge silence clock here, in-process (#16). The clock used to
-    # be reset only in the HTTP /event handler, which this playback path never
-    # crosses, so speaking never actually reset it. An unheard (muted)
-    # utterance returned above without reaching here — nothing was said, so
-    # the clock correctly keeps running.
-    state.note_agent_spoke(agent)
-    # The event log keeps the voice (diagnostics); the card does NOT — a
-    # replay speaks with the CURRENT voice, so a voice tag on the bubble
-    # would go stale the moment the user picks another one.
-    state.add_event("speak", f"[{prepared.voice}] „{text}”")
-    _log(f"[speak] playing [{prepared.voice}] ({len(text)} chars) „{text[:60]}”")
-    playing_since = time.monotonic()
-    # Claim the card the moment its playback is committed: the UI's
-    # button must flip to STOP now, not when audio actually starts.
-    state.set_playing_utterance_id(source_id)
-    playback_completed = False
-    echo_guard_finished = False
+        # This is the real "the agent spoke aloud" moment — reset its
+        # narration-nudge silence clock here, in-process (#16). The clock used to
+        # be reset only in the HTTP /event handler, which this playback path never
+        # crosses, so speaking never actually reset it. An unheard (muted)
+        # utterance returned above without reaching here — nothing was said, so
+        # the clock correctly keeps running.
+        state.note_agent_spoke(agent)
+        # The event log keeps the voice (diagnostics); the card does NOT — a
+        # replay speaks with the CURRENT voice, so a voice tag on the bubble
+        # would go stale the moment the user picks another one.
+        state.add_event("speak", f"[{prepared.voice}] „{text}”")
+        _log(f"[speak] playing [{prepared.voice}] ({len(text)} chars) „{text[:60]}”")
+        playing_since = time.monotonic()
+        # Claim the card the moment its playback is committed: the UI's
+        # button must flip to STOP now, not when audio actually starts.
+        state.set_playing_utterance_id(source_id)
+        playback_completed = False
+        echo_guard_finished = False
 
-    def playback_complete():
-        nonlocal playback_completed, echo_guard_finished
-        if echo_guard_finished:
-            return
-        if playback.was_interrupted(generation):
-            if not state.utterance_is_unheard(source_id):
-                state.interrupt_playing_as_unheard("interrupted before playback completed")
-            return
-        playback_completed = state.complete_playback(
-            source_id, round(time.monotonic() - playing_since, 1)
-        )
-        # The card is settled before the independent microphone echo guard.
-        time.sleep(ECHO_TAIL_SECONDS)
-        state.set_claude_speaking(False, agent)
-        state.set_paused(False)
-        echo_guard_finished = True
-
-    # Native speakers require echo muting during playback.
-    with playback.playback_scope(generation):
-        try:
-            state.set_paused(True)
-            state.set_claude_speaking(True, agent)
-            if prepared.stream:
-                asyncio.run(_stream_and_play(
-                    state, text, prepared, utterance_id, source_id, playback_complete
-                ))
-            else:
-                asyncio.run(_play_audio(state, audio, prepared.cached, utterance_id))
-            playback_complete()
-        except Exception as error:
-            _log(f"[speak] error: {error}")
-            state.add_event("speak_error", str(error)[:200])
-            if not playback_completed:
-                state.update_utterance(utterance_id, **_error_card_fields(error))
-                raise
-            # A transport-close failure cannot make successfully played audio unheard.
-        finally:
-            state.set_playing_utterance_id(0)
+        def playback_complete():
+            nonlocal playback_completed, echo_guard_finished
+            if echo_guard_finished:
+                return
+            if playback.was_interrupted(generation):
+                if not state.utterance_is_unheard(source_id):
+                    state.interrupt_playing_as_unheard("interrupted before playback completed")
+                return
+            playback_completed = state.complete_playback(
+                source_id, round(time.monotonic() - playing_since, 1)
+            )
+            # The card is settled before the independent microphone echo guard.
+            time.sleep(ECHO_TAIL_SECONDS)
             state.set_claude_speaking(False, agent)
             state.set_paused(False)
-    played_seconds = time.monotonic() - playing_since
-    _log(f"[speak] done in {played_seconds:.1f}s")
-    state.add_event("speak_done", f"głos '{prepared.voice}'")
-    # A mute, the stop button or a push-to-talk barge-in kills the player and
-    # parks the card as unheard - the cut-short clip must not be relabeled
-    # "played" here. The streaming path keeps writing progress after the
-    # cut, so the mark alone was not enough: the interrupt is recorded and
-    # re-applied once this thread is done (#61, #64).
-    final_status = state.consume_interrupted(utterance_id)
-    if final_status:
-        state.update_utterance(utterance_id, status=final_status)
-    elif not playback_completed and not state.utterance_is_unheard(utterance_id):
-        state.update_utterance(
-            utterance_id, status="played", duration_s=round(played_seconds, 1)
-        )
-    return prepared.voice
+            echo_guard_finished = True
+
+        # Native speakers require echo muting during playback.
+        with playback.playback_scope(generation):
+            try:
+                state.set_paused(True)
+                state.set_claude_speaking(True, agent)
+                if prepared.stream:
+                    asyncio.run(_stream_and_play(
+                        state, text, prepared, utterance_id, source_id, playback_complete
+                    ))
+                else:
+                    asyncio.run(_play_audio(state, audio, prepared.cached, utterance_id))
+                playback_complete()
+            except Exception as error:
+                _log(f"[speak] error: {error}")
+                state.add_event("speak_error", str(error)[:200])
+                if not playback_completed:
+                    state.update_utterance(utterance_id, **_error_card_fields(error))
+                    raise
+                # A transport-close failure cannot make successfully played audio unheard.
+        played_seconds = time.monotonic() - playing_since
+        _log(f"[speak] done in {played_seconds:.1f}s")
+        state.add_event("speak_done", f"głos '{prepared.voice}'")
+        # A mute, the stop button or a push-to-talk barge-in kills the player and
+        # parks the card as unheard - the cut-short clip must not be relabeled
+        # "played" here. The streaming path keeps writing progress after the
+        # cut, so the mark alone was not enough: the interrupt is recorded and
+        # re-applied once this thread is done (#61, #64).
+        final_status = state.consume_interrupted(utterance_id)
+        if final_status:
+            state.update_utterance(utterance_id, status=final_status)
+        elif not playback_completed and not state.utterance_is_unheard(utterance_id):
+            state.update_utterance(
+                utterance_id, status="played", duration_s=round(played_seconds, 1)
+            )
+        return prepared.voice
+    finally:
+        state.set_playing_utterance_id(0)
+        state.set_claude_speaking(False, agent)
+        state.set_paused(False)
 
 
 async def _stream_and_play(
