@@ -44,3 +44,21 @@ describe('voice artwork coverage', () => {
     expect(avatarCell('future-voice')).toBeNull();
   });
 });
+
+import { avatarFrame, avatarFrameStyle, avatarImageStyle } from './catalog';
+it('removes the final portrait row padding and keeps both axes at the same scale', () => {
+  for (const set of ['editorial', 'matte'] as const) {
+    for (const voice of ['zagan', 'zenith', 'aurora', 'liora', 'altair', 'helios', 'iris']) {
+      const cell = avatarCell(voice)!;
+      const frame = avatarFrame(set, cell)!;
+      const box = avatarFrameStyle(set, cell);
+      const image = avatarImageStyle(set, cell);
+      // The nested crop must preserve the original sheet's aspect ratio.
+      const displayedWidth = parseFloat(box.width) * parseFloat(image.width);
+      const displayedHeight = parseFloat(box.height) * parseFloat(image.height);
+      expect(displayedWidth / displayedHeight).toBeCloseTo(1374 / 1145);
+      expect(box.bottom).toBe('0%');
+      if (cell >= 24) expect(frame.height).toBeLessThan(240);
+    }
+  }
+});
