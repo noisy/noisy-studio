@@ -1,3 +1,4 @@
+import portraitFrames from './portrait-frames.json';
 import cropMetadata from './crop-metadata.json';
 import voiceOrder from './voice-order.json';
 
@@ -25,6 +26,11 @@ export function avatarCell(voice: string): number | null {
 
 export function avatarImageStyle(set: AvatarSetId, cell: number) {
   const crop = cropMetadata[set];
+  const frame = avatarFrame(set, cell);
+  if (frame) return {
+    width: `${crop.width / frame.width * 100}%`, height: `${crop.height / frame.height * 100}%`,
+    left: `${-frame.left / frame.width * 100}%`, top: `${-frame.top / frame.height * 100}%`,
+  };
   const row = Math.floor(cell / AVATAR_COLUMNS);
   const top = crop.rows[row];
   const height = crop.rows[row + 1] - top;
@@ -34,5 +40,19 @@ export function avatarImageStyle(set: AvatarSetId, cell: number) {
   return {
     width: `${crop.width / width * 100}%`, height: `${crop.height / height * 100}%`,
     left: `${-left / width * 100}%`, top: `${-top / height * 100}%`,
+  };
+}
+
+/** Keep the source crop clipped while fitting it without stretching the face. */
+export function avatarFrame(set: AvatarSetId, cell: number) {
+  return set === 'editorial' || set === 'matte' ? portraitFrames[set][cell] : undefined;
+}
+export function avatarFrameStyle(set: AvatarSetId, cell: number) {
+  const frame = avatarFrame(set, cell);
+  if (!frame) return { width: '100%', height: '100%', left: '0%', bottom: '0%' };
+  const side = Math.max(frame.width, frame.height);
+  return {
+    width: `${frame.width / side * 100}%`, height: `${frame.height / side * 100}%`,
+    left: `${(side - frame.width) / side * 50}%`, bottom: '0%',
   };
 }

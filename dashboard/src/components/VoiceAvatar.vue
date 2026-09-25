@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watchEffect } from "vue";
-import { AVATAR_SETS, avatarImageStyle, avatarCell, type AvatarSetId } from '../avatars/catalog';
+import { AVATAR_SETS, avatarImageStyle, avatarFrameStyle, avatarCell, type AvatarSetId } from '../avatars/catalog';
 import { useAvatarSet } from '../composables/useAvatarSet';
 
 const props = withDefaults(defineProps<{ voice: string; size?: number; set?: AvatarSetId }>(), { size: 48 });
@@ -38,12 +38,15 @@ const monogram = computed(() => props.voice.trim().slice(0, 3).toUpperCase() || 
   <span class="voice-avatar" aria-hidden="true" :style="{
     ...palette, width: `${size}px`, height: `${size}px`, fontSize: `${Math.round(size * 0.27)}px`,
   }">
-    <img v-if="showArtwork" :src="artwork.image" :style="imageStyle" alt="" draggable="false" @error="imageFailed" />
+    <span v-if="showArtwork" class="avatar-crop" :style="avatarFrameStyle(artwork.id, cell ?? 0)">
+    <img :src="artwork.image" :style="imageStyle" alt="" draggable="false" @error="imageFailed" />
+    </span>
     <template v-else>{{ monogram }}</template>
   </span>
 </template>
 
 <style scoped>
 .voice-avatar { position:relative; overflow:hidden; display: inline-flex; align-items: center; justify-content: center; flex: none; border-radius: 24%; font-family: var(--sans); font-weight: 650; line-height: 1; user-select: none; }
+.avatar-crop { position:absolute; overflow:hidden; }
 .voice-avatar img { position:absolute; max-width:none; object-fit:fill; pointer-events:none; }
 </style>
