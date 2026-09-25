@@ -2,13 +2,14 @@
 import { computed } from "vue";
 import { statusAllows, statusToState } from "../machines/chat";
 import type { Utterance } from "../types";
+import { conversationCard } from "../conversationCard";
 import Bubble from "./Bubble.vue";
-import { formatCost, formatTime, statusChip } from "./bubbleStatus";
+import { formatCost, formatTime } from "./bubbleStatus";
 
 const props = defineProps<{ utterance: Utterance }>();
 defineEmits<{ cancel: [utterance: Utterance] }>();
 
-const chip = computed(() => statusChip(props.utterance.status, "user"));
+const card = computed(() => conversationCard(props.utterance));
 const notice = computed(() => {
   const state = statusToState("user", props.utterance.status);
   if (state !== "unavailable") return "";
@@ -29,14 +30,14 @@ const cancelable = computed(() => statusAllows("user", props.utterance.status, "
     side="left"
     accent="amber"
     who="YOU"
-    :text="utterance.text || utterance.status"
-    :status-kind="chip.kind"
-    :status-label="chip.label"
+    :text="card.text"
+    :status-kind="card.statusKind"
+    :status-label="card.statusLabel"
     :time="formatTime(utterance.started_at)"
     :cost="formatCost(utterance.cost_usd)"
     :notice="notice"
     :detail="[utterance.detail, notice ? '' : utterance.delivery_detail].filter(Boolean).join(' · ')"
-    :live="chip.kind === 'rec'"
+    :live="card.statusKind === 'rec'"
     :pending="pending"
     :cancelable="cancelable"
     @cancel="$emit('cancel', utterance)"

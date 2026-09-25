@@ -352,7 +352,8 @@ export type TimelineZone = "done" | "active" | "pending";
 export function timelineZone(role: Role, status: string): TimelineZone {
   const state = statusToState(role, status);
   if (role === "user") {
-    // recording/transcribing never ask (they live in the composer slot);
+    if (state === "recording" || state === "transcribing") return "active";
+    // In-progress speech belongs to the present;
     // unknown statuses render as settled history rather than jumping zones.
     return state === "ready" || state === "undelivered" || state === "unavailable" ? "pending" : "done";
   }
