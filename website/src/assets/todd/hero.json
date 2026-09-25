@@ -141,12 +141,6 @@
     },
     {
       "sequence": 9,
-      "atMs": 11521.599999904633,
-      "type": "user-end",
-      "utterance": "u1"
-    },
-    {
-      "sequence": 10,
       "atMs": 11521.700000047684,
       "type": "activity-start",
       "text": "Thinking\u2026"
@@ -158,7 +152,7 @@
       "text": "The search stopped working after the last change. It finds exact names, but part of the name",
       "final": false,
       "atMs": 11704.586542092555,
-      "sequence": 11
+      "sequence": 10
     },
     {
       "type": "transcript",
@@ -167,7 +161,13 @@
       "text": "The search stopped working after the last change. It finds exact names, but part of the name gives me nothing.",
       "final": false,
       "atMs": 12711.43058309576,
-      "sequence": 12
+      "sequence": 11
+    },
+    {
+      "sequence": 12,
+      "atMs": 12711.43058309576,
+      "type": "user-end",
+      "utterance": "u1"
     },
     {
       "type": "transcript",
@@ -255,12 +255,6 @@
     {
       "sequence": 24,
       "atMs": 28530.799999952316,
-      "type": "user-end",
-      "utterance": "u2"
-    },
-    {
-      "sequence": 25,
-      "atMs": 28530.799999952316,
       "type": "activity-start",
       "text": "Editing src/search.ts"
     },
@@ -271,7 +265,7 @@
       "text": "Yeah, and ignore capital letters too. if I type just part of a name, I still.",
       "final": false,
       "atMs": 28555.912375093205,
-      "sequence": 26
+      "sequence": 25
     },
     {
       "type": "transcript",
@@ -280,7 +274,13 @@
       "text": "Yeah, and ignore capital letters too. if I type just part of a name, I still want to find it.",
       "final": false,
       "atMs": 29454.39387509355,
-      "sequence": 27
+      "sequence": 26
+    },
+    {
+      "sequence": 27,
+      "atMs": 29454.39387509355,
+      "type": "user-end",
+      "utterance": "u2"
     },
     {
       "type": "transcript",
@@ -357,12 +357,6 @@
     {
       "sequence": 37,
       "atMs": 42398.700000047684,
-      "type": "user-end",
-      "utterance": "u3"
-    },
-    {
-      "sequence": 38,
-      "atMs": 42398.700000047684,
       "type": "activity-start",
       "text": "Running tests"
     },
@@ -373,7 +367,13 @@
       "text": "Great add a test for both cases so we don't break this again.",
       "final": false,
       "atMs": 42908.157750005834,
-      "sequence": 39
+      "sequence": 38
+    },
+    {
+      "sequence": 39,
+      "atMs": 42908.157750005834,
+      "type": "user-end",
+      "utterance": "u3"
     },
     {
       "type": "transcript",
@@ -441,12 +441,6 @@
     {
       "sequence": 48,
       "atMs": 55795.90000009537,
-      "type": "user-end",
-      "utterance": "u4"
-    },
-    {
-      "sequence": 49,
-      "atMs": 55795.90000009537,
       "type": "activity-start",
       "text": "Thinking\u2026"
     },
@@ -457,7 +451,13 @@
       "text": "Great , my hands are full, can you deploy that to production?",
       "final": false,
       "atMs": 55822.049666096515,
-      "sequence": 50
+      "sequence": 49
+    },
+    {
+      "sequence": 50,
+      "atMs": 57025.239166092884,
+      "type": "user-end",
+      "utterance": "u4"
     },
     {
       "type": "transcript",
@@ -630,13 +630,6 @@
     },
     {
       "sequence": 9,
-      "atMs": 11521.599999904633,
-      "type": "user-end",
-      "utterance": "u1",
-      "displayAtMs": 11521.599999904633
-    },
-    {
-      "sequence": 10,
       "atMs": 11521.700000047684,
       "type": "activity-start",
       "text": "Thinking\u2026",
@@ -649,7 +642,7 @@
       "text": "The search stopped working after the last change. It finds exact names, but part of the name",
       "final": false,
       "atMs": 11704.586542092555,
-      "sequence": 11,
+      "sequence": 10,
       "displayAtMs": 11704.586542092555
     },
     {
@@ -659,7 +652,14 @@
       "text": "The search stopped working after the last change. It finds exact names, but part of the name gives me nothing.",
       "final": false,
       "atMs": 12711.43058309576,
+      "sequence": 11,
+      "displayAtMs": 12711.43058309576
+    },
+    {
       "sequence": 12,
+      "atMs": 12711.43058309576,
+      "type": "user-end",
+      "utterance": "u1",
       "displayAtMs": 12711.43058309576
     },
     {
@@ -759,13 +759,6 @@
     {
       "sequence": 24,
       "atMs": 28530.799999952316,
-      "type": "user-end",
-      "utterance": "u2",
-      "displayAtMs": 28530.799999952316
-    },
-    {
-      "sequence": 25,
-      "atMs": 28530.799999952316,
       "type": "activity-start",
       "text": "Editing src/search.ts",
       "displayAtMs": 28530.799999952316
@@ -777,7 +770,7 @@
       "text": "Yeah, and ignore capital letters too. if I type just part of a name, I still.",
       "final": false,
       "atMs": 28555.912375093205,
-      "sequence": 26,
+      "sequence": 25,
       "displayAtMs": 28555.912375093205
     },
     {
@@ -787,7 +780,14 @@
       "text": "Yeah, and ignore capital letters too. if I type just part of a name, I still want to find it.",
       "final": false,
       "atMs": 29454.39387509355,
+      "sequence": 26,
+      "displayAtMs": 29454.39387509355
+    },
+    {
       "sequence": 27,
+      "atMs": 29454.39387509355,
+      "type": "user-end",
+      "utterance": "u2",
       "displayAtMs": 29454.39387509355
     },
     {
@@ -874,13 +874,6 @@
     {
       "sequence": 37,
       "atMs": 42398.700000047684,
-      "type": "user-end",
-      "utterance": "u3",
-      "displayAtMs": 42398.700000047684
-    },
-    {
-      "sequence": 38,
-      "atMs": 42398.700000047684,
       "type": "activity-start",
       "text": "Running tests",
       "displayAtMs": 42398.700000047684
@@ -892,7 +885,14 @@
       "text": "Great add a test for both cases so we don't break this again.",
       "final": false,
       "atMs": 42908.157750005834,
+      "sequence": 38,
+      "displayAtMs": 42908.157750005834
+    },
+    {
       "sequence": 39,
+      "atMs": 42908.157750005834,
+      "type": "user-end",
+      "utterance": "u3",
       "displayAtMs": 42908.157750005834
     },
     {
@@ -969,13 +969,6 @@
     {
       "sequence": 48,
       "atMs": 55795.90000009537,
-      "type": "user-end",
-      "utterance": "u4",
-      "displayAtMs": 55795.90000009537
-    },
-    {
-      "sequence": 49,
-      "atMs": 55795.90000009537,
       "type": "activity-start",
       "text": "Thinking\u2026",
       "displayAtMs": 55795.90000009537
@@ -987,8 +980,15 @@
       "text": "Great , my hands are full, can you deploy that to production?",
       "final": false,
       "atMs": 55822.049666096515,
-      "sequence": 50,
+      "sequence": 49,
       "displayAtMs": 55822.049666096515
+    },
+    {
+      "sequence": 50,
+      "atMs": 57025.239166092884,
+      "type": "user-end",
+      "utterance": "u4",
+      "displayAtMs": 57025.239166092884
     },
     {
       "type": "transcript",

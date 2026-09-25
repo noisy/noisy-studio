@@ -85,7 +85,7 @@
     },
     {
       "sequence": 4,
-      "atMs": 4212.299999952316,
+      "atMs": 4261.799999952316,
       "type": "user-end",
       "utterance": "u1"
     },
@@ -131,7 +131,7 @@
     },
     {
       "sequence": 10,
-      "atMs": 8005.299999952316,
+      "atMs": 8013.599999904633,
       "type": "user-end",
       "utterance": "u2"
     },
@@ -288,10 +288,10 @@
     },
     {
       "sequence": 4,
-      "atMs": 4212.299999952316,
+      "atMs": 4261.799999952316,
       "type": "user-end",
       "utterance": "u1",
-      "displayAtMs": 4212.299999952316
+      "displayAtMs": 4261.799999952316
     },
     {
       "sequence": 5,
@@ -340,10 +340,10 @@
     },
     {
       "sequence": 10,
-      "atMs": 8005.299999952316,
+      "atMs": 8013.599999904633,
       "type": "user-end",
       "utterance": "u2",
-      "displayAtMs": 8005.299999952316
+      "displayAtMs": 8013.599999904633
     },
     {
       "sequence": 11,
