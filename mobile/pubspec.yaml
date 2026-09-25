@@ -1,0 +1,37 @@
+name: noisy_studio_mobile
+description: Noisy Studio desktop voice companion.
+publish_to: none
+version: 0.1.0+1
+environment:
+  sdk: ^3.13.0
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  http: ^1.6.0
+  web_socket_channel: ^3.0.3
+  shared_preferences: ^2.5.4
+  intl: any
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  widgetbook: ^3.22.0
+  flutter_launcher_icons: ^0.14.4
+flutter:
+  uses-material-design: true
+  generate: true
+  fonts:
+    - family: Studio Sans
+      fonts:
+        - asset: assets/fonts/Roboto-Regular.ttf
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  image_path: assets/branding/app-icon.png
+  web:
+    generate: true
+    image_path: assets/branding/app-icon.png

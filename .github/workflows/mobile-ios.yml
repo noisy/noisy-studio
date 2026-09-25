@@ -1,0 +1,54 @@
+name: Mobile iOS signed artifact
+# Explicit manual invocation only; never upload to TestFlight in this interface ticket.
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mobile-ios
+  cancel-in-progress: false
+jobs:
+  archive:
+    runs-on: macos-latest
+    environment: mobile-ios
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: mobile
+    env:
+      ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+      ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: maxim-lobanov/setup-xcode@ed7a3b1fda3918c0306d1b724322adc0b8cc0a90
+        with:
+          xcode-version: latest-stable
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          flutter-version: '3.47.5'
+          cache: true
+      - name: Restore signing key
+        env:
+          ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+        run: |
+          for name in ASC_KEY_ID ASC_ISSUER_ID APPLE_TEAM_ID ASC_KEY_P8_BASE64; do
+            [ -n "${!name}" ] || { echo "::error::Missing secret $name; see mobile/README.md"; exit 1; }
+          done
+          mkdir -p "$RUNNER_TEMP/noisy-mobile-signing"
+          printf '%s' "$ASC_KEY_P8_BASE64" | base64 --decode > "$RUNNER_TEMP/noisy-mobile-signing/key.p8"
+          chmod 600 "$RUNNER_TEMP/noisy-mobile-signing/key.p8"
+      - run: flutter pub get
+      - run: scripts/check.sh
+      - name: Prepare Flutter project
+        run: flutter build ios --release --config-only --build-number "$GITHUB_RUN_NUMBER"
+      - name: Archive and export
+        run: scripts/ci/export_ios.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: noisy-studio-mobile-ipa
+          path: mobile/build/ios/ipa/*.ipa
+          retention-days: 7
+      - name: Remove temporary key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/noisy-mobile-signing"

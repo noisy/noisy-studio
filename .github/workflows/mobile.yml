@@ -1,0 +1,56 @@
+name: Mobile Android and previews
+on:
+  push:
+    paths: ['mobile/**', '.github/workflows/mobile.yml']
+  pull_request:
+    paths: ['mobile/**', '.github/workflows/mobile.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: mobile-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  check-and-build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2
+        with:
+          flutter-version: '3.47.5'
+          cache: true
+      - run: flutter pub get
+      - run: scripts/check.sh
+      - run: flutter test test/screens_test.dart --dart-define=CAPTURE_SCREENSHOTS=true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: noisy-studio-mobile-screenshots
+          path: mobile/build/screenshots
+          retention-days: 7
+      # Debug APK is intentionally installable without release secrets.
+      - run: flutter build apk --debug
+      - uses: actions/upload-artifact@v4
+        with:
+          name: noisy-studio-mobile-preview-apk
+          path: mobile/build/app/outputs/flutter-apk/app-debug.apk
+          retention-days: 7
+      - run: flutter build web --target widgetbook/main.dart
+      - uses: actions/upload-artifact@v4
+        with:
+          name: noisy-studio-widgetbook
+          path: mobile/build/web
+          retention-days: 7
+      - run: flutter build web
+      - uses: actions/upload-artifact@v4
+        with:
+          name: noisy-studio-mobile-web
+          path: mobile/build/web
+          retention-days: 7
