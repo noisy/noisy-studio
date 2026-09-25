@@ -16,3 +16,10 @@ export function conversationCard(u: Utterance, zone?: TimelineZone) {
     statusKind: chip.kind, statusLabel: chip.label,
   };
 }
+
+/** Limit history without hiding work that still needs attention. */
+export function limitSettledHistory(cards: ReturnType<typeof conversationCard>[], limit: number) {
+  const settled = cards.filter(card => card.zone === "done" && !card.inFlight);
+  const recent = new Set(settled.slice(Math.max(0, settled.length - limit)));
+  return cards.filter(card => card.inFlight || card.zone !== "done" || recent.has(card));
+}

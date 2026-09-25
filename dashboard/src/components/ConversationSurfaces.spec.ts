@@ -2,6 +2,7 @@ import { mount } from '@vue/test-utils';
 import { ref } from 'vue';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { useConversationFeed } from '../composables/useConversationFeed';
+import { limitSettledHistory } from '../conversationCard';
 import { voiceMessageStates } from '../storybook/voiceMessageStates';
 import Bubble from './Bubble.vue';
 import Companion from './Companion.vue';
@@ -41,4 +42,27 @@ it('keeps one voice message visible across recording, transcription, pickup and 
     expect(dashboard.find('.liveslot .msg').exists()).toBe(card.inFlight);
   }
   dashboard.unmount(); widget.unmount();
+});
+
+it('retains an old voice turn and pending reply when newer played replies fill widget history', async () => {
+  const replies = Array.from({ length: 13 }, (_, index) => ({
+    ...voiceMessageStates.Delivered, id: index + 3, role: 'claude' as const,
+    status: 'played', text: `Reply ${index + 3}`, committed_at: index + 3,
+  }));
+  const pendingReply = {
+    ...voiceMessageStates.Delivered, id: 2, role: 'claude' as const,
+    status: 'queued', text: 'Waiting reply', committed_at: 2,
+  };
+  const utterances = ref([voiceMessageStates.Recording, pendingReply, ...replies]);
+  const feed = useConversationFeed(utterances);
+  const widget = mount(Companion, { props: { mode: 'idle' } });
+  for (const voiceTurn of [voiceMessageStates.Recording, voiceMessageStates.Transcribing, voiceMessageStates.AwaitingAgent]) {
+    utterances.value = [voiceTurn, pendingReply, ...replies];
+    const visible = limitSettledHistory(feed.cards.value, 12);
+    await widget.setProps({ feed: visible });
+    expect(visible.map(card => card.id)).toEqual([1, 2, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+    expect(widget.findAllComponents(Bubble).map(bubble => bubble.props('statusLabel'))).toContain(feed.cards.value[0].statusLabel);
+    expect(widget.text()).toContain('Waiting reply');
+  }
+  widget.unmount();
 });

@@ -8,6 +8,7 @@
  * by the daemon instead of Storybook fixtures.
  */
 import { computed, ref } from "vue";
+import { limitSettledHistory } from "../conversationCard";
 import "../styles/companion-window.css";
 import Companion, { type CompanionAgent } from "./Companion.vue";
 import { useDaemonState } from "../composables/useDaemonState";
@@ -33,7 +34,8 @@ const { level } = useMicStream();
 
 // Placement differs from the dashboard composer, lifecycle semantics do not.
 const { cards } = useConversationFeed(mine);
-const feed = computed(() => cards.value.slice(-12));
+const HISTORY_CARDS_SHOWN = 12;
+const feed = computed(() => limitSettledHistory(cards.value, HISTORY_CARDS_SHOWN));
 
 /* Document Picture-in-Picture: the only way a browser gets a genuinely
  * always-on-top window. It hosts real DOM, so the live component moves into
