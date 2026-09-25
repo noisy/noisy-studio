@@ -7,15 +7,26 @@ class Agent {
     this.state = AgentState.waiting,
     this.harness = 'Agent',
     this.unread = 0,
+    this.voice = '',
   });
-  final String id, name, harness;
+  final String id, name, harness, voice;
   final AgentState state;
   final int unread;
 }
 
 class Message {
-  const Message(this.agentId, this.author, this.text);
-  final String agentId, author, text;
+  const Message(
+    this.agentId,
+    this.author,
+    this.text, {
+    this.id = 0,
+    this.role = 'claude',
+    this.status = '',
+    this.voice = '',
+    this.time = '',
+  });
+  final int id;
+  final String agentId, author, text, role, status, voice, time;
 }
 
 class Snapshot {
@@ -68,6 +79,10 @@ class Snapshot {
             '',
           ),
           unread: (queued[id] as num?)?.toInt() ?? 0,
+          voice:
+              (s['agent_voices'] as Map<String, dynamic>? ?? {})[id]
+                  as String? ??
+              '',
         );
       }).toList(),
       messages: (data['utterances'] as List? ?? [])
@@ -75,12 +90,18 @@ class Snapshot {
           .map(
             (m) => Message(
               m['agent'] as String? ?? '',
-              m['role'] == 'user'
-                  ? 'You'
-                  : (m['agent_label'] as String? ?? 'Agent'),
+              messageAuthor(
+                m,
+                s['speaker_labels'] as Map<String, dynamic>? ?? {},
+              ),
               (m['text'] as String? ?? '').isEmpty
                   ? (m['status'] as String? ?? 'Transcribing…')
                   : m['text'] as String,
+              id: (m['id'] as num?)?.toInt() ?? 0,
+              role: m['role'] as String? ?? 'claude',
+              status: m['status'] as String? ?? '',
+              voice: m['voice'] as String? ?? '',
+              time: messageTime(m['started_at'] as num?),
             ),
           )
           .toList(),
@@ -102,15 +123,54 @@ Snapshot fixture({int count = 4, AgentState? state}) => Snapshot(
       state: state ?? AgentState.values[i % 4],
       harness: i.isEven ? 'Claude' : 'Codex',
       unread: i == 2 ? 3 : 0,
+      voice: ['lux', 'luna', 'atlas', 'eve', 'rex', 'ara', 'orion'][i % 7],
     ),
   ),
   messages: const [
-    Message('agent-1', 'You', 'How is the release looking?'),
+    Message(
+      'agent-1',
+      'You',
+      'How is the release looking?',
+      role: 'user',
+      status: 'delivered',
+      time: '14:32',
+    ),
     Message(
       'agent-1',
       'Lux',
       'The latest checks passed. I’m reviewing the final changes.',
+      status: 'played',
+      voice: 'lux',
+      time: '14:33',
     ),
-    Message('agent-2', 'Flux', 'The interface is ready for a look.'),
+    Message(
+      'agent-2',
+      'Flux',
+      'The interface is ready for a look.',
+      status: 'unheard',
+      voice: 'luna',
+      time: '14:34',
+    ),
   ],
 );
+
+String messageAuthor(
+  Map<String, dynamic> message,
+  Map<String, dynamic> speakerLabels,
+) {
+  final role = message['role'];
+  if (role == 'user') return 'You';
+  if (role == 'daemon') return 'Noisy Studio';
+  if (role == 'system') return 'System';
+  final agent = (message['agent_label'] as String? ?? '').trim();
+  final label = agent.isEmpty ? 'Agent' : agent;
+  final speaker = (message['speaker'] as String? ?? '').trim();
+  if (speaker.isEmpty) return label;
+  return speakerLabels[speaker] as String? ?? '$speaker · $label';
+}
+
+String messageTime(num? seconds) {
+  if (seconds == null || seconds <= 0) return '';
+  final time = DateTime.fromMillisecondsSinceEpoch((seconds * 1000).round());
+  return '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+}
