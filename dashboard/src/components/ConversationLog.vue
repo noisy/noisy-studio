@@ -9,6 +9,7 @@ import UserBubble from "./UserBubble.vue";
 const props = withDefaults(
   defineProps<{
     utterances: Utterance[];
+    historyTrimmed?: boolean;
     /** speaker -> palette color, straight from status.speaker_colors. */
     speakerColors?: Record<string, string>;
     /** speaker -> free bubble title, straight from status.speaker_labels. */
@@ -17,7 +18,7 @@ const props = withDefaults(
     playbackPaused?: boolean;
     activity?: { text: string; at: number } | null;
   }>(),
-  { playingId: 0, playbackPaused: false, activity: null },
+  { playingId: 0, playbackPaused: false, activity: null, historyTrimmed: false },
 );
 defineEmits<{
   replay: [utterance: Utterance];
@@ -96,6 +97,7 @@ watch(
 <template>
   <div class="logroot">
     <div ref="feed" class="feed" tabindex="0" role="region" aria-label="Conversation history" :style="{ paddingBottom: padBottom + 'px' }" @scroll="onFeedScroll">
+      <p v-if="historyTrimmed" class="history-trimmed" role="note">Older messages are no longer kept. Showing recent history.</p>
       <FeedRow
         v-for="utterance in processed"
         :tint="(speakerColors?.[utterance.speaker ?? ''] as 'normal'|'green'|'purple'|'red') ?? 'green'"
@@ -122,7 +124,7 @@ watch(
         @replay="$emit('replay', $event)"
         @cancel="$emit('cancel', $event)"
       />
-      <p v-if="!ordered.length" class="empty">Start a conversation</p>
+      <p v-if="!ordered.length && !historyTrimmed" class="empty">Start a conversation</p>
     </div>
     <button
       v-if="!stickToBottom"
@@ -155,6 +157,12 @@ watch(
   scrollbar-width: thin;
   scrollbar-color: var(--line-strong) transparent;
   padding-right: 4px;
+}
+.history-trimmed {
+  text-align: center;
+  color: var(--muted);
+  font-size: 11px;
+  margin: 8px 0 16px;
 }
 .empty {
   color: var(--muted);

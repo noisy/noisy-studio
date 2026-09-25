@@ -223,3 +223,10 @@ describe("ConversationLog", () => {
     expect(buttons[1].text()).toBe("⏭");
   });
 });
+
+it("explains trimmed history instead of showing the new-conversation empty state", () => {
+  const wrapper = mount(ConversationLog, { props: { utterances: [], historyTrimmed: true } });
+
+  expect(wrapper.get('[role="note"]').text()).toBe("Older messages are no longer kept. Showing recent history.");
+  expect(wrapper.text()).not.toContain("Start a conversation");
+});

@@ -551,6 +551,7 @@ function changeAudio({id,value}: AudioChange) {
               </div>
               <ConversationLog
                 :utterances="utterances"
+                :history-trimmed="(status?.history_trimmed?.[viewedAgent ?? ''] ?? 0) > 0"
                 :speaker-colors="status?.speaker_colors ?? {}"
                 :speaker-labels="status?.speaker_labels ?? {}"
                 :playing-id="status?.playing_utterance_id ?? 0"
@@ -590,7 +591,8 @@ function changeAudio({id,value}: AudioChange) {
               </section>
               <section class="railbox">
                 <div class="railtitle">Turn history</div>
-                <TurnHistory :utterances="utterances" />
+                <TurnHistory :utterances="utterances"
+                :history-trimmed="(status?.history_trimmed?.[viewedAgent ?? ''] ?? 0) > 0" />
               </section>
             </aside>
           </div>
