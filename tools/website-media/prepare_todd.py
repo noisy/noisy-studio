@@ -1,0 +1,99 @@
+"""Build synchronized delivery copies from Todd's untouched camera and Studio exports."""
+import argparse
+import hashlib
+import json
+from pathlib import Path
+import subprocess
+import sys
+import tempfile
+
+from transcript_timing import with_streaming_transcripts, with_crew_focus
+
+ROOT = Path(__file__).resolve().parents[2]
+# Camera time = browser MediaRecorder time + offset. Waveform correlation of
+# every actor turn agrees within 0.3 ms; no clock stretch is needed.
+SCENES = [('hero', 'hero-search', 'Hero Search', 3.609375), ('crew', 'crew', 'Crew', 3.109375)]
+
+def digest(path):
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('delivery', type=Path)
+    args = parser.parse_args()
+    output = ROOT / 'website/src/assets/todd'
+    output.mkdir(parents=True, exist_ok=True)
+    framing = json.loads((Path(__file__).with_name('todd-framing.json')).read_text())
+    manifest = {'sources': [], 'settings': {'video': 'cropped H.264 CRF26; per-scene dimensions in framing', 'audio': 'actor microphone + original agent clips, AAC128k', 'sync': 'constant waveform alignment; no stretch'}}
+    for scene, prefix, title, offset in SCENES:
+        camera = args.delivery / f'Todd - {title}.mp4'
+        journal, = args.delivery.glob(prefix + '*.json')
+        reference = journal.with_suffix('.webm')
+        sources = [camera, journal, reference]
+        before = {p.name: digest(p) for p in sources}
+        take = json.loads(journal.read_text())
+        duration = take['durationMs'] / 1000
+        command = ['ffmpeg', '-v', 'error', '-nostdin', '-y', '-ss', str(offset), '-i', str(camera)]
+        # Repair only actor audio before aligning it and mixing agent replies.
+        # Markers are on the untouched camera clock, not the trimmed web clock.
+        edits = output / f'{scene}-audio-edits.json'
+        temporary = tempfile.TemporaryDirectory(prefix='todd-audio-')
+        audio_input = 0
+        if edits.exists():
+            sys.path.insert(0, str(ROOT / 'tools/demo-recorder'))
+            from repair_audio import repair_microphone
+            cleaned_audio = Path(temporary.name) / 'actor.wav'
+            room_tone_reference = ROOT / 'tools/website-media/room-tone/todd-clean-room-tone.wav'
+            repair_microphone(camera, edits, cleaned_audio, room_tone_reference)
+            command += ['-ss', str(offset), '-i', str(cleaned_audio)]
+            audio_input = 1
+        replies = [e for e in take['events'] if e['type'] == 'agent-start']
+        for e in replies:
+            folder = ROOT / ('tools/demo-recorder/clips' if e['clip'].startswith('hero-lux-') else 'dashboard/src/components/marketing/crew-voice')
+            command += ['-i', str(folder / (e['clip'] + '.mp3'))]
+        frame = framing[scene]
+        x, y, width, height = frame['crop_fraction_xywh']
+        out_width, out_height = frame['output_pixels']
+        video_filter = (f'[0:v]setpts=PTS-STARTPTS,'
+                        f'crop=iw*{width}:ih*{height}:iw*{x}:ih*{y},'
+                        f'scale={out_width}:{out_height}:flags=lanczos,setsar=1[v]')
+        filters = [video_filter, f'[{audio_input}:a]asetpts=PTS-STARTPTS[a0]']
+        for i, event in enumerate(replies, 1):
+            filters.append(f'[{i + audio_input}:a]adelay={event["atMs"]:.3f}:all=1[a{i}]')
+        filters.append(''.join(f'[a{i}]' for i in range(len(replies)+1)) + f'amix=inputs={len(replies)+1}:duration=first:normalize=0,alimiter=limit=0.95:level=0:latency=1[a]')
+        video = Path(temporary.name) / f'{scene}.mp4'
+        command += ['-filter_complex',';'.join(filters),'-map','[v]','-map','[a]','-t',str(duration),'-c:v','libx264','-preset','slow','-crf','26','-pix_fmt','yuv420p','-c:a','aac','-b:a','128k','-movflags','+faststart',str(video)]
+        subprocess.run(command, check=True)
+        probe = json.loads(subprocess.check_output(['ffprobe', '-v', 'error', '-show_streams', '-show_format', '-of', 'json', str(video)]))
+        stream = next(s for s in probe['streams'] if s['codec_type'] == 'video')
+        assert [stream['width'], stream['height']] == frame['output_pixels']
+        assert abs(float(probe['format']['duration']) - duration) < 0.1
+        assert before == {p.name: digest(p) for p in sources}, 'Original modified'
+        destination = output / video.name
+        destination.write_bytes(video.read_bytes())
+        video = destination
+        temporary.cleanup()
+        subprocess.run(['ffmpeg','-v','error','-y','-ss','2','-i',str(video),'-frames:v','1',str(output/f'{scene}-poster.jpg')],check=True)
+        # Use the delivered timeline, not the old actor's presentation edits.
+        if scene == 'crew':
+            take = with_crew_focus(take)
+        capture = output / f'{scene}-transcripts.json'
+        displayed_take = with_streaming_transcripts(take, json.loads(capture.read_text())) if capture.exists() else take
+        (output/f'{scene}.json').write_text(json.dumps(displayed_take,indent=2)+'\n')
+        activities = []
+        tasks = {'Reading src/search.ts':'u1','Editing src/search.ts':'u2','Running tests':'u3','Deploying to production':'u4'}
+        for e in take['events']:
+            if e['type'] != 'activity-start': continue
+            end = next(x for x in take['events'] if x['type']=='activity-end' and x['atMs'] > e['atMs'])
+            activities.append({'id':f'activity-{e["sequence"]}','startMs':e['atMs'],'endMs':end['atMs'],'status':'console' if e.get('text') in tasks else 'thinking', **({'consoleTask':tasks[e['text']]} if e.get('text') in tasks else {})})
+        (output/f'{scene}-activities.json').write_text(json.dumps(activities,indent=2)+'\n')
+        assert before == {p.name:digest(p) for p in sources}, 'Original modified'
+        manifest['sources'].append({'scene':scene,'framing':frame,'source_directory':str(args.delivery),'sha256':before,'camera_offset_seconds':offset,'duration_seconds':duration,'output_bytes':video.stat().st_size,'output_sha256':digest(video)})
+        if edits.exists():
+            manifest['sources'][-1]['audio_edits'] = {'file': edits.name, 'sha256': digest(edits)}
+        if edits.exists():
+            manifest['sources'][-1]['room_tone_reference'] = {'source': str(room_tone_reference.relative_to(ROOT)), 'source_sha256': digest(room_tone_reference), 'replace_own_reference': True}
+        print(scene,video.stat().st_size,'bytes',flush=True)
+    (output/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
+
+if __name__ == '__main__': main()

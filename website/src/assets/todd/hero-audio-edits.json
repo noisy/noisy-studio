@@ -1,0 +1,53 @@
+{
+  "version": 1,
+  "kind": "demo-audio-edits",
+  "source": {
+    "name": "Todd - Hero Search.mp4",
+    "size": 206583345,
+    "sha256": "2206716432851d63640dc0401cb4bd172b8a73b58fdff80cc82736a733fe1fa1",
+    "durationMs": 74874,
+    "sampleRate": 44100
+  },
+  "repairs": [
+    {
+      "startMs": 1,
+      "endMs": 5175
+    },
+    {
+      "startMs": 5863,
+      "endMs": 7957
+    },
+    {
+      "startMs": 16308,
+      "endMs": 26491
+    },
+    {
+      "startMs": 32357,
+      "endMs": 40388
+    },
+    {
+      "startMs": 46152,
+      "endMs": 55182
+    },
+    {
+      "startMs": 59368,
+      "endMs": 62163
+    },
+    {
+      "startMs": 62163,
+      "endMs": 69804
+    },
+    {
+      "startMs": 69804,
+      "endMs": 70376
+    },
+    {
+      "startMs": 71290,
+      "endMs": 74874
+    }
+  ],
+  "roomTone": {
+    "startMs": 5175,
+    "endMs": 5863
+  }
+}

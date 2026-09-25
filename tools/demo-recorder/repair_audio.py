@@ -18,7 +18,7 @@ def validate_source(source: Path, plan: dict):
         raise ValueError('Audio markers do not match the original recording.')
 
 
-def sample_ranges(plan, sample_rate, sample_count):
+def sample_ranges(plan, sample_rate, sample_count, external_tone=False):
     def bounds(interval):
         start, end = interval['startMs'], interval['endMs']
         if (type(start) is not int or type(end) is not int or start < 0 or end <= start
@@ -33,7 +33,7 @@ def sample_ranges(plan, sample_rate, sample_count):
     for index, (start, end) in enumerate(ranges):
         if index and start < ranges[index - 1][1]:
             raise ValueError('Repair intervals overlap.')
-        if start < tone[1] and tone[0] < end:
+        if not external_tone and start < tone[1] and tone[0] < end:
             raise ValueError('Room tone overlaps a repair interval.')
     return tone, ranges
 
@@ -50,9 +50,19 @@ def loop_room_tone(tone, length, fade_samples):
     return result[:length]
 
 
-def replace_intervals(samples, sample_rate, plan):
-    tone_range, ranges = sample_ranges(plan, sample_rate, len(samples))
-    tone = samples[slice(*tone_range)]
+def replace_intervals(samples, sample_rate, plan, external_tone=None):
+    tone_range, ranges = sample_ranges(plan, sample_rate, len(samples), external_tone is not None)
+    tone = samples[slice(*tone_range)] if external_tone is None else external_tone
+    # Adjacent repairs form one gap: do not fade the unwanted original back
+    # in at internal boundaries (including the replaced room-tone interval).
+    merged = []
+    for start, end in ranges:
+        if merged and start == merged[-1][1]:
+            merged[-1] = (merged[-1][0], end)
+        else:
+            merged.append((start, end))
+    if external_tone is not None:
+        ranges = merged
     output = samples.copy()
     fade_samples = max(1, round(CROSSFADE_MS * sample_rate / 1000))
     for start, end in ranges:
@@ -67,7 +77,7 @@ def replace_intervals(samples, sample_rate, plan):
     return output
 
 
-def repair_microphone(source: Path, plan_path: Path, destination: Path):
+def repair_microphone(source: Path, plan_path: Path, destination: Path, room_tone_reference=None):
     plan = json.loads(plan_path.read_text())
     validate_source(source, plan)
     info = json.loads(subprocess.check_output([
@@ -80,7 +90,29 @@ def repair_microphone(source: Path, plan_path: Path, destination: Path):
         '-map', '0:a:0', '-f', 'f32le', '-acodec', 'pcm_f32le', '-',
     ])
     samples = np.frombuffer(raw, dtype='<f4').reshape(-1, channels)
-    repaired = replace_intervals(samples, sample_rate, plan)
+    external_tone = None
+    if room_tone_reference is not None:
+        tone_plan = None
+        if isinstance(room_tone_reference, tuple):
+            tone_source, tone_plan_path = room_tone_reference
+            tone_plan = json.loads(tone_plan_path.read_text())
+            validate_source(tone_source, tone_plan)
+        else:
+            tone_source = Path(room_tone_reference)
+        tone_audio = subprocess.check_output([
+            'ffmpeg', '-hide_banner', '-loglevel', 'error', '-i', str(tone_source),
+            '-map', '0:a:0', '-ar', str(sample_rate), '-ac', str(channels),
+            '-f', 'f32le', '-acodec', 'pcm_f32le', '-',
+        ])
+        tone_samples = np.frombuffer(tone_audio, dtype='<f4').reshape(-1, channels)
+        if tone_plan is not None:
+            tone_range, _ = sample_ranges(tone_plan, sample_rate, len(tone_samples))
+            external_tone = tone_samples[slice(*tone_range)]
+        else:
+            external_tone = tone_samples
+        # Replace the rejected reference interval as well as marked repairs.
+        plan['repairs'].append(dict(plan['roomTone']))
+    repaired = replace_intervals(samples, sample_rate, plan, external_tone)
     subprocess.run([
         'ffmpeg', '-hide_banner', '-loglevel', 'error', '-y', '-f', 'f32le',
         '-ar', str(sample_rate), '-ac', str(channels), '-i', '-',

@@ -4,6 +4,8 @@ Talk to your coding agent while it works. Noisy Studio is a native desktop app
 with speech recognition, spoken replies, per-conversation voice and character
 settings, and a dashboard for the conversations you are following.
 
+https://github.com/user-attachments/assets/331ca147-b325-4b89-9704-a3bba206f2f8
+
 ## Install
 
 Download the macOS Apple Silicon app from [Releases](https://github.com/noisy/noisy-studio/releases),

@@ -1,0 +1,42 @@
+[
+  {
+    "id": "activity-5",
+    "startMs": 11521.700000047684,
+    "endMs": 13648.799999952316,
+    "status": "thinking"
+  },
+  {
+    "id": "activity-9",
+    "startMs": 18633.200000047684,
+    "endMs": 21967.299999952316,
+    "status": "console",
+    "consoleTask": "u2"
+  },
+  {
+    "id": "activity-15",
+    "startMs": 28530.799999952316,
+    "endMs": 30904.400000095367,
+    "status": "console",
+    "consoleTask": "u2"
+  },
+  {
+    "id": "activity-23",
+    "startMs": 42398.700000047684,
+    "endMs": 44967.09999990463,
+    "status": "console",
+    "consoleTask": "u3"
+  },
+  {
+    "id": "activity-31",
+    "startMs": 55795.90000009537,
+    "endMs": 57614,
+    "status": "thinking"
+  },
+  {
+    "id": "activity-35",
+    "startMs": 58607.5,
+    "endMs": 60901,
+    "status": "console",
+    "consoleTask": "u4"
+  }
+]

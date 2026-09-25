@@ -1,0 +1,44 @@
+{
+  "provider": "xAI Grok streaming STT",
+  "sourceSha256": "155198ab78a7d7bd52335e9396e5122d5fabe4de50087ce4e45aaf93877bd8a5",
+  "cameraOffsetSeconds": 3.109375,
+  "utterances": {
+    "u1": {
+      "updates": [
+        {
+          "receivedAtMs": 4165.71470804367,
+          "text": "How"
+        },
+        {
+          "receivedAtMs": 5180.154000048351,
+          "text": "How's staging?"
+        }
+      ],
+      "streamingFinal": "How's staging?",
+      "final": "How's staging?",
+      "finalAtMs": 5180.154000048351
+    },
+    "u2": {
+      "updates": [
+        {
+          "receivedAtMs": 8557.82333409402,
+          "text": "Do it."
+        }
+      ],
+      "streamingFinal": "Do it.",
+      "final": "Do it.",
+      "finalAtMs": 8557.82333409402
+    },
+    "u3": {
+      "updates": [
+        {
+          "receivedAtMs": 19530.62124990311,
+          "text": "Thanks."
+        }
+      ],
+      "streamingFinal": "Thanks.",
+      "final": "Thanks.",
+      "finalAtMs": 19965.400000095367
+    }
+  }
+}

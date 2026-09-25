@@ -1,0 +1,146 @@
+{
+  "provider": "xAI Grok streaming STT",
+  "sourceSha256": "2206716432851d63640dc0401cb4bd172b8a73b58fdff80cc82736a733fe1fa1",
+  "cameraOffsetSeconds": 3.609375,
+  "utterances": {
+    "u1": {
+      "updates": [
+        {
+          "receivedAtMs": 5695.493333097373,
+          "text": "The search"
+        },
+        {
+          "receivedAtMs": 6722.836458092614,
+          "text": "The search stopped."
+        },
+        {
+          "receivedAtMs": 7706.430583098379,
+          "text": "The search stopped working after the last"
+        },
+        {
+          "receivedAtMs": 8734.115208096453,
+          "text": "The search stopped working after the last change."
+        },
+        {
+          "receivedAtMs": 9785.798208094318,
+          "text": "The search stopped working after the last change. It finds exact names."
+        },
+        {
+          "receivedAtMs": 10701.906750092574,
+          "text": "The search stopped working after the last change. It finds exact names, but"
+        },
+        {
+          "receivedAtMs": 11704.586542092555,
+          "text": "The search stopped working after the last change. It finds exact names, but part of the name"
+        },
+        {
+          "receivedAtMs": 12711.43058309576,
+          "text": "The search stopped working after the last change. It finds exact names, but part of the name gives me nothing."
+        }
+      ],
+      "streamingFinal": "The search stopped working after the last change. It finds exact names, but part of the name gives me nothing.",
+      "final": "The search stopped working after the last change. It finds exact names, but part of the name gives me nothing.",
+      "finalAtMs": 12711.43058309576
+    },
+    "u2": {
+      "updates": [
+        {
+          "receivedAtMs": 24480.58008309413,
+          "text": "Yeah, in"
+        },
+        {
+          "receivedAtMs": 25445.474666091788,
+          "text": "Yeah, and ignore capitalism."
+        },
+        {
+          "receivedAtMs": 26442.858166097314,
+          "text": "Yeah, and ignore capital letters too."
+        },
+        {
+          "receivedAtMs": 27456.447875097685,
+          "text": "Yeah, and ignore capital letters too. if I type just"
+        },
+        {
+          "receivedAtMs": 28555.912375093205,
+          "text": "Yeah, and ignore capital letters too. if I type just part of a name, I still."
+        },
+        {
+          "receivedAtMs": 29454.39387509355,
+          "text": "Yeah, and ignore capital letters too. if I type just part of a name, I still want to find it."
+        }
+      ],
+      "streamingFinal": "Yeah, and ignore capital letters too. if I type just part of a name, I still want to find it.",
+      "final": "Yeah, and ignore capital letters too. if I type just part of a name, I still wanna find it.",
+      "finalAtMs": 29454.39387509355
+    },
+    "u3": {
+      "updates": [
+        {
+          "receivedAtMs": 38951.16008300311,
+          "text": "Great."
+        },
+        {
+          "receivedAtMs": 39969.000416002295,
+          "text": "Great add a test"
+        },
+        {
+          "receivedAtMs": 40970.66979100264,
+          "text": "Great add a test for both cases."
+        },
+        {
+          "receivedAtMs": 41972.6587910066,
+          "text": "Great add a test for both cases so we don't"
+        },
+        {
+          "receivedAtMs": 42908.157750005834,
+          "text": "Great add a test for both cases so we don't break this again."
+        }
+      ],
+      "streamingFinal": "Great add a test for both cases so we don't break this again.",
+      "final": "Great add a test for both cases so we don't break this again.",
+      "finalAtMs": 42908.157750005834
+    },
+    "u4": {
+      "updates": [
+        {
+          "receivedAtMs": 52794.79033309553,
+          "text": "Great"
+        },
+        {
+          "receivedAtMs": 53798.64191609749,
+          "text": "Great , my hands are full."
+        },
+        {
+          "receivedAtMs": 54921.020083095296,
+          "text": "Great , my hands are full, can you deploy"
+        },
+        {
+          "receivedAtMs": 55822.049666096515,
+          "text": "Great , my hands are full, can you deploy that to production?"
+        },
+        {
+          "receivedAtMs": 56675.143166090944,
+          "text": ", my hands are full, can you deploy that to production for me? , my hands are full, can you deploy that to production?"
+        },
+        {
+          "receivedAtMs": 57025.239166092884,
+          "text": "Great , my hands are full, can you deploy that to production for me? , my hands are full, can you deploy that to production?"
+        }
+      ],
+      "streamingFinal": "Great , my hands are full, can you deploy that to production for me? , my hands are full, can you deploy that to production?",
+      "final": "Great. My hands are full. Can you deploy that to production for me?",
+      "finalAtMs": 57025.239166092884
+    },
+    "u5": {
+      "updates": [
+        {
+          "receivedAtMs": 67947.26608405332,
+          "text": "Perfect, thanks."
+        }
+      ],
+      "streamingFinal": "Perfect, thanks.",
+      "final": "Perfect, thanks.",
+      "finalAtMs": 68742.79999995232
+    }
+  }
+}

@@ -3,9 +3,12 @@ import { websiteAnalytics } from './analytics';
 import { ref, onMounted, onBeforeUnmount } from "vue";
 import RecordedCrewScene from "@dashboard/components/marketing/RecordedCrewScene.vue";
 // Keep this a lightweight website copy when replacing it with actor footage.
-// Preserve the original/master; regenerate with tools/website-media/generate.py
+// Preserve the original/master; regenerate with tools/website-media/prepare_todd.py
 // following tools/website-media/README.md instead of embedding the full-size recording.
-import recording from './assets/optimized/crew-recording.mp4';
+import recording from './assets/todd/crew.mp4';
+import take from './assets/todd/crew.json';
+import poster from './assets/todd/crew-poster.jpg';
+import { toddCamera } from './toddCamera';
 import VoiceCarousel from "./VoiceCarousel.vue";
 const frame = ref<HTMLElement | null>(null);
 const scale = ref(0.7);
@@ -47,7 +50,7 @@ onBeforeUnmount(() => {
               transformOrigin: 'top left',
             }"
           >
-            <RecordedCrewScene :recording-src="recording" @interaction="websiteAnalytics.trackDemo('crew', $event)" playback-controls :camera="!compact" :compact="compact" />
+            <RecordedCrewScene :recording-src="recording" :recording-take="take" :recording-poster="poster" v-bind="toddCamera" @interaction="websiteAnalytics.trackDemo('crew', $event)" playback-controls :camera="!compact" :compact="compact" />
           </div>
         </div>
         <p class="voice-caption">
