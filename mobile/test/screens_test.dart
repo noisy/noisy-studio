@@ -52,6 +52,13 @@ void main() {
               ),
             ),
           );
+          await tester.runAsync(
+            () => precacheImage(
+              const AssetImage('assets/avatars/editorial.webp'),
+              tester.element(find.byType(Scaffold)),
+            ),
+          );
+          await tester.pumpAndSettle();
           expect(tester.takeException(), isNull);
           if (const bool.fromEnvironment('CAPTURE_SCREENSHOTS')) {
             await tester.pumpAndSettle();

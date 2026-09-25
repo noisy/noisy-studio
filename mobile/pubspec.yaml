@@ -22,6 +22,8 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   generate: true
+  assets:
+    - assets/avatars/
   fonts:
     - family: Studio Sans
       fonts:

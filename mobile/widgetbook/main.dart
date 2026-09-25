@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:widgetbook/widgetbook.dart';
 import 'package:noisy_studio_mobile/core/models.dart';
 import 'package:noisy_studio_mobile/ui/screens.dart';
+import 'package:noisy_studio_mobile/main.dart' show Companion;
 
 void main() => runApp(const Catalog());
 
@@ -10,6 +11,32 @@ class Catalog extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Widgetbook.material(
     directories: [
+      WidgetbookComponent(
+        name: 'Mobile app',
+        useCases: [
+          WidgetbookUseCase(
+            name: 'Interactive companion',
+            builder: (_) => const Companion(),
+          ),
+        ],
+      ),
+      WidgetbookComponent(
+        name: 'Message contracts',
+        useCases: [
+          for (final status in [
+            'ready — awaiting pickup',
+            'transcribing…',
+            'unavailable — reconnect',
+            'playing through speakers…',
+            'played',
+            'unheard — voice muted',
+          ])
+            WidgetbookUseCase(
+              name: status,
+              builder: (_) => MessageStory(status: status),
+            ),
+        ],
+      ),
       WidgetbookComponent(
         name: 'Agents',
         useCases: [
@@ -46,7 +73,25 @@ class Catalog extends StatelessWidget {
                 return TalkView(
                   snapshot: Snapshot(
                     agents: data.agents,
-                    messages: data.messages,
+                    messages: data.messages
+                        .map(
+                          (m) =>
+                              state == 'Speaking' &&
+                                  m.role == 'claude' &&
+                                  m.agentId == data.activeId
+                              ? Message(
+                                  m.agentId,
+                                  m.author,
+                                  m.text,
+                                  id: m.id,
+                                  role: m.role,
+                                  voice: m.voice,
+                                  status: 'playing through speakers…',
+                                  time: m.time,
+                                )
+                              : m,
+                        )
+                        .toList(),
                     activeId: data.activeId,
                     muted: state == 'Muted',
                   ),
@@ -128,4 +173,53 @@ class _SettingsStoryState extends State<SettingsStory> {
   @override
   Widget build(BuildContext context) =>
       ConnectionSettings(address: address, onConnect: () {}, onDemo: () {});
+}
+
+class MessageStory extends StatefulWidget {
+  const MessageStory({super.key, required this.status});
+  final String status;
+  @override
+  State<MessageStory> createState() => _MessageStoryState();
+}
+
+class _MessageStoryState extends State<MessageStory> {
+  String event = 'Actions emit the same message identity as desktop.';
+  @override
+  Widget build(BuildContext context) {
+    final user =
+        widget.status.startsWith('ready') ||
+        widget.status.startsWith('transcribing') ||
+        widget.status.startsWith('unavailable');
+    final message = Message(
+      'a1',
+      user ? 'You' : 'Lux',
+      user
+          ? 'Could you check the latest changes?'
+          : 'The checks passed. I’m reviewing the final changes.',
+      id: 91,
+      role: user ? 'user' : 'claude',
+      voice: user ? '' : 'lux',
+      status: widget.status,
+      time: '14:32',
+    );
+    void emit(String action, Message value) =>
+        setState(() => event = 'Preview event: $action · message ${value.id}');
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          MessageCard(
+            message: message,
+            onReplay: (m) => emit('replay', m),
+            onPause: (m) => emit('pause', m),
+            onSkip: (m) => emit('skip', m),
+            onCancel: (m) => emit('cancel', m),
+          ),
+          const SizedBox(height: 16),
+          Text(event, style: const TextStyle(fontSize: 12)),
+        ],
+      ),
+    );
+  }
 }

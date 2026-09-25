@@ -25,8 +25,8 @@ dart run tool/check_connection.dart http://127.0.0.1:7765
 
 Widgetbook includes 0/2/4/7 agents, idle/holding/speaking/muted/offline Talk,
 Recent and Settings, two phone sizes and light/dark themes. It uses the same views
-as the app. Initial portraits are letter avatars; voice portrait artwork can be
-added without changing the daemon model. Roboto is bundled locally with its license; no runtime font downloads.
+as the app. Portraits reuse the desktop editorial artwork and irregular crop metadata.
+See `DESIGN.md` for the desktop component/interaction mapping and sync command. Roboto is bundled locally with its license; no runtime font downloads.
 
 Settings accepts an HTTP(S) origin, remembers only its address, and connects only
 on request. The daemon must already be reachable. This app never changes its bind
