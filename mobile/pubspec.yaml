@@ -10,7 +10,6 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   http: ^1.6.0
-  web_socket_channel: ^3.0.3
   shared_preferences: ^2.5.4
   intl: any
 dev_dependencies:

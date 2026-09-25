@@ -14,7 +14,7 @@ Future<void> main(List<String> args) async {
     final initial = await client.initial();
     final streamed = await client.watch().first;
     stdout.writeln(
-      'HTTP and WebSocket snapshots decoded successfully. '
+      'Initial and polled HTTP snapshots decoded successfully. '
       '${initial.agents.length} HTTP / ${streamed.agents.length} streamed conversations.',
     );
   } finally {

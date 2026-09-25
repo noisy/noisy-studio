@@ -487,15 +487,14 @@ class TalkView extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 10),
-              if (onPauseSpeech != null)
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: TextButton.icon(
-                    onPressed: onPauseSpeech,
-                    icon: const Icon(Icons.pause, size: 17),
-                    label: const Text('Pause / resume speech'),
-                  ),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton.icon(
+                  onPressed: onPauseSpeech,
+                  icon: const Icon(Icons.pause, size: 17),
+                  label: const Text('Pause / resume speech'),
                 ),
+              ),
               Listener(
                 onPointerDown: ptt ? (_) => onHold() : null,
                 onPointerUp: (_) => onRelease(),
@@ -646,7 +645,7 @@ class ConnectionSettings extends StatelessWidget {
                 style: const TextStyle(fontSize: 13),
                 decoration: const InputDecoration(
                   labelText: 'Daemon address',
-                  hintText: 'http://192.168.1.20:7765',
+                  hintText: 'https://your-desktop.example',
                   border: OutlineInputBorder(),
                   isDense: true,
                 ),
@@ -672,7 +671,7 @@ class ConnectionSettings extends StatelessWidget {
                 ),
               const SizedBox(height: 14),
               const Text(
-                'Use an already reachable desktop on your trusted network.',
+                'Use an HTTP or HTTPS address on your trusted network or an authenticated proxy.',
                 style: TextStyle(fontSize: 12, height: 1.5),
               ),
             ],

@@ -31,7 +31,7 @@ void main() {
       'file:///tmp/socket',
       'http://user:pass@localhost',
       'http://host/path',
-      'http://host:65535',
+      'http://host:65536',
     ]) {
       expect(() => DaemonClient.validateAddress(v), throwsFormatException);
     }
