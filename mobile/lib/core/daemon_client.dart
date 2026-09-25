@@ -71,7 +71,7 @@ class DaemonClient implements DaemonCommands {
   }
 
   Future<String?> selectAgent(String id) async {
-    final result = await _post('/active-agent', {'name': id});
+    final result = await request('/active-agent', {'name': id});
     if (!result.containsKey('active_agent') ||
         (result['active_agent'] != null && result['active_agent'] is! String)) {
       throw const FormatException('Missing active-agent confirmation');
@@ -81,10 +81,10 @@ class DaemonClient implements DaemonCommands {
 
   @override
   Future<void> post(String path, Map<String, Object> body) async {
-    await _post(path, body);
+    await request(path, body);
   }
 
-  Future<Map<String, dynamic>> _post(
+  Future<Map<String, dynamic>> request(
     String path,
     Map<String, Object> body,
   ) async {
