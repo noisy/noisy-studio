@@ -365,6 +365,7 @@ def save_settings(state: ListenerState) -> None:
             json.dumps(
                 {
                     "end_silence_ms": state.end_silence_ms,
+                    "max_utterance_ms": state.max_utterance_ms,
                     "mic_sensitivity": state.mic_sensitivity,
                     "smart_turn": state.smart_turn,
                     "mode": state.mode,
@@ -492,6 +493,7 @@ def status_payload(state: ListenerState) -> dict:
                             "mode": state.mode,
                             "tts_mode": state.tts_mode,
                             "end_silence_ms": state.end_silence_ms,
+                            "max_utterance_ms": state.max_utterance_ms,
                             "mic_sensitivity": state.mic_sensitivity,
                             "smart_turn": state.smart_turn,
                             "smart_turn_mode": state.smart_turn_mode,
@@ -928,6 +930,12 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
             elif self.path == "/settings":
                 body = self._read_json_body()
                 result = {}
+                if "max_utterance_ms" in body:
+                    try:
+                        result["max_utterance_ms"] = state.set_max_utterance_ms(body["max_utterance_ms"])
+                    except (ValueError, TypeError, OverflowError):
+                        self._respond({"error": "max_utterance_ms must be a number"}, status=400)
+                        return
                 if "end_silence_ms" in body:
                     result["end_silence_ms"] = state.set_end_silence_ms(
                         body["end_silence_ms"]

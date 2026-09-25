@@ -4,6 +4,13 @@ import AudioControls from './AudioControls.vue';
 import { DEFAULT_AUDIO_CONTROLS, AUDIO_CONTROL_IDS } from './audioControls';
 import type { DaemonStatus } from '../types';
 describe('AudioControls',()=>{
+  it('defaults message length to ten minutes and allows changing it in push-to-talk',async()=>{
+    const w=mount(AudioControls,{props:{status:{detection_mode:'ptt'} as DaemonStatus,visible:[],settings:true}});
+    const row=w.findAll('.audio-row').find(r=>r.text().includes('Maximum voice message length'))!;
+    expect((row.get('select').element as HTMLSelectElement).value).toBe('600000');
+    await row.get('select').setValue('900000');
+    expect(w.emitted('change')).toEqual([[{id:'length',value:'900000'}]]);
+  });
   it('shows the defaults and opens settings without changing audio',async()=>{
     const w=mount(AudioControls,{props:{status:null,visible:[...DEFAULT_AUDIO_CONTROLS]}});
     expect(w.findAll('.audio-row').map(r=>r.find('label').text())).toEqual(['Microphone','Language','Turn detection']);

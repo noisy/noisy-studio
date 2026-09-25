@@ -143,3 +143,25 @@ def test_ten_second_silence_keeps_a_nine_second_pause_open(make_frames):
     after = _feed_all(segmenter, make_frames(False, 34))
 
     assert (len(before), len(after)) == (0, 1)
+
+
+def test_default_recording_continues_past_three_minutes_and_finishes_at_ten():
+    segmenter = UtteranceSegmenter()
+    frame = np.full(CONFIG.frame_samples, 5000, dtype=np.int16)
+    completed_at = [
+        (index + 1) * CONFIG.frame_ms
+        for index in range(600_000 // CONFIG.frame_ms)
+        if segmenter.feed(frame) is not None
+    ]
+
+    assert completed_at == [600_000]
+
+
+@pytest.mark.parametrize("silence_ms", [2000, 3_600_000], ids=["auto", "push-to-talk"])
+def test_live_length_override_closes_continuous_speech(silence_ms, make_frames):
+    segmenter = UtteranceSegmenter()
+    segmenter.end_silence_ms_override = silence_ms
+    _feed_all(segmenter, make_frames(True, 100))
+    segmenter.max_utterance_ms_override = 3000
+
+    assert segmenter.feed(make_frames(True, 1)[0]) is not None

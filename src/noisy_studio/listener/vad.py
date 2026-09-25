@@ -10,6 +10,10 @@ from dataclasses import dataclass, field
 
 import numpy as np
 
+DEFAULT_MAX_UTTERANCE_MS = 600_000
+MIN_MAX_UTTERANCE_MS = 60_000
+MAX_MAX_UTTERANCE_MS = 3_600_000
+
 DEFAULT_MIC_SENSITIVITY = 50
 MIN_MIC_SENSITIVITY, MAX_MIC_SENSITIVITY = 0, 100
 
@@ -37,7 +41,7 @@ class VadConfig:
     end_silence_ms: int = 2000
     pre_roll_ms: int = 700
     min_utterance_ms: int = 400
-    max_utterance_ms: int = 180_000
+    max_utterance_ms: int = DEFAULT_MAX_UTTERANCE_MS
     # smart_turn may close early only after at least this much silence, so a
     # sensitive setting can't cut through a user still talking with tiny gaps.
     smart_turn_min_silence_ms: int = 400
@@ -65,6 +69,7 @@ class UtteranceSegmenter:
         self._pre_roll_frames_included = 0
         # Live-adjustable from the dashboard; None = use the config default.
         self.end_silence_ms_override: int | None = None
+        self.max_utterance_ms_override: int | None = None
         # User's mic sensitivity (0-100); None = DEFAULT_MIC_SENSITIVITY.
         self.mic_sensitivity_override: int | None = None
         # "soft": smart_turn may close after a short pause (fast, may over-split).
@@ -152,9 +157,12 @@ class UtteranceSegmenter:
 
         silence_ms = self._silence_run * self.config.frame_ms
         ended_by_silence = not loud and silence_ms >= self._end_silence_ms
-        too_long = (
-            len(self._recording) * self.config.frame_ms >= self.config.max_utterance_ms
+        max_utterance_ms = (
+            self.config.max_utterance_ms
+            if self.max_utterance_ms_override is None
+            else self.max_utterance_ms_override
         )
+        too_long = len(self._recording) * self.config.frame_ms >= max_utterance_ms
         # smart_turn (close_requested) may end the utterance early — but only
         # after a real pause, never while the user is still talking through
         # micro-gaps. In "hard" mode pause-split fully rules: smart_turn cannot

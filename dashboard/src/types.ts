@@ -44,6 +44,7 @@ export interface DaemonStatus {
   speech_output_mode?: "batch" | "live" | "unavailable";
   mode: "batch" | "live";
   tts_mode: "batch" | "live";
+  max_utterance_ms?: number;
   end_silence_ms: number;
   /** Noise gate: 0 (needs a loud voice) … 100 (hair-trigger); 50 = default. */
   mic_sensitivity: number;
@@ -129,6 +130,7 @@ export interface Character {
 export interface SettingsPatch {
   hotkeys?: Record<string, string>; // {action: chord}, "" clears (#104)
   tts_mode?: "batch" | "live";
+  max_utterance_ms?: number;
   end_silence_ms?: number;
   mic_sensitivity?: number;
   smart_turn?: number;
