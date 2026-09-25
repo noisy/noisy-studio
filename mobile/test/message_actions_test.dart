@@ -1,10 +1,31 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/material.dart';
+import 'package:noisy_studio_mobile/ui/screens.dart';
 import 'package:noisy_studio_mobile/core/message_actions.dart';
 import 'package:noisy_studio_mobile/core/models.dart';
 
 void main() {
+  testWidgets('shared feed forwards replay identity into the live callback', (
+    tester,
+  ) async {
+    final ids = <int>[];
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: MessagesView(
+            messages: const [
+              Message('a1', 'Lux', 'Hello', id: 91, status: 'played'),
+            ],
+            onReplay: (message) => ids.add(message.id),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.byTooltip('Play this message again'));
+    expect(ids, [91]);
+  });
   const message = Message('a1', 'Lux', '[voice] „Hello”', id: 91);
   test('replay carries original card and conversation identity', () async {
     final calls = <Object>[];
@@ -43,8 +64,8 @@ void main() {
         },
         onError: (_) => fail('unexpected error'),
       )..playingId = 91;
-      final pending = actions.perform(MessageAction.pause, message);
-      await actions.perform(MessageAction.pause, message);
+      final pending = actions.playback(togglePause: true);
+      await actions.playback(togglePause: true);
       expect([calls, actions.pausedId, actions.busy], [1, 0, true]);
       response.complete({'paused': true});
       await pending;
@@ -54,24 +75,21 @@ void main() {
       actions.dispose();
     },
   );
-  test(
-    'recall rejection and stale playback are reported without success state',
-    () async {
-      var calls = 0;
-      final errors = <String>[];
-      final actions = MessageActions(
-        request: (_, _) async {
-          calls++;
-          return {'cancelled': false};
-        },
-        onError: errors.add,
-      )..playingId = 92;
-      await actions.perform(MessageAction.cancel, message);
-      await actions.perform(MessageAction.skip, message);
-      expect([calls, errors.length, actions.pausedId], [1, 2, 0]);
-      actions.dispose();
-    },
-  );
+  test('recall rejection is reported without success state', () async {
+    var calls = 0;
+    final errors = <String>[];
+    final actions = MessageActions(
+      request: (_, _) async {
+        calls++;
+        return {'cancelled': false};
+      },
+      onError: errors.add,
+    )..playingId = 92;
+    await actions.perform(MessageAction.cancel, message);
+
+    expect([calls, errors.length, actions.pausedId], [1, 1, 0]);
+    actions.dispose();
+  });
   test('old session responses cannot publish pause state or errors', () async {
     final response = Completer<Map<String, dynamic>>();
     final errors = <String>[];
@@ -79,7 +97,7 @@ void main() {
       request: (_, _) => response.future,
       onError: errors.add,
     )..playingId = 91;
-    final pending = actions.perform(MessageAction.pause, message);
+    final pending = actions.playback(togglePause: true);
     actions.dispose();
     response.completeError(StateError('offline'));
     await pending;

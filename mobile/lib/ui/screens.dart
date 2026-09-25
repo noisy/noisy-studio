@@ -337,7 +337,16 @@ class MessagesView extends StatelessWidget {
           itemCount: messages.length,
           itemBuilder: (context, index) => Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: MessageCard(message: messages[messages.length - index - 1]),
+            child: MessageCard(
+              message: messages[messages.length - index - 1],
+              onReplay: onReplay,
+              onPause: onPause,
+              onSkip: onSkip,
+              onCancel: onCancel,
+              paused:
+                  pausedId != 0 &&
+                  pausedId == messages[messages.length - index - 1].id,
+            ),
           ),
         );
 }
@@ -360,10 +369,14 @@ class TalkView extends StatelessWidget {
     this.onSkip,
     this.onCancel,
     this.pausedId = 0,
+    this.onPauseSpeech,
+    this.speechBusy = false,
   });
   final Snapshot snapshot;
   final Agent? agent;
   final bool held, connected;
+  final bool speechBusy;
+  final VoidCallback? onPauseSpeech;
   final VoidCallback onHold, onRelease, onToggle, onMute, onStop;
   final ValueChanged<bool> onAuto;
   final ValueChanged<Message>? onReplay, onPause, onSkip, onCancel;
@@ -463,7 +476,7 @@ class TalkView extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: connected ? onStop : null,
+                      onPressed: connected && !speechBusy ? onStop : null,
                       icon: const Icon(Icons.stop_rounded, size: 17),
                       label: const Text(
                         'Stop speech',
@@ -474,6 +487,15 @@ class TalkView extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 10),
+              if (onPauseSpeech != null)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: onPauseSpeech,
+                    icon: const Icon(Icons.pause, size: 17),
+                    label: const Text('Pause / resume speech'),
+                  ),
+                ),
               Listener(
                 onPointerDown: ptt ? (_) => onHold() : null,
                 onPointerUp: (_) => onRelease(),

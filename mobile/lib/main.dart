@@ -96,9 +96,10 @@ class _CompanionState extends State<Companion> with WidgetsBindingObserver {
       actions = MessageActions(
         request: remote.request,
         onError: (message) {
-          if (mounted && current == generation)
+          if (mounted && current == generation) {
             ScaffoldMessenger.of(context)
                 .showSnackBar(SnackBar(content: Text(message)));
+          }
         },
       )..playingId = initial.playingId;
       actions!.addListener(refresh);
@@ -234,8 +235,6 @@ class _CompanionState extends State<Companion> with WidgetsBindingObserver {
       TalkView(
         snapshot: snapshot,
         onReplay: handler(MessageAction.replay),
-        onPause: handler(MessageAction.pause),
-        onSkip: handler(MessageAction.skip),
         onCancel: handler(MessageAction.cancel),
         pausedId: actions?.pausedId ?? 0,
         agent: agent,
@@ -277,13 +276,15 @@ class _CompanionState extends State<Companion> with WidgetsBindingObserver {
             refresh();
           }
         },
-        onStop: () => command('/interrupt', {}),
+        onStop: () => actions?.playback(togglePause: false),
+        onPauseSpeech: !demo && connected && actions?.busy == false
+            ? () => actions?.playback(togglePause: true)
+            : null,
+        speechBusy: actions?.busy ?? false,
       ),
       MessagesView(
         messages: snapshot.messages,
         onReplay: handler(MessageAction.replay),
-        onPause: handler(MessageAction.pause),
-        onSkip: handler(MessageAction.skip),
         onCancel: handler(MessageAction.cancel),
         pausedId: actions?.pausedId ?? 0,
       ),

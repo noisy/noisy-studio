@@ -2,7 +2,7 @@ import 'package:flutter/foundation.dart';
 
 import 'models.dart';
 
-enum MessageAction { replay, pause, skip, cancel }
+enum MessageAction { replay, cancel }
 
 class MessageActions extends ChangeNotifier {
   MessageActions({required this.request, required this.onError});
@@ -19,59 +19,64 @@ class MessageActions extends ChangeNotifier {
     }
   }
 
-  Future<void> perform(MessageAction action, Message message) async {
-    if (_disposed || busy || message.id <= 0) return;
-    if ((action == MessageAction.pause || action == MessageAction.skip) &&
-        message.id != _playingId) {
-      onError('This message is no longer playing.');
-      return;
-    }
+  Future<void> _run(String name, Future<void> Function() operation) async {
+    if (_disposed || busy) return;
     busy = true;
     notifyListeners();
     try {
-      switch (action) {
-        case MessageAction.replay:
-          final text = message.text
-              .replaceFirst(RegExp(r'^\[[^\]]+\]\s*'), '')
-              .replaceFirst(RegExp(r'^[„"]'), '')
-              .replaceFirst(RegExp(r'[”"]$'), '');
-          final result = await request('/speak', {
-            'text': text,
-            'source_id': message.id,
-            'agent': message.agentId,
-            'wait': false,
-            'card': false,
-            'interrupt': true,
-          });
-          if (result['queued'] != true && result['skipped'] != true)
-            throw StateError('Replay was not accepted.');
-        case MessageAction.pause:
-          final result = await request('/playback-pause', {});
-          if (result['paused'] is! bool)
-            throw StateError('Playback state was not confirmed.');
-          if (!_disposed && _playingId == message.id)
-            paused = result['paused'] as bool;
-        case MessageAction.skip:
-          final result = await request('/interrupt', {});
-          if (result['stopped'] != true)
-            throw StateError('Stop was not confirmed.');
-          if (!_disposed && _playingId == message.id) paused = false;
-        case MessageAction.cancel:
-          final result = await request('/cancel', {'utterance_id': message.id});
-          if (result['cancelled'] != true)
-            throw StateError('This message can no longer be recalled.');
-      }
+      await operation();
     } catch (_) {
       if (!_disposed)
-        onError(
-          'Could not ${action.name} this message. Refreshing state may show that it has already changed.',
-        );
+        onError('Could not $name. The desktop state may have changed.');
     } finally {
       if (!_disposed) {
         busy = false;
         notifyListeners();
       }
     }
+  }
+
+  /// These endpoints act on whatever is playing now, never on a named card.
+  Future<void> playback({required bool togglePause}) => _run(
+    togglePause ? 'pause or resume speech' : 'stop speech',
+    () async {
+      final result = await request(
+        togglePause ? '/playback-pause' : '/interrupt',
+        {},
+      );
+      if (togglePause ? result['paused'] is! bool : result['stopped'] != true) {
+        throw StateError('Playback was not confirmed.');
+      }
+      if (!_disposed) paused = togglePause ? result['paused'] as bool : false;
+    },
+  );
+
+  Future<void> perform(MessageAction action, Message message) async {
+    if (message.id <= 0) return;
+    await _run('${action.name} this message', () async {
+      if (action == MessageAction.replay) {
+        final text = message.text
+            .replaceFirst(RegExp(r'^\[[^\]]+\]\s*'), '')
+            .replaceFirst(RegExp(r'^[„"]'), '')
+            .replaceFirst(RegExp(r'[”"]$'), '');
+        final result = await request('/speak', {
+          'text': text,
+          'source_id': message.id,
+          'agent': message.agentId,
+          'wait': false,
+          'card': false,
+          'interrupt': true,
+        });
+        if (result['queued'] != true && result['skipped'] != true) {
+          throw StateError('Replay was not accepted.');
+        }
+      } else {
+        final result = await request('/cancel', {'utterance_id': message.id});
+        if (result['cancelled'] != true) {
+          throw StateError('This message can no longer be recalled.');
+        }
+      }
+    });
   }
 
   @override

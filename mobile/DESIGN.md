@@ -25,7 +25,8 @@ canonical files. Never re-crop the sprite into equal rows/columns. This preserve
 Transport, lease ownership and confirmed routing are unchanged. `Agent.voice` and
 message presentation fields are additive mappings from the existing daemon data.
 The first version still controls desktop sound. Message actions are typed callbacks wired to the existing daemon replay, pause,
-skip and recall endpoints. Pending commands suppress duplicate actions; pause is
+and recall endpoints. Pause/resume and stop are explicitly global speech controls,
+not card-targeted commands. Pending commands suppress duplicate actions; pause is
 updated only after confirmation, and recall rejection is surfaced. Message status
 still comes from the daemon. Voice selection and phone audio stay separate.
 
