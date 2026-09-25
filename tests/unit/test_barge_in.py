@@ -84,7 +84,7 @@ def test_barge_in_parks_the_addressees_clip_but_requeues_another_agents(monkeypa
     assert daemon._ptt_barge_in(state) is True
     card = next(u for u in state.utterances() if u["id"] == clip2)
     assert card["status"] == "unheard — waiting — you were speaking"
-    assert requeued == [("valid update", {"agent": "other", "card": False, "source_id": clip2})]
+    assert requeued == [("valid update", {"agent": "other", "card": False, "source_id": clip2, "automatic_resume": True})]
 
 
 

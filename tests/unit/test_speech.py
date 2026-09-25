@@ -733,3 +733,60 @@ def test_skipped_prefetched_audio_is_not_played_after_unmuting(monkeypatch, batc
     speech._play_prepared(state, "dismissed", "", card_id, card_id, prepared)
 
     assert played == []
+
+
+@pytest.mark.parametrize("dismiss_before_resume", [False, True])
+def test_other_agents_interrupted_playback_resumes_only_if_not_dismissed(monkeypatch, batch_pipeline, dismiss_before_resume):
+    from noisy_studio.listener import daemon
+
+    state = ListenerState()
+    state.register_agent("a1")
+    state.register_agent("a2")
+    state.set_active_agent("a1")
+    _install_fake_synth(monkeypatch, [])
+    playing, release, resumed = threading.Event(), threading.Event(), threading.Event()
+    plays = []
+    original_discard = speech._discard_pending_card
+    settled = threading.Event()
+
+    def discard(card_id):
+        original_discard(card_id)
+        settled.set()
+
+    async def play(*args):
+        plays.append("a2")
+        if len(plays) == 1:
+            playing.set()
+            assert release.wait(3)
+        else:
+            resumed.set()
+
+    monkeypatch.setattr(speech, "_play_audio", play)
+    monkeypatch.setattr(speech, "_discard_pending_card", discard)
+    original = speech.submit(state, "still relevant", agent="a2")
+    try:
+        assert playing.wait(3)
+        state.set_recording(True)
+        assert daemon._ptt_barge_in(state)
+        card_id = state.utterances()[0]["id"]
+        # Multiple resume requests coalesce while the old worker unwinds.
+        speech.submit(state, "still relevant", agent="a2", card=False, source_id=card_id, automatic_resume=True)
+        if dismiss_before_resume:
+            assert state.skip_unheard("a2") == 1
+        release.set()
+        original.result(timeout=3)
+        assert settled.wait(3)
+        assert plays == ["a2"]
+        state.set_recording(False)
+        if not dismiss_before_resume:
+            assert resumed.wait(3)
+        # Drain both stages without relying on a sleep or a future callback race.
+        speech._playback_worker.submit(999999, lambda: None).result(timeout=3)
+    finally:
+        state.set_recording(False)
+        release.set()
+        original.result(timeout=3)
+
+    assert (plays, state.utterances()[0]["status"]) == (
+        (["a2"], "skipped — dismissed by you") if dismiss_before_resume else (["a2", "a2"], "played")
+    )

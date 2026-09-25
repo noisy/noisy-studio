@@ -134,6 +134,7 @@ _queue_seq = itertools.count(1)
 # speech (fresh cards) may queue freely; a replay source may be in flight
 # only once.
 _pending_cards: set[int] = set()
+_deferred_resumes: dict[int, tuple[ListenerState, str, str | None]] = {}
 _pending_lock = threading.Lock()
 
 
@@ -161,6 +162,7 @@ def submit(
     role: str = "claude",
     speaker: str | None = None,
     voice_override: str | None = None,
+    automatic_resume: bool = False,
 ) -> Future | None:
     """Queue an utterance for playback; resolves to the voice actually used.
 
@@ -175,6 +177,8 @@ def submit(
     card=False plays without a card — replaying an old bubble shouldn't
     duplicate it in the log (utterance_id 0 makes every update a no-op).
     Returns None when this source is already queued/playing (deduped).
+    Automatic turn resumes coalesce until that work finishes and may never
+    reopen a settled card; only an explicit replay can do that.
 
     role="daemon" is for Noisy Studio speaking for ITSELF (setup
     confirmations) — same pipeline, but the card is never attributed to
@@ -183,9 +187,16 @@ def submit(
     if source_id:
         with _pending_lock:
             if source_id in _pending_cards:
+                if automatic_resume:
+                    _deferred_resumes[source_id] = (state, text, agent)
                 return None
             _pending_cards.add(source_id)
-        state.begin_replay(source_id)
+        if automatic_resume:
+            if not state.begin_automatic_resume(source_id):
+                _discard_pending_card(source_id)
+                return None
+        else:
+            state.begin_replay(source_id)
     # Plain text on the card — no decorative quotes, no voice tag.
     # A replay (card=False) adopts the ORIGINAL card via source_id: its
     # status walks the normal chain (synthesizing → playing → played), so
@@ -212,8 +223,8 @@ def submit(
         with _pending_lock:
             _pending_cards.add(canonical_id)
     seq = next(_queue_seq)
-    # A replay is the user's click: it takes the fast lane in BOTH stages
-    # (synthesis too — its cache lookup must not sit behind pending renders).
+    # Replays and interrupted-turn resumes take the fast lane in BOTH stages
+    # (synthesis too — their cache lookup must not sit behind pending renders).
     jump_queue = bool(source_id)
     synth_future = _synth_worker.submit(
         seq, _prepare_audio, state, text, agent, utterance_id, canonical_id, seq,
@@ -240,6 +251,10 @@ def replay_in_flight(source_id: int) -> bool:
 def _discard_pending_card(source_id: int) -> None:
     with _pending_lock:
         _pending_cards.discard(source_id)
+        resume = _deferred_resumes.pop(source_id, None)
+    if resume is not None:
+        state, text, agent = resume
+        submit(state, text, agent=agent, card=False, source_id=source_id, automatic_resume=True)
 
 
 def shutdown() -> None:

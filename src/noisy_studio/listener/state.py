@@ -863,6 +863,18 @@ class ListenerState:
                     self._interrupted.pop(utterance_id, None)
                     return
 
+    def begin_automatic_resume(self, utterance_id: int) -> bool:
+        """Resume only an interrupted card; user dismissal always wins."""
+        with self._lock:
+            for utterance in self._utterances:
+                if utterance["id"] == utterance_id:
+                    if not str(utterance.get("status", "")).startswith("unheard"):
+                        return False
+                    self._update_utterance_locked(utterance_id, status="queued — resuming after your turn")
+                    self._interrupted.pop(utterance_id, None)
+                    return True
+            return False
+
     def utterance_is_settled(self, utterance_id: int) -> bool:
         with self._lock:
             return any(u["id"] == utterance_id and str(u.get("status", "")).startswith(("skipped", "played"))

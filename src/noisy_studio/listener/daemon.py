@@ -118,7 +118,7 @@ def _ptt_barge_in(state: ListenerState) -> bool:
         text = str(clip.get("text") or "")
         if interrupted and text:
             try:
-                speech.submit(state, text, agent=owner, card=False, source_id=interrupted)
+                speech.submit(state, text, agent=owner, card=False, source_id=interrupted, automatic_resume=True)
             except Exception:
                 pass  # worst case the card stays unheard and is replayable
     else:
