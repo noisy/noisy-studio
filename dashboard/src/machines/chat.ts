@@ -32,6 +32,7 @@ export const USER_EVENTS = [
 
 export const CLAUDE_EVENTS = [
   "HOLD", // user is speaking — playback waits for their turn to end
+  "REPLAY", // explicit user request; the only exit from settled speech
   "SYNTHESIZE", // TTS rendering started (also re-entry on replay/catch-up)
   "READY", // prefetch/cache produced the audio — waiting for the speaker
   "PLAY", // first audio reached the speakers
@@ -132,46 +133,39 @@ export const claudeUtteranceMachine = createMachine({
   states: {
     queued: {
       // READY without synthesizing: the clip came straight from the cache.
-      on: { HOLD: "holding", SYNTHESIZE: "synthesizing", READY: "ready", UNHEARD: "unheard" },
+      on: { SKIP: "skipped", HOLD: "holding", SYNTHESIZE: "synthesizing", READY: "ready", UNHEARD: "unheard" },
     },
     // The daemon prefetches: a card can finish synthesizing while an older
     // clip still owns the speaker, so holding may follow synthesis (turn
     // gate at playback time) and prefetched audio plays straight from hold.
     holding: {
-      on: { SYNTHESIZE: "synthesizing", PLAY: "playing", UNHEARD: "unheard" },
+      on: { SKIP: "skipped", SYNTHESIZE: "synthesizing", PLAY: "playing", UNHEARD: "unheard" },
     },
     synthesizing: {
-      on: { HOLD: "holding", READY: "ready", PLAY: "playing", TTS_ERROR: "error", UNHEARD: "unheard" },
+      on: { SKIP: "skipped", HOLD: "holding", READY: "ready", PLAY: "playing", TTS_ERROR: "error", UNHEARD: "unheard" },
     },
     // Audio in hand, waiting for the speaker to free up (or for the user
     // to finish talking). Playback errors can still happen past this point.
     ready: {
-      on: { PLAY: "playing", HOLD: "holding", TTS_ERROR: "error", UNHEARD: "unheard" },
+      on: { SKIP: "skipped", PLAY: "playing", HOLD: "holding", TTS_ERROR: "error", UNHEARD: "unheard" },
     },
     playing: {
-      on: { PLAYED: "played", TTS_ERROR: "error", UNHEARD: "unheard" },
+      on: { SKIP: "skipped", PLAYED: "played", TTS_ERROR: "error", UNHEARD: "unheard" },
     },
-    // Replay adopts the ORIGINAL card and runs it through the pipeline
-    // again — including the mute park and the wait-for-user-turn hold.
-    // READY here is the cache hit: no synthesis, straight to waiting.
-    played: {
-      on: { SYNTHESIZE: "synthesizing", READY: "ready", HOLD: "holding", UNHEARD: "unheard" },
-    },
+    // Late worker updates cannot revive settled speech. Only a user's
+    // replay request starts a new playback attempt for the original card.
+    played: { on: { REPLAY: "queued" } },
     unheard: {
-      on: { SYNTHESIZE: "synthesizing", READY: "ready", HOLD: "holding", SKIP: "skipped" },
+      on: { REPLAY: "queued", SYNTHESIZE: "synthesizing", READY: "ready", HOLD: "holding", SKIP: "skipped" },
     },
-    // Skip-all: parked words dismissed unplayed. Terminal like played,
-    // but replay (SYNTHESIZE) still works - the text is still worth hearing.
-    skipped: {
-      on: { SYNTHESIZE: "synthesizing", READY: "ready", HOLD: "holding" },
-    },
+    skipped: { on: { REPLAY: "queued" } },
     // Not terminal: speech failures are frequently transient (dropped
     // websocket, 5xx, xAI's intermittent key rejections), and the text is
     // still on the card — so ERROR re-enters the pipeline exactly like a
     // replay. A render that succeeded before the playback failure is
     // cached, making the retry instant and free.
     error: {
-      on: { SYNTHESIZE: "synthesizing", READY: "ready", HOLD: "holding", UNHEARD: "unheard" },
+      on: { REPLAY: "queued", SYNTHESIZE: "synthesizing", READY: "ready", HOLD: "holding", UNHEARD: "unheard" },
     },
   },
 });

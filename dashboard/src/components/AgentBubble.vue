@@ -39,7 +39,7 @@ const accent = computed(() => (fromDaemon.value ? ("cyan" as const) : ("violet" 
 // (played or parked UNHEARD — mid-synthesis re-queues on its own, an
 // errored card has nothing worth repeating).
 const replayable = computed(
-  () => statusAllows("claude", props.utterance.status, "SYNTHESIZE") && !!props.utterance.text,
+  () => statusAllows("claude", props.utterance.status, "REPLAY") && !!props.utterance.text,
 );
 </script>
 

@@ -836,9 +836,49 @@ class ListenerState:
     def _update_utterance_locked(self, utterance_id: int, **fields: str) -> None:
         for utterance in self._utterances:
             if utterance["id"] == utterance_id:
+                self._apply_speech_status(utterance, fields)
                 utterance.update(fields)
                 utterance["updated_at"] = time.time()
                 return
+
+    @staticmethod
+    def _apply_speech_status(utterance: dict, fields: dict) -> None:
+        if utterance.get("role") not in ("claude", "daemon") or "status" not in fields:
+            return
+        current = str(utterance.get("status", ""))
+        if current.startswith(("skipped", "played")):
+            fields["status"] = current
+        elif str(fields["status"]).startswith(("unheard", "error")) and utterance.get("replay_settled_status"):
+            # Replaying does not undo the user's earlier dismissal/listen.
+            fields["status"] = utterance["replay_settled_status"]
+
+    def begin_replay(self, utterance_id: int) -> None:
+        with self._lock:
+            for utterance in self._utterances:
+                if utterance["id"] == utterance_id:
+                    status = str(utterance.get("status", ""))
+                    if status.startswith(("skipped", "played")):
+                        utterance["replay_settled_status"] = status
+                    utterance.update(status="queued — replay requested", updated_at=time.time())
+                    self._interrupted.pop(utterance_id, None)
+                    return
+
+    def begin_automatic_resume(self, utterance_id: int) -> bool:
+        """Resume only an interrupted card; user dismissal always wins."""
+        with self._lock:
+            for utterance in self._utterances:
+                if utterance["id"] == utterance_id:
+                    if not str(utterance.get("status", "")).startswith("unheard"):
+                        return False
+                    self._update_utterance_locked(utterance_id, status="queued — resuming after your turn")
+                    self._interrupted.pop(utterance_id, None)
+                    return True
+            return False
+
+    def utterance_is_settled(self, utterance_id: int) -> bool:
+        with self._lock:
+            return any(u["id"] == utterance_id and str(u.get("status", "")).startswith(("skipped", "played"))
+                       for u in self._utterances)
 
     def latest_utterance_id(self, role: str, agent: str | None = None) -> int:
         with self._lock:
@@ -939,7 +979,9 @@ class ListenerState:
                     k in status
                     for k in ("queued", "synthesizing", "ready", "playing", "waiting")
                 ):
-                    utterance["status"] = "unheard — daemon restarted"
+                    fields = {"status": utterance.get("replay_settled_status", "unheard — daemon restarted")}
+                    self._apply_speech_status(utterance, fields)
+                    utterance.update(fields)
                 self._utterances.append(utterance)
                 self._utterance_seq = max(self._utterance_seq, int(utterance.get("id", 0)))
 
@@ -1530,6 +1572,7 @@ class ListenerState:
             utterance_id = self._playing_utterance_id
             if not utterance_id:
                 return 0
+            final_status = f"{label} — {reason}"
             for utterance in self._utterances:
                 if utterance["id"] != utterance_id:
                     continue
@@ -1539,10 +1582,10 @@ class ListenerState:
                 # label: "unheard" = may still be worth hearing (counts for
                 # catch-up); "skipped" = the user dismissed it deliberately
                 # (the stop button) - final, never counted again.
-                utterance["status"] = f"{label} — {reason}"
-                utterance["updated_at"] = time.time()
+                self._update_utterance_locked(utterance_id, status=final_status)
+                final_status = utterance["status"]
                 break
-            self._interrupted[utterance_id] = f"{label} — {reason}"
+            self._interrupted[utterance_id] = final_status
             self._playing_utterance_id = 0
             return utterance_id
 
@@ -1554,8 +1597,7 @@ class ListenerState:
             self._playing_utterance_id = 0
             for utterance in self._utterances:
                 if utterance["id"] == utterance_id:
-                    utterance.update(status="played", duration_s=duration_s,
-                                     updated_at=time.time())
+                    self._update_utterance_locked(utterance_id, status="played", duration_s=duration_s)
                     break
             return True
 
@@ -1576,7 +1618,7 @@ class ListenerState:
             return self._interrupted.pop(utterance_id, None)
 
     def skip_unheard(self, agent: str | None = None) -> int:
-        """Skip-all: settle every parked UNHEARD card without playing it.
+        """Skip-all: settle parked and pending speech without playing it.
 
         The user's explicit "I don't want to hear these" - the words stay
         readable in the log, but the catch-up counter empties. Only the
@@ -1592,9 +1634,8 @@ class ListenerState:
                 owner = utterance.get("agent") or self._active_agent
                 if owner != target:
                     continue
-                if "unheard" in str(utterance.get("status", "")):
-                    utterance["status"] = "skipped — dismissed by you"
-                    utterance["updated_at"] = time.time()
+                if str(utterance.get("status", "")).startswith(("unheard", "queued", "synthesizing", "ready")):
+                    self._update_utterance_locked(utterance["id"], status="skipped — dismissed by you")
                     skipped += 1
             # History persistence is the daemon's periodic save - the
             # status flip above is picked up on its next tick.
@@ -1606,6 +1647,18 @@ class ListenerState:
                 if utterance["id"] == utterance_id:
                     return "unheard" in str(utterance.get("status", ""))
             return False
+
+    def claim_playing_utterance(self, utterance_id: int) -> bool:
+        """Atomically choose playback over queue dismissal, or honor dismissal."""
+        with self._lock:
+            for utterance in self._utterances:
+                if utterance["id"] == utterance_id:
+                    if str(utterance.get("status", "")).startswith(("skipped", "played")):
+                        return False
+                    self._update_utterance_locked(utterance_id, status="playing through speakers…")
+                    break
+            self._playing_utterance_id = utterance_id
+            return True
 
     def set_playing_utterance_id(self, utterance_id: int) -> None:
         with self._lock:
