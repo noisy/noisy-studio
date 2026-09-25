@@ -191,8 +191,10 @@ class MessageCard extends StatelessWidget {
     this.onPause,
     this.onSkip,
     this.onCancel,
+    this.paused = false,
   });
   final Message message;
+  final bool paused;
   final ValueChanged<Message>? onReplay, onPause, onSkip, onCancel;
   @override
   Widget build(BuildContext context) {
@@ -238,9 +240,12 @@ class MessageCard extends StatelessWidget {
               if (speech && state == 'playing') ...[
                 if (onPause != null)
                   IconButton(
-                    tooltip: 'Pause playback',
+                    tooltip: paused ? 'Resume playback' : 'Pause playback',
                     onPressed: () => onPause!(message),
-                    icon: const Icon(Icons.pause, size: 17),
+                    icon: Icon(
+                      paused ? Icons.play_arrow : Icons.pause,
+                      size: 17,
+                    ),
                   ),
                 if (onSkip != null)
                   IconButton(
@@ -311,8 +316,18 @@ class MessageCard extends StatelessWidget {
 }
 
 class MessagesView extends StatelessWidget {
-  const MessagesView({super.key, required this.messages});
+  const MessagesView({
+    super.key,
+    required this.messages,
+    this.onReplay,
+    this.onPause,
+    this.onSkip,
+    this.onCancel,
+    this.pausedId = 0,
+  });
   final List<Message> messages;
+  final ValueChanged<Message>? onReplay, onPause, onSkip, onCancel;
+  final int pausedId;
   @override
   Widget build(BuildContext context) => messages.isEmpty
       ? const Center(child: Text('Ready when you are'))
@@ -322,7 +337,16 @@ class MessagesView extends StatelessWidget {
           itemCount: messages.length,
           itemBuilder: (context, index) => Padding(
             padding: const EdgeInsets.only(bottom: 12),
-            child: MessageCard(message: messages[messages.length - index - 1]),
+            child: MessageCard(
+              message: messages[messages.length - index - 1],
+              onReplay: onReplay,
+              onPause: onPause,
+              onSkip: onSkip,
+              onCancel: onCancel,
+              paused:
+                  pausedId != 0 &&
+                  pausedId == messages[messages.length - index - 1].id,
+            ),
           ),
         );
 }
@@ -340,12 +364,23 @@ class TalkView extends StatelessWidget {
     required this.onAuto,
     required this.onMute,
     required this.onStop,
+    this.onReplay,
+    this.onPause,
+    this.onSkip,
+    this.onCancel,
+    this.pausedId = 0,
+    this.onPauseSpeech,
+    this.speechBusy = false,
   });
   final Snapshot snapshot;
   final Agent? agent;
   final bool held, connected;
+  final bool speechBusy;
+  final VoidCallback? onPauseSpeech;
   final VoidCallback onHold, onRelease, onToggle, onMute, onStop;
   final ValueChanged<bool> onAuto;
+  final ValueChanged<Message>? onReplay, onPause, onSkip, onCancel;
+  final int pausedId;
   @override
   Widget build(BuildContext context) {
     final enabled =
@@ -384,6 +419,11 @@ class TalkView extends StatelessWidget {
         Divider(height: 1, color: scheme.outline),
         Expanded(
           child: MessagesView(
+            onReplay: onReplay,
+            onPause: onPause,
+            onSkip: onSkip,
+            onCancel: onCancel,
+            pausedId: pausedId,
             messages: snapshot.messages
                 .where((m) => m.agentId == agent?.id)
                 .toList(),
@@ -436,7 +476,7 @@ class TalkView extends StatelessWidget {
                   const SizedBox(width: 8),
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: connected ? onStop : null,
+                      onPressed: connected && !speechBusy ? onStop : null,
                       icon: const Icon(Icons.stop_rounded, size: 17),
                       label: const Text(
                         'Stop speech',
@@ -447,6 +487,15 @@ class TalkView extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 10),
+              if (onPauseSpeech != null)
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton.icon(
+                    onPressed: onPauseSpeech,
+                    icon: const Icon(Icons.pause, size: 17),
+                    label: const Text('Pause / resume speech'),
+                  ),
+                ),
               Listener(
                 onPointerDown: ptt ? (_) => onHold() : null,
                 onPointerUp: (_) => onRelease(),

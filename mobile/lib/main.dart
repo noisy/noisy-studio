@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/daemon_client.dart';
 import 'core/agent_selection.dart';
+import 'core/message_actions.dart';
 import 'core/models.dart';
 import 'core/ptt_lease.dart';
 import 'ui/screens.dart';
@@ -39,6 +40,7 @@ class _CompanionState extends State<Companion> with WidgetsBindingObserver {
   DaemonClient? client;
   PttLease? lease;
   AgentSelection? selection;
+  MessageActions? actions;
   StreamSubscription<Snapshot>? subscription;
   bool demo = true, connected = true, busy = false, demoHeld = false;
   String? error;
@@ -58,6 +60,8 @@ class _CompanionState extends State<Companion> with WidgetsBindingObserver {
 
   Future<void> disconnect() async {
     generation++;
+    actions?.dispose();
+    actions = null;
     selection?.dispose();
     selection = null;
     final previousLease = lease;
@@ -89,6 +93,16 @@ class _CompanionState extends State<Companion> with WidgetsBindingObserver {
       final initial = await remote.initial();
       if (!mounted || current != generation) return;
       snapshot = initial;
+      actions = MessageActions(
+        request: remote.request,
+        onError: (message) {
+          if (mounted && current == generation) {
+            ScaffoldMessenger.of(context)
+                .showSnackBar(SnackBar(content: Text(message)));
+          }
+        },
+      )..playingId = initial.playingId;
+      actions!.addListener(refresh);
       demo = false;
       connected = true;
       void connectionLost() {
@@ -112,6 +126,7 @@ class _CompanionState extends State<Companion> with WidgetsBindingObserver {
           if (next.activeId != snapshot.activeId || next.auto || next.muted) {
             unawaited(lease?.stop());
           }
+          actions?.playingId = next.playingId;
           snapshot = next;
           refresh();
         },
@@ -130,6 +145,8 @@ class _CompanionState extends State<Companion> with WidgetsBindingObserver {
   }
 
   void lost() {
+    actions?.dispose();
+    actions = null;
     selection?.dispose();
     selection = null;
     unawaited(lease?.stop());
@@ -169,6 +186,7 @@ class _CompanionState extends State<Companion> with WidgetsBindingObserver {
         muted: snapshot.muted,
         auto: snapshot.auto,
         recording: snapshot.recording,
+        playingId: snapshot.playingId,
       );
       tab = 1;
     });
@@ -208,10 +226,17 @@ class _CompanionState extends State<Companion> with WidgetsBindingObserver {
     final agent = snapshot.agents
         .where((a) => a.id == snapshot.activeId)
         .firstOrNull;
+    ValueChanged<Message>? handler(MessageAction action) =>
+        !demo && connected && actions != null && !actions!.busy
+        ? (message) => actions?.perform(action, message)
+        : null;
     final pages = [
       AgentsView(snapshot: snapshot, onSelect: select),
       TalkView(
         snapshot: snapshot,
+        onReplay: handler(MessageAction.replay),
+        onCancel: handler(MessageAction.cancel),
+        pausedId: actions?.pausedId ?? 0,
         agent: agent,
         connected: connected && selection?.pending != true,
         held: demo ? demoHeld : lease?.held == true,
@@ -251,9 +276,18 @@ class _CompanionState extends State<Companion> with WidgetsBindingObserver {
             refresh();
           }
         },
-        onStop: () => command('/interrupt', {}),
+        onStop: () => actions?.playback(togglePause: false),
+        onPauseSpeech: !demo && connected && actions?.busy == false
+            ? () => actions?.playback(togglePause: true)
+            : null,
+        speechBusy: actions?.busy ?? false,
       ),
-      MessagesView(messages: snapshot.messages),
+      MessagesView(
+        messages: snapshot.messages,
+        onReplay: handler(MessageAction.replay),
+        onCancel: handler(MessageAction.cancel),
+        pausedId: actions?.pausedId ?? 0,
+      ),
       ConnectionSettings(
         address: address,
         busy: busy,

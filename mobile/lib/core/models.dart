@@ -37,11 +37,13 @@ class Snapshot {
     this.muted = false,
     this.auto = false,
     this.recording = false,
+    this.playingId = 0,
   });
   final List<Agent> agents;
   final List<Message> messages;
   final String? activeId;
   final bool muted, auto, recording;
+  final int playingId;
 
   factory Snapshot.fromJson(Map<String, dynamic> data) {
     final s = data['status'] as Map<String, dynamic>;
@@ -109,6 +111,7 @@ class Snapshot {
       muted: s['muted'] == true,
       auto: s['detection_mode'] == 'auto',
       recording: s['recording'] == true,
+      playingId: (s['playing_utterance_id'] as num?)?.toInt() ?? 0,
     );
   }
 }
