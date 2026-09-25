@@ -1,0 +1,50 @@
+import { shallowMount } from '@vue/test-utils';
+import { ref } from 'vue';
+import { afterEach, beforeEach, expect, it, vi } from 'vitest';
+import App from './App.vue';
+import StageLive from './components/StageLive.vue';
+import { setPtt } from './api/client';
+import { getStatus, getUtterances, resetScenario } from './storybook/daemon.fixture';
+
+let daemon: Record<string, unknown>;
+vi.mock('./composables/useDaemonState', () => ({ useDaemonState: () => daemon }));
+vi.mock('./composables/useMicStream', () => ({ useMicStream: () => ({ level: ref(0) }) }));
+vi.mock('./composables/useAudioCues', () => ({ useAudioCues: () => ({ prefs: ref({ cues:{} }), enabled: ref(false) }) }));
+vi.mock('./api/client', async () => ({ ...await vi.importActual('./api/client'), setPtt: vi.fn(async () => {}), getDevices: vi.fn(async () => []) }));
+beforeEach(async () => {
+  vi.useFakeTimers();
+  resetScenario('shutdown');
+  const status = await getStatus();
+  daemon = { status: ref(status), utterances: ref([]), allUtterances: ref(await getUtterances()), utterancesFor: ref('codex'), character: ref({ voice:'lux' }), characterPending: ref(false), characterError: ref(''), offline: ref(false), viewedAgent: ref('codex'), errors: ref([]), changeCharacter: vi.fn(), selectAgent: vi.fn(), dismissAgent: vi.fn(), reorderAgents: vi.fn(), clearErrors: vi.fn() };
+  vi.mocked(setPtt).mockClear();
+});
+afterEach(() => vi.useRealTimers());
+it('enters and exits Stage while keeping restart controls and the microphone recipient', async () => {
+  const wrapper = shallowMount(App);
+  const entry = wrapper.findAll('button').find(button => button.text() === 'Stage ↗')!;
+  await entry.trigger('click');
+  expect(wrapper.findComponent(StageLive).exists()).toBe(true);
+  expect(wrapper.get('.hud').attributes('style')).toContain('display: none');
+  expect(wrapper.findComponent({ name:'ShutdownBanner' }).exists()).toBe(true);
+  wrapper.getComponent(StageLive).vm.$emit('exit');
+  await wrapper.vm.$nextTick();
+  expect(wrapper.findComponent(StageLive).exists()).toBe(false);
+  expect(daemon.selectAgent).not.toHaveBeenCalled();
+  wrapper.unmount();
+});
+it('releases a Stage Space hold even when keyup lands on a select and when the window loses focus', async () => {
+  const wrapper = shallowMount(App);
+  await wrapper.findAll('button').find(button => button.text() === 'Stage ↗')!.trigger('click');
+  window.dispatchEvent(new KeyboardEvent('keydown', { code:'Space', bubbles:true }));
+  const picker = document.createElement('select');
+  document.body.appendChild(picker);
+  picker.dispatchEvent(new KeyboardEvent('keyup', { code:'Space', bubbles:true }));
+  vi.advanceTimersByTime(1000);
+  expect(vi.mocked(setPtt).mock.calls).toEqual([[true],[false]]);
+  window.dispatchEvent(new KeyboardEvent('keydown', { code:'Space', bubbles:true }));
+  window.dispatchEvent(new Event('blur'));
+  vi.advanceTimersByTime(1000);
+  expect(vi.mocked(setPtt).mock.calls).toEqual([[true],[false],[true],[false]]);
+  picker.remove();
+  wrapper.unmount();
+});
