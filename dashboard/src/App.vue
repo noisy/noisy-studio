@@ -316,8 +316,8 @@ async function openAudioSettings() {
 function changeAudio({id,value}: AudioChange) {
   if (id === 'cues') { cuesEnabled.value = value === 'on'; return; }
   if (id === 'recognition') { setMode(value as 'batch' | 'live').catch(swallow); return; }
-  const keys = {microphone:'input_device',language:'language',turn:'detection_mode',agent:'tts_mode',silence:'end_silence_ms',sensitivity:'mic_sensitivity',smart:'smart_turn'};
-  const numeric = ['silence','sensitivity','smart'].includes(id);
+  const keys = {microphone:'input_device',language:'language',turn:'detection_mode',agent:'tts_mode',length:'max_utterance_ms',silence:'end_silence_ms',sensitivity:'mic_sensitivity',smart:'smart_turn'};
+  const numeric = ['length','silence','sensitivity','smart'].includes(id);
   setSettings({[keys[id]]:numeric ? Number(value) : value}).catch(swallow);
 }
 </script>

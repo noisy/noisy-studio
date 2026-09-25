@@ -446,6 +446,8 @@ def run(config: VadConfig | None = None) -> None:
     # overrides the env default for mode, since it reflects newer intent.
     try:
         saved = json.loads(SETTINGS_FILE.read_text())
+        if "max_utterance_ms" in saved:
+            state.set_max_utterance_ms(saved["max_utterance_ms"])
         if "end_silence_ms" in saved:
             state.set_end_silence_ms(saved["end_silence_ms"])
         if "mic_sensitivity" in saved:
@@ -749,6 +751,7 @@ def run(config: VadConfig | None = None) -> None:
                     segmenter.end_silence_ms_override = state.end_silence_ms
                     if ptt and segmenter.is_recording:
                         segmenter.request_close()
+                segmenter.max_utterance_ms_override = state.max_utterance_ms
                 segmenter.smart_turn_mode = state.smart_turn_mode
                 segmenter.mic_sensitivity_override = state.mic_sensitivity
                 was_recording = segmenter.is_recording

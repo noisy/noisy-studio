@@ -13,6 +13,9 @@ from noisy_studio.listener.character_traits import canonical_character_traits
 from noisy_studio.listener.conversation_labels import UNNAMED_CONVERSATION, conversation_label
 from noisy_studio.listener.vad import (
     DEFAULT_MIC_SENSITIVITY,
+    DEFAULT_MAX_UTTERANCE_MS,
+    MIN_MAX_UTTERANCE_MS,
+    MAX_MAX_UTTERANCE_MS,
     MAX_MIC_SENSITIVITY,
     MIN_MIC_SENSITIVITY,
 )
@@ -163,6 +166,7 @@ class ListenerState:
         self._mode = "live"
         self._tts_mode = "live"
         self._end_silence_ms = DEFAULT_END_SILENCE_MS
+        self._max_utterance_ms = DEFAULT_MAX_UTTERANCE_MS
         self._mic_sensitivity = DEFAULT_MIC_SENSITIVITY
         self._diagnostic_checks: dict | None = None  # live xAI check results
         self._smart_turn = DEFAULT_SMART_TURN
@@ -497,6 +501,18 @@ class ListenerState:
     def set_tts_mode(self, mode: str) -> None:
         with self._lock:
             self._tts_mode = mode
+
+    @property
+    def max_utterance_ms(self) -> int:
+        with self._lock:
+            return self._max_utterance_ms
+
+    def set_max_utterance_ms(self, value: int) -> int:
+        with self._lock:
+            self._max_utterance_ms = max(
+                MIN_MAX_UTTERANCE_MS, min(MAX_MAX_UTTERANCE_MS, int(value))
+            )
+            return self._max_utterance_ms
 
     @property
     def end_silence_ms(self) -> int:
