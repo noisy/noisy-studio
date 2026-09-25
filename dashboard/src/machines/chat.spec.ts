@@ -138,14 +138,14 @@ describe("claude lifecycle", () => {
 
   it("skips synthesis entirely on a cache hit", () => {
     expect(nextState("claude", "queued", "READY")).toBe("ready");
-    expect(nextState("claude", "played", "READY")).toBe("ready"); // replay from cache
+    expect(nextState("claude", "played", "REPLAY")).toBe("queued"); // replay from cache
     expect(nextState("claude", "unheard", "READY")).toBe("ready"); // catch-up from cache
   });
 
   it("re-enters the pipeline on replay and catch-up — mute park and hold included", () => {
-    expect(nextState("claude", "played", "SYNTHESIZE")).toBe("synthesizing");
-    expect(nextState("claude", "played", "HOLD")).toBe("holding");
-    expect(nextState("claude", "played", "UNHEARD")).toBe("unheard");
+    expect(nextState("claude", "played", "SYNTHESIZE")).toBeNull();
+    expect(nextState("claude", "played", "HOLD")).toBeNull();
+    expect(nextState("claude", "played", "UNHEARD")).toBeNull();
     expect(nextState("claude", "unheard", "SYNTHESIZE")).toBe("synthesizing");
     expect(nextState("claude", "unheard", "HOLD")).toBe("holding");
   });
@@ -177,9 +177,9 @@ describe("statusAllows (UI affordances)", () => {
   });
 
   it("replay is offered on settled speech — played, parked unheard, or failed", () => {
-    expect(statusAllows("claude", "played", "SYNTHESIZE")).toBe(true);
-    expect(statusAllows("claude", "unheard — voice muted", "SYNTHESIZE")).toBe(true);
-    expect(statusAllows("claude", "error — likely transient, tap ↻ to retry", "SYNTHESIZE")).toBe(true);
+    expect(statusAllows("claude", "played", "REPLAY")).toBe(true);
+    expect(statusAllows("claude", "unheard — voice muted", "REPLAY")).toBe(true);
+    expect(statusAllows("claude", "error — likely transient, tap ↻ to retry", "REPLAY")).toBe(true);
     expect(statusAllows("claude", "synthesizing (Grok TTS)…", "SYNTHESIZE")).toBe(false);
   });
 
@@ -213,7 +213,7 @@ describe("validStatusChange (live transition audit)", () => {
   it("rejects resurrections from terminal states", () => {
     expect(validStatusChange("user", "delivered to Claude", "recording…")).toBe(false);
     expect(validStatusChange("user", "cancelled by you", "ready — awaiting pickup")).toBe(false);
-    expect(validStatusChange("claude", "error", "queued")).toBe(false);
+
   });
 
   it("rejects changes involving unknown statuses", () => {
@@ -235,10 +235,11 @@ describe("canDeliverDuring (cross-machine invariant)", () => {
 describe("reachable", () => {
   it("never escapes terminal states", () => {
     expect(reachable("user", "delivered", "recording")).toBe(false);
-    expect(reachable("claude", "error", "queued")).toBe(false);
+
   });
 
   it("replay makes playing reachable again from played", () => {
+    expect(validStatusChange("claude", "error", "queued — replay requested")).toBe(true);
     expect(reachable("claude", "played", "playing")).toBe(true);
   });
 });
@@ -262,4 +263,12 @@ describe("inbox delivery receipts", () => {
     expect(validStatusChange("user", "ready — awaiting pickup", "sent — unconfirmed")).toBe(true);
     expect(statusAllows("user", "sent — unconfirmed", "DELIVER")).toBe(false);
   });
+});
+
+
+it("requires explicit replay to leave skipped speech", () => {
+  for (const event of ["SYNTHESIZE", "READY", "HOLD", "PLAY", "UNHEARD", "PLAYED"]) {
+    expect(nextState("claude", "skipped", event)).toBeNull();
+  }
+  expect(nextState("claude", "skipped", "REPLAY")).toBe("queued");
 });

@@ -151,7 +151,7 @@ function allows(role: Role, event: string): boolean {
 function onReplay(u: Utterance) {
   note("ui.replay_clicked", `(id ${u.id})`);
   if (playingId.value === u.id) {
-    fire(u, "claude", "PLAYED"); // ⏹ — stop lands the card as played
+    fire(u, "claude", "SKIP"); // ⏹ — an explicit dismissal stays dismissed
     return;
   }
   const busy = claudeTarget();
@@ -159,7 +159,7 @@ function onReplay(u: Utterance) {
     note("ui.replay_deferred", `(worker busy with id ${busy.id} — no visible change until it frees)`);
     return;
   }
-  fire(u, "claude", "SYNTHESIZE");
+  fire(u, "claude", "REPLAY");
 }
 
 function onCancel(u: Utterance) {

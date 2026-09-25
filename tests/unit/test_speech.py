@@ -666,3 +666,70 @@ def test_failed_release_diagnostic_inside_hold_releases_capture(monkeypatch, bat
         speech.submit(state, "held reply").result(timeout=2)
 
     assert (state.paused, state.claude_speaking, state.playing_clip()) == (False, False, None)
+
+
+def test_skip_pending_synthesis_then_mute_only_new_message_needs_catchup(monkeypatch, batch_pipeline):
+    state = ListenerState()
+    state.register_agent("a1")
+    started, release = threading.Event(), threading.Event()
+    played = []
+
+    async def synthesize(text, voice, language, speed):
+        started.set()
+        assert release.wait(3)
+        return tts.SynthesizedAudio(b"audio", "audio/mpeg", 0.0)
+
+    monkeypatch.setattr(speech.tts, "synthesize", synthesize)
+    _install_fake_play(monkeypatch, played)
+    pending = speech.submit(state, "old message", agent="a1")
+    try:
+        assert started.wait(3)
+        assert state.skip_unheard("a1") == 1
+        card_id = state.utterances()[0]["id"]
+        assert speech.submit(state, "old message", card=False, source_id=card_id) is None
+        state.set_voice_muted(True)
+    finally:
+        release.set()
+    pending.result(timeout=5)
+    speech.submit(state, "new message", agent="a1").result(timeout=5)
+    restored = ListenerState()
+    restored.load_history(state.snapshot_history())
+
+    assert played == []
+    assert [u["status"] for u in restored.utterances()] == [
+        "skipped — dismissed by you", "unheard — voice muted",
+    ]
+    assert restored.queued_by_agent == {"a1": 1}
+
+
+@pytest.mark.parametrize("settled", ["skipped — dismissed by you", "played"])
+def test_explicit_replay_of_settled_card_plays_but_interruption_does_not_requeue(monkeypatch, batch_pipeline, settled):
+    state = ListenerState()
+    card_id = state.create_utterance("claude", settled, text="old message")
+    _install_fake_synth(monkeypatch, [])
+    played = []
+
+    async def interrupted_play(*args):
+        played.append(True)
+        state.interrupt_playing_as_unheard("voice muted")
+
+    monkeypatch.setattr(speech, "_play_audio", interrupted_play)
+    speech.submit(state, "old message", card=False, source_id=card_id).result(timeout=5)
+
+    assert played == [True]
+    assert state.utterances()[0]["status"] == settled
+
+
+def test_skipped_prefetched_audio_is_not_played_after_unmuting(monkeypatch, batch_pipeline):
+    from concurrent.futures import Future
+
+    state = ListenerState()
+    card_id = state.create_utterance("claude", "skipped — dismissed by you")
+    prepared = Future()
+    prepared.set_result(speech._PreparedSpeech("Ara", "en", 1.0, audio=tts.SynthesizedAudio(b"audio", "audio/mpeg", 0.0)))
+    played = []
+    _install_fake_play(monkeypatch, played)
+
+    speech._play_prepared(state, "dismissed", "", card_id, card_id, prepared)
+
+    assert played == []

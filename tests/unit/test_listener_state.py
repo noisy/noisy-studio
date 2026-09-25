@@ -785,3 +785,28 @@ def test_lease_renewal_and_immediate_new_turn_extend_the_hold(monkeypatch):
     state.set_recording(False)
     now[0] += 1.5
     assert state.user_turn_status(1.5)["decision"] == "play"
+
+
+@pytest.mark.parametrize("settled", ["skipped — dismissed by you", "played"])
+def test_settled_speech_rejects_late_pipeline_writes_and_interruptions(settled):
+    state = ListenerState()
+    card_id = state.create_utterance("claude", settled)
+    for status in ["synthesizing", "ready", "playing", "unheard — voice muted", "error", "played"]:
+        state.update_utterance(card_id, status=status, cost_usd=0.1)
+    state.set_playing_utterance_id(card_id)
+    state.interrupt_playing_as_unheard("voice muted")
+    restored = ListenerState()
+    restored.load_history(state.snapshot_history())
+
+    assert (restored.utterances()[0]["status"], restored.utterances()[0]["cost_usd"]) == (settled, 0.1)
+
+
+def test_restart_during_explicit_replay_preserves_prior_dismissal():
+    state = ListenerState()
+    card_id = state.create_utterance("claude", "skipped — dismissed by you")
+    state.begin_replay(card_id)
+    state.update_utterance(card_id, status="playing through speakers…")
+    restored = ListenerState()
+    restored.load_history(state.snapshot_history())
+
+    assert restored.utterances()[0]["status"] == "skipped — dismissed by you"

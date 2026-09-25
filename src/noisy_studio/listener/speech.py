@@ -133,7 +133,7 @@ _queue_seq = itertools.count(1)
 # must not stack up in the queue when the user clicks repeatedly. New
 # speech (fresh cards) may queue freely; a replay source may be in flight
 # only once.
-_pending_replays: set[int] = set()
+_pending_cards: set[int] = set()
 _pending_lock = threading.Lock()
 
 
@@ -182,9 +182,10 @@ def submit(
     """
     if source_id:
         with _pending_lock:
-            if source_id in _pending_replays:
+            if source_id in _pending_cards:
                 return None
-            _pending_replays.add(source_id)
+            _pending_cards.add(source_id)
+        state.begin_replay(source_id)
     # Plain text on the card — no decorative quotes, no voice tag.
     # A replay (card=False) adopts the ORIGINAL card via source_id: its
     # status walks the normal chain (synthesizing → playing → played), so
@@ -207,6 +208,9 @@ def submit(
     # (card=False) points back at the original bubble via source_id, so the
     # UI can offer STOP on it while it plays.
     canonical_id = source_id or utterance_id
+    if canonical_id:
+        with _pending_lock:
+            _pending_cards.add(canonical_id)
     seq = next(_queue_seq)
     # A replay is the user's click: it takes the fast lane in BOTH stages
     # (synthesis too — its cache lookup must not sit behind pending renders).
@@ -220,22 +224,22 @@ def submit(
         seq, _play_prepared, state, text, agent, utterance_id, canonical_id, synth_future,
         jump_queue=jump_queue,
     )
-    if source_id:
-        future.add_done_callback(lambda _f: _discard_pending_replay(source_id))
+    if canonical_id:
+        future.add_done_callback(lambda _f: _discard_pending_card(canonical_id))
     return future
 
 
 def replay_in_flight(source_id: int) -> bool:
-    """Whether this bubble already has a replay queued or playing — callers
+    """Whether this bubble already has original or replay work in flight — callers
     use it to skip BEFORE side effects like interrupt (repeated clicks must
     not stack replays, nor cut down the one already in flight)."""
     with _pending_lock:
-        return source_id in _pending_replays
+        return source_id in _pending_cards
 
 
-def _discard_pending_replay(source_id: int) -> None:
+def _discard_pending_card(source_id: int) -> None:
     with _pending_lock:
-        _pending_replays.discard(source_id)
+        _pending_cards.discard(source_id)
 
 
 def shutdown() -> None:
@@ -398,7 +402,7 @@ def _prepare_audio(
     provider = providers.active_tts()
     if voice_override:
         voice = voice_override  # a subagent's own persona (#22)
-    if state.voice_muted or state.agent_muted(agent):
+    if state.utterance_is_settled(utterance_id) or state.voice_muted or state.agent_muted(agent):
         # Deferred = costs nothing until played: render nothing while the
         # speaker is muted. _play_prepared parks the card (or renders at
         # its turn, should the user unmute in the meantime).
@@ -486,6 +490,8 @@ def _play_prepared(
         state.add_event("speak_error", str(error)[:200])
         state.update_utterance(utterance_id, **_error_card_fields(error))
         raise
+    if state.utterance_is_settled(utterance_id):
+        return prepared.voice
     if state.voice_muted or state.agent_muted(agent):
         # Speaker muted globally or this conversation muted: park as
         # UNHEARD and return at once so agents' blocking speak never
@@ -515,6 +521,8 @@ def _play_prepared(
     # Cleanup must cover that entire lifetime, including a failed log write.
     try:
         generation = _hold_for_user_turn(state, utterance_id)
+        if state.utterance_is_settled(utterance_id):
+            return prepared.voice
 
         # This is the real "the agent spoke aloud" moment — reset its
         # narration-nudge silence clock here, in-process (#16). The clock used to
@@ -531,7 +539,8 @@ def _play_prepared(
         playing_since = time.monotonic()
         # Claim the card the moment its playback is committed: the UI's
         # button must flip to STOP now, not when audio actually starts.
-        state.set_playing_utterance_id(source_id)
+        if not state.claim_playing_utterance(source_id):
+            return prepared.voice
         playback_completed = False
         echo_guard_finished = False
 
