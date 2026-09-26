@@ -99,10 +99,39 @@ async def test_stream_player_reports_only_successful_completion(monkeypatch, buf
     queue = asyncio.Queue()
     queue.put_nowait(None)
 
-    if returncode > 0:
+    if returncode != 0:
         with pytest.raises(playback.PlaybackError):
             await tts_stream._play_from_stream(queue, callback)
     else:
         await tts_stream._play_from_stream(queue, callback)
 
     assert (registered, callback.call_count) == (['start', 'end'], int(returncode == 0))
+
+
+@pytest.mark.parametrize('stream', [False, True])
+def test_player_crash_never_marks_card_played(monkeypatch, completion_case, stream):
+    state, clip = completion_case
+
+    async def failed_player(*args):
+        playback.report_completion(-6)
+
+    monkeypatch.setattr(speech, '_stream_and_play' if stream else '_play_audio', failed_player)
+    with pytest.raises(playback.PlaybackError):
+        run_prepared(state, clip, stream=stream)
+
+    assert card_status(state, clip) == 'unheard — audio player failed'
+    assert any(e['kind'] == 'playback_exit' and 'returncode=-6' in e['detail']
+               for e in state.events_since(0))
+
+
+def test_generation_cancelled_stream_remains_unheard(monkeypatch, completion_case):
+    state, clip = completion_case
+
+    async def cancelled_player(*args):
+        playback.stop_all_players()
+        playback.report_completion(-9)
+
+    monkeypatch.setattr(speech, '_stream_and_play', cancelled_player)
+    run_prepared(state, clip, stream=True)
+
+    assert card_status(state, clip) == 'unheard — playback interrupted'

@@ -622,10 +622,13 @@ class ListenerState:
                 self._detection_mode = mode
             return self._detection_mode
 
-    def refresh_ptt_hold(self) -> None:
+    def refresh_ptt_hold(self) -> bool:
         with self._lock:
-            self._ptt_last_hold = time.monotonic()
+            now = time.monotonic()
+            newly_held = now - self._ptt_last_hold >= PTT_LEASE_SECONDS
+            self._ptt_last_hold = now
             self._turn_cond.notify_all()
+            return newly_held
 
     def release_ptt(self) -> None:
         with self._lock:

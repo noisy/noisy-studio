@@ -41,9 +41,16 @@ def test_ptt_hold_barges_in_on_playback_only_in_ptt_mode(monkeypatch):
         post_ptt_held()
         assert stops == []  # auto: noise must not cancel Claude's speech
 
+        state.release_ptt()
         state.set_detection_mode("ptt")
         post_ptt_held()
         assert stops == [1]  # ptt: the held button outranks playback
+        post_ptt_held()
+        post_ptt_held()
+        assert stops == [1]  # renewing the same turn does not interrupt again
+        state.release_ptt()
+        post_ptt_held()
+        assert stops == [1, 1]
     finally:
         server.shutdown()
 

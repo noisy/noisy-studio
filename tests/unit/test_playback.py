@@ -25,10 +25,13 @@ def test_interrupt_cancels_a_player_registered_after_connection_finishes():
     from unittest.mock import Mock
 
     process = Mock()
-    with playback.playback_scope():
+    events = []
+    with playback.playback_scope(on_event=lambda kind, detail: events.append((kind, detail))):
         playback.stop_all_players()
         playback.register_player(process)
     process.kill.assert_called_once_with()
+    assert events[0][0] == "playback_rejected"
+    assert "scope_generation=" in events[0][1]
 
     next_process = Mock()
     with playback.playback_scope():

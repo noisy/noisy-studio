@@ -1217,12 +1217,10 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 # Lease renewal/release for push-to-talk; the UI renews
                 # while the button is held (see PTT_LEASE_SECONDS).
                 if bool(self._read_json_body().get("held", False)):
-                    state.refresh_ptt_hold()
-                    # The held button IS the user's turn: it overrides any
-                    # playback, and each renewal re-silences anything that
-                    # dared to start. AUTO mode deliberately has no such
-                    # barge-in — room noise must not cancel Claude's speech.
-                    if state.detection_mode == "ptt":
+                    newly_held = state.refresh_ptt_hold()
+                    # Renewing a lease extends the same user turn; only its
+                    # beginning invalidates pending/active player processes.
+                    if newly_held and state.detection_mode == "ptt":
                         playback.stop_all_players()
                 else:
                     state.release_ptt()

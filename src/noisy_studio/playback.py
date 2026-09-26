@@ -4,6 +4,7 @@ import asyncio
 import threading
 from contextlib import contextmanager
 from contextvars import ContextVar
+from typing import Callable
 import signal
 import shutil
 import sys
@@ -22,11 +23,30 @@ class PlaybackError(RuntimeError):
     """Raised when no audio player is available or playback fails."""
 
 
+class PlaybackInterrupted(PlaybackError):
+    """Playback was cancelled by a deliberate interruption."""
+
+
 # Currently-running player processes, so an interrupting speak can kill them.
 _active_players: set[asyncio.subprocess.Process] = set()
 _player_lock = threading.Lock()
 _interrupt_generation = 0
 _playback_generation: ContextVar[int | None] = ContextVar("playback_generation", default=None)
+
+
+_playback_events: ContextVar[Callable[[str, str], None] | None] = ContextVar("playback_events", default=None)
+
+
+def report_completion(returncode: int | None) -> None:
+    reporter = _playback_events.get()
+    generation = _playback_generation.get()
+    interrupted = generation is not None and was_interrupted(generation)
+    if reporter:
+        reporter("playback_exit", f"returncode={returncode} interrupted={interrupted}")
+    if interrupted:
+        raise PlaybackInterrupted(f"Audio playback interrupted (returncode={returncode})")
+    if returncode != 0:
+        raise PlaybackError(f"Audio player failed (returncode={returncode})")
 
 
 def interruption_generation() -> int:
@@ -40,28 +60,36 @@ def was_interrupted(generation: int) -> bool:
 
 
 @contextmanager
-def playback_scope(generation: int | None = None):
+def playback_scope(generation: int | None = None, on_event=None):
     """An interrupt also cancels players still connecting or buffering."""
     with _player_lock:
         token = _playback_generation.set(
             _interrupt_generation if generation is None else generation
         )
+    event_token = _playback_events.set(on_event)
     try:
         yield
     finally:
+        _playback_events.reset(event_token)
         _playback_generation.reset(token)
 
 
 def register_player(process: asyncio.subprocess.Process) -> None:
+    rejected = None
     with _player_lock:
         generation = _playback_generation.get()
         if generation is not None and generation != _interrupt_generation:
+            rejected = (generation, _interrupt_generation)
             try:
                 process.kill()
             except ProcessLookupError:
                 pass
-            return
-        _active_players.add(process)
+        else:
+            _active_players.add(process)
+    # The event sink may take the state lock: never call it under the player lock.
+    reporter = _playback_events.get()
+    if rejected is not None and reporter:
+        reporter("playback_rejected", f"scope_generation={rejected[0]} current_generation={rejected[1]}")
 
 
 def unregister_player(process: asyncio.subprocess.Process) -> None:
@@ -140,10 +168,6 @@ async def play(audio: bytes, content_type: str) -> None:
             _, stderr = await process.communicate()
         finally:
             unregister_player(process)
-        # returncode is negative when killed by an interrupt — not an error.
-        if process.returncode and process.returncode > 0:
-            raise PlaybackError(
-                f"Audio player exited with code {process.returncode}: {stderr.decode(errors='replace')[:200]}"
-            )
+        report_completion(process.returncode)
     finally:
         audio_path.unlink(missing_ok=True)

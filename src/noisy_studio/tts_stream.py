@@ -82,11 +82,9 @@ async def _play_from_stream(
 
 
 def _report_playback_completion(returncode, callback) -> None:
-    if returncode == 0:
-        if callback:
-            callback()
-    elif returncode is not None and returncode > 0:
-        raise playback.PlaybackError(f"Streaming audio player exited with code {returncode}")
+    playback.report_completion(returncode)
+    if callback:
+        callback()
 
 
 async def _play_buffered(

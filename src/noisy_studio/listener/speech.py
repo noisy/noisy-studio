@@ -336,6 +336,8 @@ def _error_card_fields(error: Exception) -> dict:
     Only failures that cannot succeed on a second attempt say so.
     """
     fields = {"detail": str(error)[:160]}
+    if isinstance(error, playback.PlaybackError):
+        return fields | {"status": "unheard — playback interrupted" if isinstance(error, playback.PlaybackInterrupted) else "unheard — audio player failed"}
     if any(marker in str(error) for marker in FATAL_SPEECH_MARKERS):
         return fields | {"status": "error — retry won't help"}
     return fields | {"status": "error — likely transient, tap ↻ to retry"}
@@ -577,7 +579,7 @@ def _play_prepared(
             echo_guard_finished = True
 
         # Native speakers require echo muting during playback.
-        with playback.playback_scope(generation):
+        with playback.playback_scope(generation, on_event=state.add_event):
             try:
                 state.set_paused(True)
                 state.set_claude_speaking(True, agent)
@@ -592,7 +594,12 @@ def _play_prepared(
                 _log(f"[speak] error: {error}")
                 state.add_event("speak_error", str(error)[:200])
                 if not playback_completed:
-                    state.update_utterance(utterance_id, **_error_card_fields(error))
+                    final_status = state.consume_interrupted(utterance_id)
+                    state.update_utterance(utterance_id, **(
+                        {"status": final_status} if final_status else _error_card_fields(error)
+                    ))
+                    if isinstance(error, playback.PlaybackInterrupted):
+                        return prepared.voice
                     raise
                 # A transport-close failure cannot make successfully played audio unheard.
         played_seconds = time.monotonic() - playing_since
