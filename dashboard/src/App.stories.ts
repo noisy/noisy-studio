@@ -55,3 +55,23 @@ function instanceStory(port: string): StoryObj {
 export const NativeApp = instanceStory('9765');
 export const DevInstance = instanceStory('7765');
 export const SourceCompatibilityPort = instanceStory('8765');
+
+export const ProviderPlanLimits: StoryObj = {
+  parameters: { docs: { description: { story: 'Production compact component with synthetic registered-provider readings. No live quota requests.' } } },
+  render: () => {
+    const now = Date.now() / 1000;
+    resetScenario('conversation', {
+      version: __APP_VERSION__, latest_version: __APP_VERSION__,
+      provider_usage: [
+        { provider: 'claude', label: 'Claude', scope: 'connection', sampled_at: now, message: '', windows: [
+          { label: 'Session', used_percent: 76, resets_at: now + 2520, stale: false },
+          { label: 'Weekly', used_percent: 48, resets_at: now + 288000, stale: false },
+        ] },
+        { provider: 'codex', label: 'Codex', scope: 'connection', sampled_at: now, message: '', windows: [
+          { label: 'Weekly', used_percent: 91, resets_at: now + 7200, stale: false },
+        ] },
+      ],
+    });
+    return { components: { App }, template: '<App />' };
+  },
+};
