@@ -28,6 +28,7 @@ class DaemonClient implements DaemonCommands {
   final http.Client _http;
   final Duration pollInterval;
   bool _closed = false;
+  int _commandEpoch = 0, _commandsPending = 0;
   StreamController<Snapshot>? _updates;
   Timer? _pollTimer;
   static Uri validateAddress(String value) {
@@ -78,9 +79,15 @@ class DaemonClient implements DaemonCommands {
     Future<void> poll() async {
       if (_closed || cancelled) return;
       try {
+        final epoch = _commandEpoch;
+        final startedDuringCommand = _commandsPending > 0;
         final snapshot = await initial();
         if (_closed || cancelled) return;
-        controller.add(snapshot);
+        if (!startedDuringCommand &&
+            _commandsPending == 0 &&
+            epoch == _commandEpoch) {
+          controller.add(snapshot);
+        }
         _pollTimer = Timer(pollInterval, poll);
       } catch (error, stack) {
         if (!_closed && !cancelled) {
@@ -110,6 +117,29 @@ class DaemonClient implements DaemonCommands {
     return result['active_agent'] as String?;
   }
 
+  Future<void> setAuto(bool enabled) async {
+    final mode = enabled ? 'auto' : 'ptt';
+    final result = await request('/settings', {'detection_mode': mode});
+    if (result['detection_mode'] != mode) {
+      throw StateError('Detection mode was not confirmed');
+    }
+  }
+
+  /// A fresh daemon observation, not the last UI snapshot, gates Auto restoration.
+  Future<void> waitForRecordingIdle({required bool discarded}) async {
+    final deadline = DateTime.now().add(const Duration(seconds: 6));
+    while (!_closed && DateTime.now().isBefore(deadline)) {
+      final status = await _get('/status');
+      if (status['recording'] == false &&
+          (!discarded || status['recording_abort_pending'] == false))
+        return;
+      await Future<void>.delayed(const Duration(milliseconds: 100));
+    }
+    throw StateError(
+      'Recording cleanup was not confirmed. Update/reconnect the desktop.',
+    );
+  }
+
   @override
   Future<void> post(String path, Map<String, Object> body) async {
     await request(path, body);
@@ -119,20 +149,27 @@ class DaemonClient implements DaemonCommands {
     String path,
     Map<String, Object> body,
   ) async {
-    final response = await _http
-        .post(
-          base.replace(path: path),
-          headers: {'Content-Type': 'application/json'},
-          body: jsonEncode(body),
-        )
-        .timeout(const Duration(seconds: 2));
-    if (response.statusCode == 401 || response.statusCode == 403) {
-      throw DaemonAccessException(response.statusCode);
+    _commandEpoch++;
+    _commandsPending++;
+    try {
+      final response = await _http
+          .post(
+            base.replace(path: path),
+            headers: {'Content-Type': 'application/json'},
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 2));
+      if (response.statusCode == 401 || response.statusCode == 403) {
+        throw DaemonAccessException(response.statusCode);
+      }
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw StateError('Desktop returned HTTP ${response.statusCode}');
+      }
+      return jsonDecode(response.body) as Map<String, dynamic>;
+    } finally {
+      _commandsPending--;
+      _commandEpoch++;
     }
-    if (response.statusCode < 200 || response.statusCode >= 300) {
-      throw StateError('Desktop returned HTTP ${response.statusCode}');
-    }
-    return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
   Future<void> close() async {

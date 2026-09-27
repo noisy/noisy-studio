@@ -6,12 +6,12 @@ import 'package:noisy_studio_mobile/core/daemon_client.dart';
 import 'package:noisy_studio_mobile/core/ptt_lease.dart';
 
 class Commands implements DaemonCommands {
-  final calls = <bool>[];
+  final calls = <Object>[];
   Completer<void>? pending;
   bool fail = false;
   @override
   Future<void> post(String path, Map<String, Object> body) async {
-    calls.add(body['held'] as bool);
+    calls.add(path == '/abort-recording' ? 'abort' : body['held'] as bool);
     if (body['held'] == true) {
       if (fail) throw StateError('offline');
       await pending?.future;
@@ -30,7 +30,7 @@ void main() {
       await tester.pump();
       tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.resumed);
       await tester.pump(const Duration(seconds: 3));
-      expect(commands.calls, [true, false]);
+      expect(commands.calls, [true, 'abort', false]);
       lease.dispose();
     },
   );
@@ -40,11 +40,11 @@ void main() {
     final commands = Commands()..pending = Completer<void>();
     final lease = PttLease(commands);
     unawaited(lease.start());
-    unawaited(lease.stop());
+    unawaited(lease.stop(discard: true));
     commands.pending!.complete();
     await tester.pump();
     await tester.pump(const Duration(seconds: 3));
-    expect(commands.calls, [true, false]);
+    expect(commands.calls, [true, 'abort', false]);
     lease.dispose();
   });
   testWidgets('network failure cancels without silently restarting', (
@@ -62,7 +62,7 @@ void main() {
       [
         false,
         1,
-        [true, true, false],
+        [true, true, 'abort', false],
       ],
     );
     lease.dispose();
@@ -73,6 +73,6 @@ void main() {
     await lease.start();
     lease.dispose();
     await tester.pump(const Duration(seconds: 3));
-    expect(commands.calls, [true, false]);
+    expect(commands.calls, [true, 'abort', false]);
   });
 }
