@@ -9,7 +9,7 @@ let character: Character;
 let providers: ProvidersInfo | null;
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value));
 export function setProviderFixture(info: ProvidersInfo | null) { providers=clone(info); }
-export function resetScenario(next: Scenario) {
+export function resetScenario(next: Scenario, statusOverrides: Partial<DaemonStatus> = {}) {
   scenario = next;
   providers = {active:{tts:'grok',stt:'grok'},catalog:[{name:'grok',label:'Grok (xAI)',kind:'cloud-api',directions:['tts','stt'],streaming:{tts:true,stt:true},ready:true,fields:[]},{name:'local',label:'On this device',kind:'local',directions:['tts','stt'],streaming:{tts:false,stt:false},ready:true,fields:[]}]};
   const now = Date.now() / 1000;
@@ -25,6 +25,7 @@ export function resetScenario(next: Scenario) {
     version:'2.17.0',latest_version:'2.17.0', shutdown_at:next === 'shutdown' ? now+180 : undefined,
     agents_meta:next === 'no-tabs' ? {} : {codex:{label:'Codex',online:true,activated_at:1,offline_since:null},claude:{label:'Code review',online:true,activated_at:2,offline_since:null},docs:{label:'Documentation',online:false,activated_at:3,offline_since:now-60}}
   };
+  Object.assign(status, statusOverrides);
   if(next === 'long') status.agents_meta!.codex.label=status.agent_labels.codex;
   character={humor:40,honesty:100,verbosity:20,talkative:40,voice:'lux',speed:1.1};
   const texts=[
