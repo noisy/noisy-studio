@@ -1,13 +1,13 @@
-# Talk-first mobile proposals
+# Talk-first mobile refinements
 
-Design-only Widgetbook screens reuse the native theme and portrait assets. They do not use the microphone, connect to a daemon, or persist settings.
+These Widgetbook-only proposals use the real mobile theme, portraits and MessageCard. No microphone, transport or persisted settings are involved.
 
-- Portrait cards are the recommended approach for a small crew; the compact roster is an alternative for many conversations.
-- Auto routes the simulated listening state to the selected agent; selecting another card changes the recipient. Pause is visible beside the listening status.
-- Push to talk uses a deliberate long press on the portrait area. Release produces a local preview confirmation. A separate Details button never records.
-- Agent details show a small identity header and conversation, with one return-to-talk action. Advanced controls are deferred.
-- Recent combines messages across all agents and links back to individual conversations.
+The approved portrait direction now has one card interaction: tap opens the conversation and selects its Auto recipient; hold talks directly without opening anything. The Details buttons and compact roster proposal were removed. Existing functional component stories remain.
 
-Open the `Talk first · proposals` group. Try both modes, a long press, Details, and Recent. Dark/light and small/large phone viewports are provided by Widgetbook.
+Flutter's gesture arena separates a quick tap, a long press and scroll. Once held, dragging 48 logical pixels from the hold origin cancels irreversibly; releasing cannot subsequently send or open the detail. Auto is temporarily suspended during a direct hold and resumes to the explicitly selected recipient afterward. Pause remains visible.
 
-Before production, review the design and specify gesture cancellation, microphone permissions, disconnection, accessibility activation and recording transport. Prototype states are synthetic, not a claim that phone microphone transport already exists.
+Three variants compare a large talk surface above the message history, between messages, or pinned at the bottom. All details have an Auto/PTT switch and explicit recipient. The first story opens on the portrait crew; tap any card to see its upper-position detail.
+
+Recent retains the original chronological message-card feed, including user messages and repeated messages from the same agent, with newest messages at the bottom. Each agent bubble has a prominent microphone reply strip. Holding it targets that message's agent, regardless of the selected Auto recipient. User messages have no reply microphone.
+
+Checks protect the risky interactions: hold release never opens detail, dragging cancels, scrolling does not start recording, and Recent reply routing does not use an unrelated selected agent. Live integration still requires design approval and a separate recording transport/accessibility specification.

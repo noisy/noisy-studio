@@ -17,19 +17,25 @@ class Catalog extends StatelessWidget {
         name: 'Talk first · proposals',
         useCases: [
           WidgetbookUseCase(
-            name: 'Portrait cards · hold to talk',
+            name: 'Portrait crew · upper talk surface',
             builder: (_) => const TalkFirstPreview(),
           ),
           WidgetbookUseCase(
-            name: 'Portrait cards · auto recipient',
-            builder: (_) => const TalkFirstPreview(initialAuto: true),
+            name: 'Agent detail · middle talk surface',
+            builder: (_) => const TalkFirstPreview(
+              position: TalkPosition.middle,
+              initialDetail: 0,
+            ),
           ),
           WidgetbookUseCase(
-            name: 'Compact roster',
-            builder: (_) => const TalkFirstPreview(compact: true),
+            name: 'Agent detail · bottom talk surface',
+            builder: (_) => const TalkFirstPreview(
+              position: TalkPosition.bottom,
+              initialDetail: 0,
+            ),
           ),
           WidgetbookUseCase(
-            name: 'Recent across all agents',
+            name: 'Recent · chronological replies',
             builder: (_) => const TalkFirstPreview(initialTab: 1),
           ),
         ],
