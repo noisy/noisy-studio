@@ -8,7 +8,8 @@ import type { Character, Utterance } from "./types";
 import ActivityLine from "./components/ActivityLine.vue";
 import AgentTabs from "./components/AgentTabs.vue";
 import VoicePersona from "./components/VoicePersona.vue";
-import CharacterReadout from "./components/CharacterReadout.vue";
+import { provideTaskProgress } from "./composables/useTaskProgress";
+provideTaskProgress();
 import ConversationLog from "./components/ConversationLog.vue";
 import ConversationTelemetry from "./components/ConversationTelemetry.vue";
 import DiagnosticChecklist from "./components/DiagnosticChecklist.vue";
@@ -597,6 +598,9 @@ function changeAudio({id,value}: AudioChange) {
             <aside class="convo-rail">
               <section class="railbox">
                 <VoicePersona
+                  :key="viewedAgent ?? 'none'"
+                  :character="character"
+                  @character-change="changeCharacter"
                   :voice="character?.voice ?? ''"
                   :pending="characterPending"
                   :error="characterError"
@@ -607,11 +611,7 @@ function changeAudio({id,value}: AudioChange) {
                   @toggle-mute="toggleAgentMute"
                 />
               </section>
-              <section class="railbox">
-                <div class="railtitle">Character</div>
-                <CharacterReadout v-if="character" :character="character" @change="changeCharacter" />
-                <p v-else class="todo">Choose a conversation to see its character</p>
-              </section>
+              <TaskProgressPanel v-if="viewedAgent" :agent="viewedAgent" :status="status" :offline="offline" :utterances="allUtterances" @review-open="taskReviewOpen = $event" @start-ptt="startPtt" @stop-ptt="stopPtt" />
               <section class="railbox">
                 <div class="railtitle">Turn history</div>
                 <TurnHistory :utterances="utterances"

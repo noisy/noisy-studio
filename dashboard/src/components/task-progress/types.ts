@@ -13,6 +13,7 @@ export interface TaskReport {
 export interface ReportedTask {
   report: TaskReport;
   updated_at: number;
+  started_at?: number | null;
   review_state: "unopened" | "opened" | "approved";
   stale: boolean;
 }

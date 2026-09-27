@@ -1,7 +1,16 @@
-import { onMounted, onBeforeUnmount, ref } from "vue";
+import { onMounted, onBeforeUnmount, ref, inject, provide, type InjectionKey } from "vue";
 import { getTaskProgress } from "../api/client";
 import type { TaskSnapshot } from "../components/task-progress/types";
+const taskProgressKey: InjectionKey<ReturnType<typeof createTaskProgress>> = Symbol("task-progress");
+export function provideTaskProgress() {
+  const progress = createTaskProgress();
+  provide(taskProgressKey, progress);
+  return progress;
+}
 export function useTaskProgress() {
+  return inject(taskProgressKey, null) ?? createTaskProgress();
+}
+function createTaskProgress() {
   const snapshot = ref<TaskSnapshot>({ threads: {}, error: null }),
     error = ref("");
   let timer: ReturnType<typeof setTimeout> | undefined,

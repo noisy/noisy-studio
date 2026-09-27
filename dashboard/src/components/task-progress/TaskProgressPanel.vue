@@ -5,11 +5,13 @@ import { conversationLabel } from "../../conversationLabel";
 import { orderAgents } from "../agentOrder";
 import { useTaskProgress } from "../../composables/useTaskProgress";
 import { readyForReview } from "./types";
+import ThreadProgress from "./ThreadProgress.vue";
 import TaskTitle from "./TaskTitle.vue";
 import TaskReview from "./TaskReview.vue";
 import type { ReviewTarget } from "./types";
 import { ref } from "vue";
 const props = defineProps<{
+  agent?: string;
   status: DaemonStatus | null;
   offline: boolean;
   utterances: Utterance[];
@@ -24,7 +26,7 @@ const selected = ref<ReviewTarget | null>(null);
 onBeforeUnmount(() => { emit("stopPtt"); emit("reviewOpen", false); });
 const threads = computed(() =>
   orderAgents(
-    Object.keys(props.status?.agent_labels ?? {}),
+    props.agent ? [props.agent] : Object.keys(props.status?.agent_labels ?? {}),
     props.status?.agents_meta,
   ).map((agent) => ({
     agent,
@@ -49,15 +51,15 @@ function close() {
 }
 </script>
 <template>
-  <section class="task-panel live-task-progress" aria-label="Task progress">
-    <header>
+  <section class="task-panel live-task-progress" :class="{ scoped: agent }" :aria-label="agent ? 'Conversation progress' : 'Ready for review'">
+    <header v-if="!agent || ready.length">
       <h2>Ready for review</h2>
-      <span>{{ ready.length }}</span>
+      <span v-if="!agent">{{ ready.length }}</span>
     </header>
     <p v-if="error" role="status" class="quiet">
       {{ error }} <button @click="refresh">Retry</button>
     </p>
-    <p v-else-if="!ready.length" class="quiet">
+    <p v-else-if="!agent && !ready.length" class="quiet">
       No results waiting for review.
     </p>
     <div class="ready-list">
@@ -66,7 +68,7 @@ function close() {
         :key="result.thread.agent + result.task.report.task_id"
       >
         <div>
-          <TaskTitle :text="result.task.report.title" /><small>{{
+          <TaskTitle :text="result.task.report.title" /><small v-if="!agent">{{
             result.thread.label
           }}</small>
         </div>
@@ -78,66 +80,7 @@ function close() {
         </button>
       </article>
     </div>
-    <header class="work-heading"><h2>Work by thread</h2></header>
-    <div class="thread-list" tabindex="0" aria-label="Thread work">
-      <p v-if="!threads.length" class="quiet">
-        Open an agent conversation to see its reported tasks.
-      </p>
-      <section v-for="thread in threads" :key="thread.agent" class="thread">
-        <h3>{{ thread.label }}</h3>
-        <p v-if="!thread.tasks.length" class="quiet">No task info reported.</p>
-        <div
-          v-for="task in thread.tasks"
-          :key="task.report.task_id"
-          class="work-item"
-        >
-          <div class="work-title">
-            <TaskTitle :text="task.report.title" /><button
-              v-if="task.report.review"
-              @click="open({ agent: thread.agent, task })"
-              :aria-label="task.report.review.label"
-            >
-              ↗
-            </button>
-          </div>
-          <div class="work-meta">
-            <span :class="task.report.state">{{
-              task.review_state === "approved"
-                ? "approved"
-                : task.stale
-                  ? "Update overdue"
-                  : task.report.state
-            }}</span>
-            <div
-              v-if="task.report.total"
-              class="track"
-              :aria-label="
-                task.report.completed +
-                ' of ' +
-                task.report.total +
-                ' steps complete'
-              "
-            >
-              <i
-                :style="{
-                  width:
-                    ((task.report.completed ?? 0) / task.report.total) * 100 +
-                    '%',
-                }"
-              />
-            </div>
-            <small v-else>Steps not reported</small>
-          </div>
-          <small class="agent-metadata"
-            >{{
-              task.report.role ??
-              (task.report.participant ? "Delegated agent" : "Main agent")
-            }}
-            · {{ task.report.model ?? "Model not reported" }}</small
-          >
-        </div>
-      </section>
-    </div>
+    <ThreadProgress v-if="agent" :tasks="Object.values(snapshot.threads[agent] ?? {})" />
     <TaskReview
       v-if="selected"
       :target="selected"
@@ -211,74 +154,16 @@ small {
   display: block;
   margin-top: 3px;
 }
-.work-heading {
-  border-top: 1px solid #77839b44;
-  margin-top: 9px;
-  padding-top: 13px;
+.scoped {
+  padding:0 0 12px;
+  border:0;
+  border-bottom:1px solid var(--line);
+  border-radius:0;
+  background:none;
+  margin-bottom:12px;
+  min-width:0;
 }
-.thread-list {
-  max-height: 320px;
-  overflow: auto;
-  scrollbar-gutter: stable;
-}
-.thread {
-  margin-bottom: 13px;
-}
-h3 {
-  font-size: 10px;
-  margin: 0 0 5px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.work-item {
-  border-left: 1px solid #77839b44;
-  padding: 7px 0 6px 8px;
-  margin-left: 3px;
-}
-.work-title {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.work-title :deep(.full-task-title) {
-  flex: 1;
-  min-width: 0;
-}
-.work-meta {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 3px;
-}
-.work-meta > span {
-  font-size: 8px;
-  min-width: 35px;
-  color: var(--muted, #9ba5b5);
-}
-.work-meta > span.done {
-  color: var(--brand-accent, #a8c8ef);
-}
-.work-meta > span.blocked {
-  color: var(--warning, #d9ad73);
-}
-.track {
-  flex: 1;
-  height: 4px;
-  border-radius: 3px;
-  background: #77839b44;
-}
-.track i {
-  height: 100%;
-  display: block;
-  border-radius: 3px;
-  background: var(--brand-accent, #a8c8ef);
-}
-.agent-metadata {
-  display: block;
-  line-height: 15px;
-  margin-top: 2px;
-}
+.scoped .ready-list { max-height:none; overflow:visible; }
 button:focus-visible {
   outline: 2px solid var(--brand-accent, #a8c8ef);
   outline-offset: 2px;
