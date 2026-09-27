@@ -49,14 +49,14 @@ jobs:
         run: flutter build ios --release --no-codesign --config-only --build-number "$GITHUB_RUN_NUMBER"
       - name: Archive and export
         run: scripts/ci/export_ios.sh
-      - name: Upload to TestFlight
-        if: ${{ inputs.upload_testflight }}
-        run: scripts/ci/upload_testflight.sh
       - uses: actions/upload-artifact@v4
         with:
           name: noisy-studio-mobile-ipa
           path: mobile/build/ios/ipa/*.ipa
           retention-days: 7
+      - name: Upload to TestFlight
+        if: ${{ inputs.upload_testflight }}
+        run: scripts/ci/upload_testflight.sh
       - name: Remove temporary key
         if: always()
         run: rm -rf "$RUNNER_TEMP/noisy-mobile-signing"
