@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onBeforeUnmount } from "vue";
+import { computed } from "vue";
 import type { DaemonStatus, Utterance } from "../../types";
 import { conversationLabel } from "../../conversationLabel";
 import { orderAgents } from "../agentOrder";
@@ -7,23 +7,18 @@ import { useTaskProgress } from "../../composables/useTaskProgress";
 import { readyForReview, reviewUrl } from "./types";
 import ThreadProgress from "./ThreadProgress.vue";
 import TaskTitle from "./TaskTitle.vue";
-import TaskReview from "./TaskReview.vue";
-import type { ReviewTarget } from "./types";
-import { ref } from "vue";
 const props = defineProps<{
   agent?: string;
   status: DaemonStatus | null;
   offline: boolean;
   utterances: Utterance[];
 }>();
-const emit = defineEmits<{
+defineEmits<{
   reviewOpen: [open: boolean];
   startPtt: [];
   stopPtt: [];
 }>();
 const { snapshot, error, refresh } = useTaskProgress();
-const selected = ref<ReviewTarget | null>(null);
-onBeforeUnmount(() => { emit("stopPtt"); emit("reviewOpen", false); });
 const threads = computed(() =>
   orderAgents(
     props.agent ? [props.agent] : Object.keys(props.status?.agent_labels ?? {}),
@@ -39,16 +34,6 @@ const ready = computed(() =>
     thread.tasks.filter(readyForReview).map((task) => ({ thread, task })),
   ),
 );
-function open(target: ReviewTarget) {
-  emit("stopPtt");
-  selected.value = target;
-  emit("reviewOpen", true);
-}
-function close() {
-  emit("stopPtt");
-  selected.value = null;
-  emit("reviewOpen", false);
-}
 </script>
 <template>
   <section class="task-panel live-task-progress" :class="{ scoped: agent }" :aria-label="agent ? 'Conversation progress' : 'Ready for review'">
@@ -73,21 +58,9 @@ function close() {
           }}</small>
         </div>
         <a :href="reviewUrl(result.task) ?? undefined" target="_blank" rel="noopener noreferrer" :aria-label="result.task.report.review?.label">Review ↗</a>
-        <button @click="open({ agent: result.thread.agent, task: result.task })" aria-label="Open feedback and approval controls">Feedback</button>
       </article>
     </div>
     <ThreadProgress v-if="agent" :tasks="Object.values(snapshot.threads[agent] ?? {})" />
-    <TaskReview
-      v-if="selected"
-      :target="selected"
-      :status="status"
-      :offline="offline"
-      :utterances="utterances"
-      @close="close"
-      @reviewed="refresh"
-      @start-ptt="emit('startPtt')"
-      @stop-ptt="emit('stopPtt')"
-    />
   </section>
 </template>
 <style scoped>

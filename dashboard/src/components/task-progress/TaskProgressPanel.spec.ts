@@ -14,6 +14,7 @@ it.each([undefined,'thread-1'])('opens review externally in the %s panel without
   expect({href:link.attributes('href'),target:link.attributes('target'),rel:link.attributes('rel')}).toEqual({href:'https://example.com/onboarding',target:'_blank',rel:'noopener noreferrer'});
   await link.trigger('click');
   expect(wrapper.find('iframe').exists()).toBe(false);
+  expect(wrapper.findAll('button').map(button => button.text())).not.toContain('Feedback');
   expect(wrapper.emitted('reviewOpen')).toBeUndefined();
   wrapper.unmount();
 });
