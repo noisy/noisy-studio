@@ -533,6 +533,7 @@ def status_payload(state: ListenerState) -> dict:
                             # The harness-contract view of the tabs (keys,
                             # aliases, live/idle/deaf/ended, listening_until).
                             "conversations": state.conversations.snapshot(),
+                            "provider_usage": state.provider_usage.snapshot(state.conversations.snapshot()),
                         }
 
 
@@ -688,6 +689,14 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     state.record_delivery(delivered_message, receipt)
                 confirmed = [receipt.message_id for _, receipt in receipts]
                 self._respond({"confirmed": confirmed, "unmatched": [value for value in message_ids if value not in confirmed]})
+            elif self.path == "/provider-usage":
+                body = self._read_json_body()
+                data = body.get("data")
+                accepted = isinstance(data, dict) and state.provider_usage.record(
+                    state.conversations, str(body.get("conversation") or ""),
+                    str(body.get("provider") or ""), str(body.get("scope") or ""), data,
+                )
+                self._respond({"accepted": bool(accepted)}, status=200 if accepted else 422)
             elif self.path == "/harness/event":
                 body = self._read_json_body()
                 name = str(body.get("harness") or "")
@@ -738,6 +747,10 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 name = state.conversations.resolve(name) or name
                 label = str(body.get("label", "")).strip()
                 known = state.conversations.get(name)
+                declared_provider = body.get("provider")
+                registration_harness = declared_provider if declared_provider in ("claude", "codex", "grok") else "legacy"
+                if known is not None and known.harness == "legacy" and registration_harness != "legacy":
+                    known.harness = registration_harness
                 if known is not None and known.hidden:
                     # The user closed this tab. Sessions on the old hook
                     # scripts re-register on every tool call; that must not
@@ -752,7 +765,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     # harness contract. Adopt the conversation into the
                     # registry so it is persisted and its rename is kept -
                     # otherwise these tabs vanished on every daemon restart.
-                    state.conversations.adopt(name, label)
+                    state.conversations.adopt(name, label, harness=registration_harness)
                     state.register_agent(name, label)
                     if not already:  # avoid spamming the event log every hook fire
                         state.add_event("agent", f"'{label or name}' registered")

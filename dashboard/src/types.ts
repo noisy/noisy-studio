@@ -13,7 +13,17 @@ export interface HotkeyState {
   problems?: Record<string, HotkeyProblem>;
 }
 
+export interface ProviderQuota {
+  provider: string;
+  label: string;
+  sampled_at: number | null;
+  scope: 'connection' | 'unknown';
+  message: string;
+  windows: { label: string; used_percent: number; resets_at: number | null; stale: boolean }[];
+}
+
 export interface DaemonStatus {
+  provider_usage?: ProviderQuota[];
   /** Number of older cards removed by each conversation’s retention limit. */
   history_trimmed?: Record<string, number>;
   audio_capabilities?: AudioCapabilities;
