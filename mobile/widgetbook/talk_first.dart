@@ -266,7 +266,12 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
       onTap: () => openDetail(index),
       onStart: () => startHold(index),
       onFinish: finishHold,
-      label: 'Open ${agent.name}; hold to talk',
+      label:
+          '${agent.topic}, ${agent.name}. ${held == index
+              ? 'Recording'
+              : auto && selected == index
+              ? 'Selected Auto recipient'
+              : 'Tap to open; hold to talk'}',
       child: Container(
         decoration: BoxDecoration(
           color: active
@@ -281,33 +286,55 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
           ),
           borderRadius: BorderRadius.circular(14),
         ),
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.all(5),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            VoiceAvatar(voice: agent.voice, size: 66),
-            const SizedBox(height: 8),
-            Text(
-              agent.name,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-            ),
-            Text(
-              agent.topic,
-              style: const TextStyle(fontSize: 11),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            Expanded(
+              child: LayoutBuilder(
+                builder: (context, constraints) => Stack(
+                  children: [
+                    Center(
+                      child: VoiceAvatar(
+                        voice: agent.voice,
+                        size: constraints.biggest.shortestSide,
+                      ),
+                    ),
+                    if (held == index)
+                      Positioned(
+                        right: 6,
+                        bottom: 6,
+                        child: Semantics(
+                          label: 'Recording to ${agent.name}',
+                          child: Container(
+                            padding: const EdgeInsets.all(7),
+                            decoration: BoxDecoration(
+                              color: colors.error,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: colors.surface,
+                                width: 2,
+                              ),
+                            ),
+                            child: Icon(
+                              Icons.mic,
+                              size: 22,
+                              color: colors.onError,
+                            ),
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ),
             const SizedBox(height: 5),
             Text(
-              held == index
-                  ? 'Recording…'
-                  : auto && selected == index
-                  ? 'Auto recipient'
-                  : 'Hold to talk',
+              agent.topic,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 11, color: colors.primary),
             ),
+            const SizedBox(height: 3),
           ],
         ),
       ),

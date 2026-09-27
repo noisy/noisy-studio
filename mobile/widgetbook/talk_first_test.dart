@@ -1,10 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:noisy_studio_mobile/ui/design.dart';
+import 'package:noisy_studio_mobile/ui/voice_avatar.dart';
 
 import 'talk_first.dart';
 
 void main() {
+  testWidgets(
+    'crew portraits fill the tile and only conversation titles remain visible',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(360, 740));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: studioTheme(Brightness.dark),
+          home: const TalkFirstPreview(),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final portrait = find.byKey(const ValueKey('portrait-0'));
+      final image = find.descendant(
+        of: portrait,
+        matching: find.byType(VoiceAvatar),
+      );
+      expect(find.text('Lux'), findsNothing);
+      expect(find.text('Release review'), findsOneWidget);
+      expect(find.text('Hold to talk'), findsNothing);
+      expect(tester.getSize(image).width, greaterThan(120));
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets(
     'scaled phone cancel sheet covers transformed navigation bounds',
     (tester) async {
@@ -176,7 +202,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 600));
         await tester.pump(const Duration(milliseconds: 200));
         expect(tester.getRect(portrait), before);
-        expect(find.text('Recording…'), findsWidgets);
+        expect(find.byIcon(Icons.mic), findsWidgets);
         expect(find.textContaining('drag away to cancel'), findsNothing);
         await gesture.up();
         await tester.pumpAndSettle();

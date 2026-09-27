@@ -21,3 +21,7 @@ Recent Reply is a small filled/bordered button. In Auto, tapping a bubble select
 ## Motion and navigation coverage
 
 Red sheets slide out over 180 ms with ease-out cubic motion. Clipping prevents hidden red regions from showing through the main control. Release hit regions follow only the currently exposed red area; invisible portions cannot cancel. System reduced-motion settings skip the animation. In detail, the sheet expands across the entire bottom navigation rectangle, including labels and safe-area space supplied by NavigationBar. Navigation is also disabled during any active hold.
+
+## Portrait-led crew
+
+Crew cards now give almost all available space to the proportionate portrait, with a five-pixel inset and only the conversation title below. Agent names and gesture/state text remain in accessible labels rather than visible card copy. During recording, a microphone on a contrasting circular backing sits near the portrait's lower-right edge; the face remains unobscured. Quick taps, Auto selection and cancellation sheets retain their behavior.
