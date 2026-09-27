@@ -486,71 +486,9 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
                 child: GestureDetector(
                   key: ValueKey('message-${message.id}'),
                   onTap: auto ? () => setState(() => selected = index) : null,
-                  child: Stack(
-                    children: [
-                      MessageCard(message: message),
-                      if (message.role != 'user')
-                        Positioned(
-                          bottom: 4,
-                          right: 8,
-                          child: PreviewHold(
-                            key: ValueKey('reply-${message.id}'),
-                            cancelLeft: true,
-                            initiallyHeld:
-                                widget.showRecentCancel && message.id == 6,
-                            onStart: () => startHold(index),
-                            onFinish: finishHold,
-                            label: 'Hold to reply to ${_crew[index].name}',
-                            onTap: auto
-                                ? () => setState(() => selected = index)
-                                : null,
-                            child: Container(
-                              decoration: BoxDecoration(
-                                color: Color.alphaBlend(
-                                  Theme.of(context).colorScheme.primary
-                                      .withValues(alpha: .12),
-                                  Theme.of(context).colorScheme.surface,
-                                ),
-                                border: Border.all(
-                                  color: Theme.of(context).colorScheme.primary
-                                      .withValues(alpha: .6),
-                                ),
-                                borderRadius: BorderRadius.circular(6),
-                              ),
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 6,
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    held == index
-                                        ? Icons.graphic_eq
-                                        : Icons.mic_none,
-                                    size: 16,
-                                    color: Theme.of(context)
-                                        .colorScheme
-                                        .primary,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    'Reply',
-                                    style: TextStyle(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w600,
-                                      color: Theme.of(context)
-                                          .colorScheme
-                                          .primary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                    ],
-                  ),
+                  child: message.role == 'user'
+                      ? MessageCard(message: message)
+                      : _replyBubble(message, index),
                 ),
               ),
             );
@@ -559,6 +497,135 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
       ),
     ],
   );
+  Widget _replyBubble(Message message, int index) {
+    final colors = Theme.of(context).colorScheme;
+    return Container(
+      key: ValueKey('bubble-${message.id}'),
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: Color.alphaBlend(
+          colors.secondary.withValues(alpha: .04),
+          colors.surface,
+        ),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      foregroundDecoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: colors.secondary.withValues(alpha: .3)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    VoiceAvatar(voice: message.voice, size: 26),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        message.author.toUpperCase(),
+                        style: TextStyle(
+                          fontSize: 10,
+                          letterSpacing: 1.2,
+                          color: colors.secondary,
+                        ),
+                      ),
+                    ),
+                    Text(
+                      message.time,
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: colors.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 9),
+                Text(
+                  message.text,
+                  key: ValueKey('body-${message.id}'),
+                  style: const TextStyle(fontSize: 14, height: 1.5),
+                ),
+              ],
+            ),
+          ),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 8, 10),
+                  child: Text(
+                    '✓ ${message.status.toUpperCase()}',
+                    style: TextStyle(
+                      fontSize: 9,
+                      letterSpacing: .6,
+                      color: colors.secondary,
+                    ),
+                  ),
+                ),
+              ),
+              PreviewHold(
+                key: ValueKey('reply-${message.id}'),
+                cancelLeft: true,
+                initiallyHeld: widget.showRecentCancel && message.id == 6,
+                onStart: () => startHold(index),
+                onFinish: finishHold,
+                label: 'Hold to reply to ${_crew[index].name}',
+                onTap: auto ? () => setState(() => selected = index) : null,
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    bottomRight: Radius.circular(10),
+                  ),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Color.alphaBlend(
+                        colors.primary.withValues(alpha: .12),
+                        colors.surface,
+                      ),
+                      border: Border.all(
+                        color: colors.primary.withValues(alpha: .6),
+                      ),
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(8),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          held == index ? Icons.graphic_eq : Icons.mic_none,
+                          size: 16,
+                          color: colors.primary,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          'Reply',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: colors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 /// Flutter's gesture arena separates tap from long press and scrolling.
@@ -744,7 +811,9 @@ class _PreviewHoldState extends State<PreviewHold>
                         child: Material(
                           key: const ValueKey('cancel-sheet'),
                           color: cancelColor,
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: const BorderRadius.only(
+                            topLeft: Radius.circular(8),
+                          ),
                         ),
                       ),
                       Positioned(

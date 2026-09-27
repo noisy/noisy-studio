@@ -6,6 +6,23 @@ import 'package:noisy_studio_mobile/ui/voice_avatar.dart';
 import 'talk_first.dart';
 
 void main() {
+  testWidgets('Recent Reply shares the bubble corner and reserves its footer', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: studioTheme(Brightness.dark),
+        home: const TalkFirstPreview(initialTab: 1),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final bubble = tester.getRect(find.byKey(const ValueKey('bubble-6')));
+    final reply = tester.getRect(find.byKey(const ValueKey('reply-6')));
+    final body = tester.getRect(find.byKey(const ValueKey('body-6')));
+    expect(reply.bottomRight, bubble.bottomRight);
+    expect(body.bottom, lessThan(reply.top));
+  });
+
   testWidgets(
     'crew portraits fill the tile and only conversation titles remain visible',
     (tester) async {
