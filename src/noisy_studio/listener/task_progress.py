@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from copy import deepcopy
 import json
+import math
 import os
 from pathlib import Path
 import re
@@ -55,7 +56,7 @@ def validate_report(report: dict) -> dict:
     if type(revision) is not int or not 1 <= revision <= 2_147_483_647:
         raise ValueError("revision must be a positive integer")
     state = report.get("state")
-    if state not in STATES:
+    if not isinstance(state, str) or state not in STATES:
         raise ValueError("state must be pending, working, blocked or done")
     completed, total = report.get("completed"), report.get("total")
     if completed is not None or total is not None:
@@ -131,8 +132,10 @@ class TaskProgressStore:
                         raise ValueError("Invalid persisted task list")
                     for task_id, entry in tasks.items():
                         report = validate_report(entry["report"])
-                        if task_id != report["task_id"] or not isinstance(
-                            entry["updated_at"], (float, int)
+                        if (
+                            task_id != report["task_id"]
+                            or type(entry["updated_at"]) not in (float, int)
+                            or not math.isfinite(entry["updated_at"])
                         ):
                             raise ValueError("Invalid persisted task")
                         if entry["review_state"] not in {
@@ -163,13 +166,26 @@ class TaskProgressStore:
             temporary.unlink(missing_ok=True)
         self._threads = updated
 
-    def report(self, thread: str, report: dict) -> dict:
+    def report(self, thread: str, report: dict, reporter_id: str | None = None) -> dict:
         thread = _text(thread, "thread", 240)
         report = validate_report(report)
+        if reporter_id is not None:
+            reporter_id = _text(reporter_id, "reporter_id", 100)
+            if report["participant"] not in (None, reporter_id):
+                raise ValueError("A delegated reporter may only report its own work")
+            report["participant"] = reporter_id
         with self._lock:
             if self.load_error:
                 raise ValueError(self.load_error)
             existing = self._threads.get(thread, {}).get(report["task_id"])
+            if (
+                reporter_id
+                and existing
+                and existing["report"]["participant"] != reporter_id
+            ):
+                raise ValueError(
+                    "A delegated reporter cannot edit another owner's task"
+                )
             if existing and report["revision"] <= existing["report"]["revision"]:
                 if report == existing["report"]:
                     return deepcopy(existing)

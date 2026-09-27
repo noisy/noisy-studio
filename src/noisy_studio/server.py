@@ -265,6 +265,50 @@ async def list_voices() -> list[dict]:
     return await providers.active_tts().list_voices()
 
 
+async def _task_request(path: str, payload: dict, agent_id: str | None) -> dict:
+    error = await _identity_error(agent_id)
+    if error:
+        return {"error": error}
+    port = os.environ.get(LISTENER_PORT_ENV_VAR, "8765")
+    try:
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.post(f"http://127.0.0.1:{port}{path}", json={**payload, "agent": agent_id.strip()})
+            return response.json()
+    except (httpx.HTTPError, ValueError):
+        return {"error": "Task progress daemon is unavailable; retain the same task ID and revision when retrying."}
+
+
+@mcp.tool()
+async def report_task(task_id: str, title: str, state: str, revision: int = 1,
+                      completed: int | None = None, total: int | None = None,
+                      participant: str | None = None, role: str | None = None,
+                      model: str | None = None, review: dict | None = None,
+                      agent_id: str | None = None, reporter_id: str | None = None) -> dict:
+    """Report one task at a meaningful milestone; this never approves work.
+
+    Reuse a stable task_id and increment revision for changed reports. State is
+    pending/working/blocked/done. Counts describe steps, not time; omit unknown
+    counts/model. Review is {label, url}, an explicit HTTP(S) artifact to inspect.
+    Parent agents may label delegated work with participant and role. Hooks own
+    agent_id/reporter_id: leave both unset. Read list_tasks after a revision conflict.
+    """
+    report = dict(task_id=task_id, title=title, state=state, revision=revision,
+                  completed=completed, total=total, participant=participant,
+                  role=role, model=model, review=review)
+    return await _task_request("/task-report", {"report": report, "reporter_id": reporter_id}, agent_id)
+
+
+@mcp.tool()
+async def list_tasks(agent_id: str | None = None, reporter_id: str | None = None) -> dict:
+    """Read this conversation's reported work and human review state.
+
+    Hooks supply identity; leave agent_id and reporter_id unset. Missing task
+    reports mean unknown progress. Never infer human approval from work completion
+    or a review link being opened.
+    """
+    return await _task_request("/task-list", {}, agent_id)
+
+
 def _daemon_running(port: int) -> bool:
     """True if something is already listening on the daemon's port."""
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:

@@ -141,3 +141,14 @@ def test_stale_report_is_not_rewritten_or_marked_complete(tmp_path, report):
     result = store.snapshot()["threads"]["thread-1"]["task-1"]
 
     assert (result["stale"], result["report"]["state"]) == (True, "working")
+
+
+def test_delegated_reporter_cannot_replace_manager_or_other_participant(tmp_path, report):
+    store = TaskProgressStore(tmp_path / "tasks.json")
+    store.report("thread-1", report)
+    with pytest.raises(ValueError, match="another owner's"):
+        store.report("thread-1", {**report, "revision": 2}, reporter_id="child-1")
+    with pytest.raises(ValueError, match="only report its own"):
+        store.report("thread-1", {**report, "task_id": "task-2", "participant": "child-2"}, reporter_id="child-1")
+    result = store.report("thread-1", {**report, "task_id": "task-2"}, reporter_id="child-1")
+    assert result["report"]["participant"] == "child-1"

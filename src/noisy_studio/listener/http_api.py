@@ -552,7 +552,10 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
 
         def _handle_GET(self) -> None:
             url = urlparse(self.path)
-            if url.path == "/":
+            if url.path == "/tasks":
+                store = getattr(state, "task_progress", None)
+                self._respond(store.snapshot() if store else {"threads": {}, "error": "Task reporting not initialized"})
+            elif url.path == "/":
                 # The Vue HUD is the main dashboard; the legacy one stays
                 # at /legacy (and serves as fallback before the first build).
                 if DIST_DIR.is_dir():
@@ -665,7 +668,20 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 self._respond({"error": str(error), "code": "invalid_speech_settings", "recovery": recovery_info()}, status=409)
 
         def _handle_POST(self) -> None:
-            if self.path == "/delivery/acknowledge":
+            if self.path in {"/task-report", "/task-list", "/task-review"}:
+                from noisy_studio.listener.task_api import handle_task_request
+                try:
+                    length = int(self.headers.get("Content-Length", "0"))
+                    if not 0 < length <= 16_384:
+                        raise ValueError("Task requests must be at most 16 KiB")
+                    body = json.loads(self.rfile.read(length))
+                    response = handle_task_request(state, self.path, body)
+                    self._respond(response)
+                except (ValueError, TypeError) as error:
+                    self._respond({"error": str(error)}, status=400)
+                except OSError:
+                    self._respond({"error": "Task progress could not be saved; retry after storage is available"}, status=503)
+            elif self.path == "/delivery/acknowledge":
                 body = self._read_json_body()
                 conversation = body.get("agent")
                 message_ids = body.get("message_ids")

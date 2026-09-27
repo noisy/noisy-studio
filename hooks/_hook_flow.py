@@ -51,7 +51,7 @@ def run(harness: str, payload: dict, listen_seconds: float | None = None) -> int
     event_name = str(payload.get("hook_event_name") or "")
     tool_name = str(payload.get("tool_name") or "")
     identity_call = event_name == "PreToolUse" and "noisy" in tool_name and (
-        tool_name.endswith(("__speak", "__announce", "__change_voice", "__set_speaker_style", "__acknowledge_delivery"))
+        tool_name.endswith(("__speak", "__announce", "__change_voice", "__set_speaker_style", "__acknowledge_delivery", "__report_task", "__list_tasks"))
     )
     if reply is None or reply.get("status") == 404:
         return 0  # no daemon, or one too old to know this contract: never block
@@ -104,6 +104,8 @@ def _pre_tool_use(payload: dict, reply: dict) -> int:
     arguments = payload.get("tool_input")
     if not isinstance(arguments, dict):
         arguments = {}
+    if str(payload.get("tool_name", "")).endswith(("__report_task", "__list_tasks")):
+        arguments = {**arguments, "reporter_id": reply.get("participant")}
     output: dict = {
         "hookSpecificOutput": {
             "hookEventName": "PreToolUse",
