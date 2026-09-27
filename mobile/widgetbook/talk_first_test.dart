@@ -5,6 +5,27 @@ import 'package:noisy_studio_mobile/ui/design.dart';
 import 'talk_first.dart';
 
 void main() {
+  testWidgets('compact header and bottom talk surface fit a small phone', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(360, 740));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: studioTheme(Brightness.dark),
+        home: const TalkFirstPreview(),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('portrait-0')));
+    await tester.pumpAndSettle();
+    expect(tester.takeException(), isNull);
+    expect(
+      tester.getBottomLeft(find.byKey(const ValueKey('talk-0'))).dy,
+      lessThan(tester.getTopLeft(find.byType(NavigationBar)).dy),
+    );
+  });
+
   testWidgets(
     'a portrait hold sends without opening detail; dragging cancels',
     (tester) async {

@@ -17,22 +17,12 @@ class Catalog extends StatelessWidget {
         name: 'Talk first · proposals',
         useCases: [
           WidgetbookUseCase(
-            name: 'Portrait crew · upper talk surface',
+            name: 'Portrait crew · compact header',
             builder: (_) => const TalkFirstPreview(),
           ),
           WidgetbookUseCase(
-            name: 'Agent detail · middle talk surface',
-            builder: (_) => const TalkFirstPreview(
-              position: TalkPosition.middle,
-              initialDetail: 0,
-            ),
-          ),
-          WidgetbookUseCase(
             name: 'Agent detail · bottom talk surface',
-            builder: (_) => const TalkFirstPreview(
-              position: TalkPosition.bottom,
-              initialDetail: 0,
-            ),
+            builder: (_) => const TalkFirstPreview(initialDetail: 0),
           ),
           WidgetbookUseCase(
             name: 'Recent · chronological replies',

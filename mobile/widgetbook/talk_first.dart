@@ -66,18 +66,14 @@ const _messages = [
   ),
 ];
 
-enum TalkPosition { upper, middle, bottom }
-
 /// Synthetic local interactions; no microphone, transport or persistent state.
 class TalkFirstPreview extends StatefulWidget {
   const TalkFirstPreview({
     super.key,
-    this.position = TalkPosition.upper,
     this.initialTab = 0,
     this.initialDetail,
     this.initialAuto = false,
   });
-  final TalkPosition position;
   final int initialTab;
   final int? initialDetail;
   final bool initialAuto;
@@ -124,14 +120,18 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
               tooltip: 'Back',
             ),
       title: Text(detail == null ? 'Noisy Studio' : _crew[detail!].name),
-      actions: const [
-        Padding(
-          padding: EdgeInsets.only(right: 16),
-          child: Text(
-            'DESIGN',
-            style: TextStyle(fontSize: 10, letterSpacing: 1.5),
+      actions: [
+        Tooltip(
+          message: 'Desktop connected · design preview',
+          child: Icon(
+            Icons.link,
+            size: 18,
+            color: Theme.of(context).colorScheme.primary,
           ),
         ),
+        const SizedBox(width: 8),
+        _mode(),
+        const SizedBox(width: 12),
       ],
     ),
     body: detail != null
@@ -163,16 +163,23 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
   );
 
   Widget _mode() => SegmentedButton<bool>(
-    segments: const [
-      ButtonSegment(
-        value: false,
-        label: Text('Push to talk'),
-        icon: Icon(Icons.touch_app_outlined),
+    showSelectedIcon: false,
+    style: ButtonStyle(
+      visualDensity: VisualDensity.compact,
+      padding: const WidgetStatePropertyAll(
+        EdgeInsets.symmetric(horizontal: 9),
       ),
+      minimumSize: const WidgetStatePropertyAll(Size(40, 32)),
+      textStyle: const WidgetStatePropertyAll(
+        TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+      ),
+    ),
+    segments: const [
+      ButtonSegment(value: false, label: Text('PTT'), tooltip: 'Push to talk'),
       ButtonSegment(
         value: true,
         label: Text('Auto'),
-        icon: Icon(Icons.graphic_eq),
+        tooltip: 'Automatic turn detection',
       ),
     ],
     selected: {auto},
@@ -184,11 +191,14 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
   );
 
   Widget _status() {
+    if (held == null && !auto && feedback == null) {
+      return const SizedBox.shrink();
+    }
     final text = held != null
         ? 'Recording → ${_crew[held!].name} · drag away to cancel'
         : auto
         ? '${paused ? 'Auto paused' : 'Auto listening'} → ${_crew[selected].name}'
-        : feedback ?? 'Tap to open · hold to talk';
+        : feedback ?? '';
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 12),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -216,16 +226,6 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
   Widget _agents() => ListView(
     padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
     children: [
-      const Text(
-        'Your crew',
-        style: TextStyle(fontSize: 28, fontWeight: FontWeight.w700),
-      ),
-      const Text(
-        '4 agents · Desktop connected',
-        style: TextStyle(fontSize: 12),
-      ),
-      const SizedBox(height: 16),
-      _mode(),
       _status(),
       GridView.count(
         shrinkWrap: true,
@@ -235,20 +235,6 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
         mainAxisSpacing: 10,
         childAspectRatio: .92,
         children: [for (var i = 0; i < _crew.length; i++) _portrait(i)],
-      ),
-      const SizedBox(height: 12),
-      Text(
-        auto
-            ? 'Open an agent to select the Auto recipient.\nA hold talks directly; Auto resumes to the selected agent.'
-            : 'A quick tap opens the conversation.\nA hold records directly to that agent.',
-        textAlign: TextAlign.center,
-        style: const TextStyle(fontSize: 11),
-      ),
-      const SizedBox(height: 8),
-      const Text(
-        'Preview only · microphone is not used',
-        textAlign: TextAlign.center,
-        style: TextStyle(fontSize: 10),
       ),
     ],
   );
@@ -360,9 +346,8 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
             ),
           ],
         ),
-        const SizedBox(height: 16),
-        _mode(),
         _status(),
+        const SizedBox(height: 12),
       ],
     );
     final feed = _messages.where((m) => m.agentId == 'a${index + 1}').toList();
@@ -384,32 +369,18 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
           child: MessageCard(message: message),
         ),
     ];
-    final surface = Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: _talkSurface(index),
-    );
     return Column(
       children: [
         Expanded(
           child: ListView(
             padding: const EdgeInsets.all(16),
-            children: [
-              header,
-              if (widget.position == TalkPosition.upper) surface,
-              if (widget.position == TalkPosition.middle) ...[
-                bubbles.first,
-                surface,
-                ...bubbles.skip(1),
-              ] else
-                ...bubbles,
-            ],
+            children: [header, ...bubbles],
           ),
         ),
-        if (widget.position == TalkPosition.bottom)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: _talkSurface(index),
-          ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: _talkSurface(index),
+        ),
       ],
     );
   }
