@@ -75,12 +75,14 @@ class TalkFirstPreview extends StatefulWidget {
     this.initialAuto = false,
     this.showCancelTarget = false,
     this.showRecentCancel = false,
+    this.showDetailCancel = false,
   });
   final int initialTab;
   final int? initialDetail;
   final bool initialAuto;
   final bool showCancelTarget;
   final bool showRecentCancel;
+  final bool showDetailCancel;
   @override
   State<TalkFirstPreview> createState() => _TalkFirstPreviewState();
 }
@@ -90,7 +92,7 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
   late int tab = widget.initialTab;
   late int selected = widget.initialDetail ?? 0;
   late int? detail = widget.initialDetail;
-  late int? held = widget.showCancelTarget
+  late int? held = (widget.showCancelTarget || widget.showDetailCancel)
       ? 0
       : widget.showRecentCancel
       ? 2
@@ -254,7 +256,12 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
       label: 'Open ${agent.name}; hold to talk',
       child: Container(
         decoration: BoxDecoration(
-          color: active ? colors.primary.withValues(alpha: .1) : colors.surface,
+          color: active
+              ? Color.alphaBlend(
+                  colors.primary.withValues(alpha: .1),
+                  colors.surface,
+                )
+              : colors.surface,
           border: Border.all(
             color: active ? colors.primary : colors.outline,
             width: active ? 2 : 1,
@@ -296,6 +303,8 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
 
   Widget _talkSurface(int index) => PreviewHold(
     key: ValueKey('talk-$index'),
+    cancelBelow: true,
+    initiallyHeld: widget.showDetailCancel,
     onStart: () => startHold(index),
     onFinish: finishHold,
     label: 'Hold to talk to ${_crew[index].name}',
@@ -303,8 +312,11 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(vertical: 22),
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.primary
-            .withValues(alpha: held == index ? .25 : .1),
+        color: Color.alphaBlend(
+          Theme.of(context).colorScheme.primary
+              .withValues(alpha: held == index ? .25 : .1),
+          Theme.of(context).colorScheme.surface,
+        ),
         border: Border.all(color: Theme.of(context).colorScheme.primary),
         borderRadius: BorderRadius.circular(18),
       ),
@@ -314,7 +326,7 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
           const SizedBox(height: 8),
           Text(
             held == index
-                ? 'Release to send to ${_crew[index].name}'
+                ? 'Release to send'
                 : 'Hold to talk to ${_crew[index].name}',
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           ),
@@ -450,8 +462,11 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
                                 : null,
                             child: Container(
                               decoration: BoxDecoration(
-                                color: Theme.of(context).colorScheme.primary
-                                    .withValues(alpha: .12),
+                                color: Color.alphaBlend(
+                                  Theme.of(context).colorScheme.primary
+                                      .withValues(alpha: .12),
+                                  Theme.of(context).colorScheme.surface,
+                                ),
                                 border: Border.all(
                                   color: Theme.of(context).colorScheme.primary
                                       .withValues(alpha: .6),
@@ -503,7 +518,7 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
 }
 
 /// Flutter's gesture arena separates tap from long press and scrolling.
-/// Once a hold starts, dragging beyond the cancellation distance is irreversible.
+/// Visible targets arm on hover and cancel only on release.
 class PreviewHold extends StatefulWidget {
   const PreviewHold({
     super.key,
@@ -532,6 +547,9 @@ class _PreviewHoldState extends State<PreviewHold> {
   static const cancelDistance = 48.0;
   final _overlay = OverlayPortalController();
   bool cancelled = false;
+  bool cancelArmed = false;
+  Color get cancelColor =>
+      cancelArmed ? const Color(0xffed4058) : const Color(0xffb52d43);
   bool holding = false;
   final _link = LayerLink();
   final _target = GlobalKey();
@@ -544,10 +562,10 @@ class _PreviewHoldState extends State<PreviewHold> {
   Rect get cancelZone {
     final current = tile;
     return widget.cancelLeft
-        ? Rect.fromLTWH(current.left - 84, current.top, 80, current.height)
+        ? Rect.fromLTWH(current.left - 80, current.top, 80, current.height)
         : Rect.fromLTWH(
             current.left,
-            current.bottom + 4,
+            current.bottom,
             current.width,
             current.height / 3,
           );
@@ -565,6 +583,7 @@ class _PreviewHoldState extends State<PreviewHold> {
 
   void _begin() {
     cancelled = false;
+    cancelArmed = false;
     holding = true;
     if (widget.cancelBelow || widget.cancelLeft) {
       controlSize = tile.size;
@@ -581,6 +600,26 @@ class _PreviewHoldState extends State<PreviewHold> {
     widget.onFinish(cancel);
   }
 
+  Widget _cancelLabel() => const Center(
+    child: FittedBox(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.close, color: Colors.white, size: 20),
+          SizedBox(width: 6),
+          Text(
+            'Cancel',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              fontSize: 12,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+
   @override
   Widget build(BuildContext context) => OverlayPortal(
     controller: _overlay,
@@ -590,40 +629,75 @@ class _PreviewHoldState extends State<PreviewHold> {
       child: CompositedTransformFollower(
         link: _link,
         showWhenUnlinked: false,
-        offset: widget.cancelLeft
-            ? const Offset(-84, 0)
-            : Offset(0, controlSize.height + 4),
-        child: SizedBox(
-          width: widget.cancelLeft ? 80 : controlSize.width,
-          height: widget.cancelLeft
-              ? controlSize.height
-              : controlSize.height / 3,
-          child: IgnorePointer(
-            child: Material(
-              color: const Color(0xffb52d43),
-              borderRadius: BorderRadius.circular(12),
-              elevation: 8,
-              child: const Center(
-                child: FittedBox(
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
+        offset: widget.cancelLeft ? const Offset(-80, 0) : Offset.zero,
+        child: IgnorePointer(
+          child: widget.cancelLeft
+              ? SizedBox(
+                  width: 80 + controlSize.width,
+                  height: controlSize.height,
+                  child: Stack(
                     children: [
-                      Icon(Icons.close, color: Colors.white, size: 20),
-                      SizedBox(width: 6),
-                      Text(
-                        'Cancel',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 12,
+                      Positioned(
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: 80 + controlSize.width * .28,
+                        child: Material(
+                          color: cancelColor,
+                          borderRadius: BorderRadius.circular(6),
+                          elevation: 8,
                         ),
+                      ),
+                      Positioned(
+                        left: 0,
+                        top: 0,
+                        bottom: 0,
+                        width: 80,
+                        child: _cancelLabel(),
+                      ),
+                      Positioned(
+                        left: 80,
+                        top: 0,
+                        bottom: 0,
+                        width: controlSize.width,
+                        child: ExcludeSemantics(child: widget.child),
+                      ),
+                    ],
+                  ),
+                )
+              : SizedBox(
+                  width: controlSize.width,
+                  height: controlSize.height * 4 / 3,
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        top: controlSize.height * .72,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: Material(
+                          color: cancelColor,
+                          borderRadius: BorderRadius.circular(14),
+                          elevation: 8,
+                        ),
+                      ),
+                      Positioned(
+                        top: controlSize.height,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: _cancelLabel(),
+                      ),
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        height: controlSize.height,
+                        child: ExcludeSemantics(child: widget.child),
                       ),
                     ],
                   ),
                 ),
-              ),
-            ),
-          ),
         ),
       ),
     ),
@@ -641,16 +715,18 @@ class _PreviewHoldState extends State<PreviewHold> {
             onLongPressStart: (_) => _begin(),
             onLongPressMoveUpdate: (details) {
               if (!holding || cancelled) return;
-              final cancel = (widget.cancelBelow || widget.cancelLeft)
-                  ? cancelZone.contains(details.globalPosition)
-                  : details.offsetFromOrigin.distance > cancelDistance;
-              if (cancel) _finish(true);
+              if (widget.cancelBelow || widget.cancelLeft) {
+                final armed = cancelZone.contains(details.globalPosition);
+                if (armed != cancelArmed) setState(() => cancelArmed = armed);
+              } else if (details.offsetFromOrigin.distance > cancelDistance) {
+                _finish(true);
+              }
             },
             onLongPressEnd: (details) {
               if (!cancelled) {
                 _finish(
                   (widget.cancelBelow || widget.cancelLeft) &&
-                      !tile.contains(details.globalPosition),
+                      cancelZone.contains(details.globalPosition),
                 );
               }
             },

@@ -6,6 +6,38 @@ import 'talk_first.dart';
 
 void main() {
   testWidgets(
+    'detail cancel sheet covers navigation and release cancels without navigating',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(360, 740));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: studioTheme(Brightness.dark),
+          home: const TalkFirstPreview(initialDetail: 0),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final talk = find.byKey(const ValueKey('talk-0'));
+      final before = tester.getRect(talk);
+      final hold = await tester.startGesture(tester.getCenter(talk));
+      await tester.pump(const Duration(milliseconds: 600));
+      final cancel = tester.getCenter(find.text('Cancel'));
+      expect(
+        cancel.dy,
+        greaterThan(tester.getTopLeft(find.byType(NavigationBar)).dy),
+      );
+      expect(cancel.dy, lessThan(740));
+      await hold.moveTo(cancel);
+      await tester.pump();
+      expect(tester.getRect(talk), before);
+      await hold.up();
+      await tester.pumpAndSettle();
+      expect(find.text('Recording preview cancelled'), findsOneWidget);
+      expect(find.byKey(const ValueKey('talk-0')), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'Recent cancel preview follows Reply after the reversed list settles',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(360, 740));
@@ -20,7 +52,7 @@ void main() {
       final reply = tester.getRect(find.byKey(const ValueKey('reply-6')));
       final cancel = tester.getRect(find.text('Cancel'));
       expect(cancel.center.dy, closeTo(reply.center.dy, 1));
-      expect(cancel.right, lessThan(reply.left));
+      expect(cancel.right, lessThanOrEqualTo(reply.left));
     },
   );
 
@@ -61,7 +93,7 @@ void main() {
         final gesture = await tester.startGesture(tester.getCenter(portrait));
         await tester.pump(const Duration(milliseconds: 600));
         expect(tester.getRect(portrait), before);
-        expect(find.text('Recording…'), findsOneWidget);
+        expect(find.text('Recording…'), findsWidgets);
         expect(find.textContaining('drag away to cancel'), findsNothing);
         await gesture.up();
         await tester.pumpAndSettle();
@@ -78,7 +110,7 @@ void main() {
 
   for (final left in [false, true]) {
     testWidgets(
-      'visible ${left ? 'left' : 'below'} target governs cancellation and outside release cannot send',
+      'visible ${left ? 'left' : 'below'} target cancels only on release and moving back sends',
       (tester) async {
         final outcomes = <bool>[];
         await tester.pumpWidget(
@@ -108,12 +140,18 @@ void main() {
         await tester.pump();
         await gesture.moveTo(origin);
         await gesture.up();
-        expect(outcomes, [true]);
+        expect(outcomes, [false]);
         final outside = await tester.startGesture(origin);
         await tester.pump(const Duration(milliseconds: 600));
         await outside.moveBy(const Offset(220, 0));
         await outside.up();
-        expect(outcomes, [true, true]);
+        expect(outcomes, [false, false]);
+        final releaseCancel = await tester.startGesture(origin);
+        await tester.pump(const Duration(milliseconds: 600));
+        await releaseCancel.moveTo(tester.getCenter(find.text('Cancel')));
+        expect(outcomes, [false, false]);
+        await releaseCancel.up();
+        expect(outcomes, [false, false, true]);
       },
     );
   }

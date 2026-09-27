@@ -29,6 +29,13 @@ class Catalog extends StatelessWidget {
             builder: (_) => const TalkFirstPreview(initialDetail: 0),
           ),
           WidgetbookUseCase(
+            name: 'Agent detail · cancel over navigation',
+            builder: (_) => const TalkFirstPreview(
+              initialDetail: 0,
+              showDetailCancel: true,
+            ),
+          ),
+          WidgetbookUseCase(
             name: 'Recent · Auto recipient',
             builder: (_) =>
                 const TalkFirstPreview(initialTab: 1, initialAuto: true),
