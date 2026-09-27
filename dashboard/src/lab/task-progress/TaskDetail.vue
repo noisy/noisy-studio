@@ -1,0 +1,157 @@
+<script setup lang="ts">
+import { computed } from "vue";
+import type { Work } from "./fixtures";
+const props = defineProps<{ work: Work; variant?: "checklist" | "owners" }>();
+const owners = computed(() => [
+  ...new Set(props.work.tasks?.map((t) => t.owner)),
+]);
+const groups = computed(() =>
+  props.variant === "owners"
+    ? owners.value.map((owner) => ({
+        owner,
+        tasks: props.work.tasks?.filter((t) => t.owner === owner) ?? [],
+      }))
+    : [
+        {
+          owner: props.work.name + " + specialists",
+          tasks: props.work.tasks ?? [],
+        },
+      ],
+);
+const icons = { done: "✓", working: "●", pending: "○", blocked: "!" };
+</script>
+<template>
+  <section class="detail" aria-label="Conversation task details">
+    <header>
+      <strong>{{ work.topic }}</strong
+      ><span>{{ work.name }} · {{ work.updated }}</span>
+    </header>
+    <p v-if="work.tasks === null" class="quiet">
+      No task info. This agent has not supplied a task list.
+    </p>
+    <p v-else-if="!work.tasks.length" class="quiet">
+      No active tasks. Ready for the next request.
+    </p>
+    <div v-else class="task-scroll" tabindex="0" aria-label="Scrollable tasks">
+      <section v-for="group in groups" :key="group.owner" class="group">
+        <h4>{{ group.owner }}</h4>
+        <div
+          v-for="task in group.tasks"
+          :key="task.title"
+          class="task"
+          :class="task.state"
+        >
+          <span class="symbol" :aria-label="task.state">{{
+            icons[task.state]
+          }}</span>
+          <div>
+            <strong>{{ task.title }}</strong
+            ><small>{{
+              variant === "owners"
+                ? task.state
+                : task.owner + " · " + task.state
+            }}</small>
+          </div>
+          <time>{{ task.updated }}</time>
+        </div>
+      </section>
+    </div>
+    <footer>Task counts show completed steps, not estimated time.</footer>
+  </section>
+</template>
+<style scoped>
+.detail {
+  background: var(--tp-surface);
+  border: 1px solid var(--tp-line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+header {
+  padding: 16px;
+  border-bottom: 1px solid var(--tp-line);
+}
+header strong {
+  display: block;
+  font-size: 14px;
+}
+header span {
+  display: block;
+  color: var(--tp-muted);
+  font-size: 11px;
+  margin-top: 5px;
+}
+.task-scroll {
+  height: 340px;
+  overflow: auto;
+  padding: 4px 10px 12px;
+}
+.group h4 {
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--tp-muted);
+  padding: 10px 7px;
+  margin: 0;
+}
+.task {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 55px;
+  padding: 8px;
+  border-radius: 7px;
+  box-sizing: border-box;
+}
+.task.working {
+  background: var(--tp-tint);
+}
+.task.blocked {
+  background: var(--tp-warning-bg);
+}
+.symbol {
+  width: 14px;
+  color: var(--tp-muted);
+  flex-shrink: 0;
+}
+.working .symbol,
+.done .symbol {
+  color: var(--tp-accent);
+}
+.blocked .symbol {
+  color: var(--tp-warning);
+}
+.task > div {
+  flex: 1;
+  min-width: 0;
+}
+.task strong {
+  font-weight: 500;
+  font-size: 12px;
+  display: block;
+  line-height: 1.4;
+}
+.task small {
+  display: block;
+  color: var(--tp-muted);
+  font-size: 10px;
+  margin-top: 4px;
+}
+.task time {
+  font-size: 9px;
+  color: var(--tp-muted);
+  white-space: nowrap;
+}
+.quiet {
+  height: 340px;
+  padding: 20px;
+  box-sizing: border-box;
+  color: var(--tp-muted);
+  font-size: 13px;
+}
+footer {
+  font-size: 10px;
+  color: var(--tp-muted);
+  padding: 12px 16px;
+  border-top: 1px solid var(--tp-line);
+}
+</style>
