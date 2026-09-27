@@ -3,6 +3,7 @@ export interface ReviewItem {
   title: string;
   state: "working" | "ready" | "blocked" | "done";
   owner: string;
+  model: string | null;
   completed: number;
   total: number;
   review?: string;
@@ -19,8 +20,7 @@ const stage =
 export const reviewThreads: ReviewThread[] = [
   {
     id: "release",
-    title:
-      "Prepare Noisy Studio 3.0 release and coordinate the desktop and mobile work",
+    title: "Bug fixing",
     voice: "ara",
     manager: "Main thread",
     items: [
@@ -29,6 +29,7 @@ export const reviewThreads: ReviewThread[] = [
         title: "Company Stage: department leads and specialist portraits",
         state: "ready",
         owner: "Design agent",
+        model: "GPT-6 Astra",
         completed: 4,
         total: 4,
         review: stage,
@@ -38,6 +39,7 @@ export const reviewThreads: ReviewThread[] = [
         title: "Mobile talk screen and recipient selection",
         state: "working",
         owner: "Mobile agent",
+        model: "GPT-6 Astra",
         completed: 3,
         total: 7,
       },
@@ -46,6 +48,7 @@ export const reviewThreads: ReviewThread[] = [
         title: "Provider limits and account reset times",
         state: "ready",
         owner: "Dashboard agent",
+        model: "GPT-6 Sol",
         completed: 5,
         total: 5,
         review: stage,
@@ -55,6 +58,7 @@ export const reviewThreads: ReviewThread[] = [
         title: "Investigate audio device handover after wake",
         state: "working",
         owner: "Audio agent",
+        model: "GPT-6 Sol",
         completed: 1,
         total: 3,
       },
@@ -63,6 +67,7 @@ export const reviewThreads: ReviewThread[] = [
         title: "Windows signing and native audio research",
         state: "blocked",
         owner: "Desktop agent",
+        model: null,
         completed: 2,
         total: 6,
       },
@@ -70,7 +75,7 @@ export const reviewThreads: ReviewThread[] = [
   },
   {
     id: "routing",
-    title: "Fix conversation delivery when the daemon starts after Claude",
+    title: "Bucky",
     voice: "eve",
     manager: "Solo thread",
     items: [
@@ -79,6 +84,7 @@ export const reviewThreads: ReviewThread[] = [
         title: "Restore the saved wake connection",
         state: "working",
         owner: "Main agent",
+        model: "GPT-6 Astra",
         completed: 2,
         total: 4,
       },
@@ -86,7 +92,7 @@ export const reviewThreads: ReviewThread[] = [
   },
   {
     id: "website",
-    title: "Refresh the download page for the next beta",
+    title: "QA",
     voice: "leo",
     manager: "Solo thread",
     items: [
@@ -95,6 +101,7 @@ export const reviewThreads: ReviewThread[] = [
         title: "Preview the new download section",
         state: "ready",
         owner: "Main agent",
+        model: "GPT-6 Astra",
         completed: 3,
         total: 3,
         review: stage,

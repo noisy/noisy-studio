@@ -15,3 +15,7 @@ Each includes recipient avatar/thread title, PTT or Auto state, feedback preview
 PTT pointer/Space hold-release produces synthetic text. Auto explicitly names the main thread and its button simulates feedback. Opening a review is not approving it. Approval requires confirmation and provides Undo in this demo.
 
 The artifact is static local srcdoc inside a sandboxed iframe with no scripts or privileges. Cannot Embed demonstrates a separate-tab fallback without bypassing browser embedding policies. Review links are local Storybook fixtures only. Live URL policy, recipient routing and agent reporting belong to follow-up implementation after design approval.
+
+## Preferred compact refinement
+
+Compact Header is the selected direction. Main threads use short names (Bug fixing, Bucky, QA). Every task title stays on one line, with its full title available on hover and keyboard focus. Delegated items have wider 4px bars and quiet role/model metadata; all model names are illustrative fixtures, with unavailable values explicitly labeled Model not reported. The transcript expansion is an accessible icon instead of a visible vertical label. Other header stories remain marked as alternatives for reference only.

@@ -19,9 +19,18 @@ const meta = {
 } satisfies Meta<typeof ReviewWorkspace>;
 export default meta;
 type Story = StoryObj<typeof meta>;
-export const CompactHeader: Story = { args: { header: "inline" } };
-export const ConversationRibbon: Story = { args: { header: "ribbon" } };
-export const CompanionHeader: Story = { args: { header: "companion" } };
+export const CompactHeader: Story = {
+  name: "Compact Header (preferred)",
+  args: { header: "inline" },
+};
+export const ConversationRibbon: Story = {
+  name: "Alternative: Conversation Ribbon",
+  args: { header: "ribbon" },
+};
+export const CompanionHeader: Story = {
+  name: "Alternative: Companion Header",
+  args: { header: "companion" },
+};
 export const CannotEmbed: Story = {
   args: { header: "inline", unavailable: true },
 };

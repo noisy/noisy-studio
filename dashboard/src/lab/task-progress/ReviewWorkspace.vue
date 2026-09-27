@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import App from "../../App.vue";
+import FullTaskTitle from "./FullTaskTitle.vue";
 import VoiceAvatar from "../../components/VoiceAvatar.vue";
 import { reviewThreads } from "./reviewFixtures";
 import type { ReviewItem, ReviewThread } from "./reviewFixtures";
@@ -58,11 +59,7 @@ function release() {
     feedback.value = true;
   }
 }
-const preview = `<!doctype html><html lang="en"><meta name="viewport" content="width=device-width"><style>body{margin:0;background:#172322;color:#ecebe3;font:16px system-ui;padding:65px 8%;text-align:center}small{letter-spacing:3px;color:#9eb9ac}h1{font:54px Georgia;margin:25px 0}p{color:#b5c6ba}.crew{display:flex;justify-content:center;gap:28px;margin:75px 0}.person{width:130px;padding:35px 12px;border:1px solid #64776a;border-radius:60px 60px 15px 15px;background:#233732}.person b{display:block;font:40px Georgia;color:#c6d7aa;margin-bottom:18px}.person span{font-size:12px}footer{margin-top:70px;font:22px Georgia;color:#c6d7aa}
-
-.approval-dialog { border: 0; padding: 0; border-radius: 12px; color: #e4e7ee; background: #242e3c; }
-.approval-dialog::backdrop { background: #0008; }
-</style><small>NOISY STUDIO · FICTIONAL REVIEW ARTIFACT</small><h1>A company of characters.</h1><p>Shared ambition. A whole crew of different minds.</p><div class="crew"><div class="person"><b>M</b>Mira<br><span>Design lead</span></div><div class="person"><b>R</b>Rook<br><span>Quality</span></div><div class="person"><b>L</b>Lux<br><span>Engineering</span></div></div><footer>“The team has opinions. That’s why it works.”</footer></html>`;
+const preview = `<!doctype html><html lang="en"><meta name="viewport" content="width=device-width"><style>body{margin:0;background:#172322;color:#ecebe3;font:16px system-ui;padding:65px 8%;text-align:center}small{letter-spacing:3px;color:#9eb9ac}h1{font:54px Georgia;margin:25px 0}p{color:#b5c6ba}.crew{display:flex;justify-content:center;gap:28px;margin:75px 0}.person{width:130px;padding:35px 12px;border:1px solid #64776a;border-radius:60px 60px 15px 15px;background:#233732}.person b{display:block;font:40px Georgia;color:#c6d7aa;margin-bottom:18px}.person span{font-size:12px}footer{margin-top:70px;font:22px Georgia;color:#c6d7aa}</style><small>NOISY STUDIO · FICTIONAL REVIEW ARTIFACT</small><h1>A company of characters.</h1><p>Shared ambition. A whole crew of different minds.</p><div class="crew"><div class="person"><b>M</b>Mira<br><span>Design lead</span></div><div class="person"><b>R</b>Rook<br><span>Quality</span></div><div class="person"><b>L</b>Lux<br><span>Engineering</span></div></div><footer>“The team has opinions. That’s why it works.”</footer></html>`;
 </script>
 <template>
   <div ref="root" class="task-review-lab">
@@ -75,8 +72,8 @@ const preview = `<!doctype html><html lang="en"><meta name="viewport" content="w
         <div class="ready-list">
           <article v-for="result in ready" :key="result.item.id">
             <div>
-              <strong :title="result.item.title">{{ result.item.title }}</strong
-              ><small :title="result.thread.title">{{
+              <FullTaskTitle :text="result.item.title" />
+              <small :title="result.thread.title">{{
                 result.thread.title
               }}</small>
             </div>
@@ -101,13 +98,13 @@ const preview = `<!doctype html><html lang="en"><meta name="viewport" content="w
             <h3 tabindex="0" :title="parent.title">{{ parent.title }}</h3>
             <small>{{
               parent.items.length > 1
-                ? "Manager · " + parent.items.length + " delegated work items"
-                : "Solo · no subagents"
+                ? parent.items.length + " delegated tasks"
+                : "Solo"
             }}</small>
             <div v-for="work in parent.items" :key="work.id" class="work-item">
               <div class="work-title">
-                <span tabindex="0" :title="work.title">{{ work.title }}</span
-                ><button
+                <FullTaskTitle :text="work.title" />
+                <button
                   v-if="work.review"
                   @click="open(parent, work)"
                   :aria-label="'Review ' + work.title"
@@ -116,10 +113,7 @@ const preview = `<!doctype html><html lang="en"><meta name="viewport" content="w
                 </button>
               </div>
               <div class="work-meta">
-                <small
-                  >{{ work.owner }} ·
-                  <b :class="work.state">{{ work.state }}</b></small
-                >
+                <b :class="work.state">{{ work.state }}</b>
                 <div
                   class="track"
                   :aria-label="
@@ -133,10 +127,15 @@ const preview = `<!doctype html><html lang="en"><meta name="viewport" content="w
                   />
                 </div>
               </div>
+              <small class="agent-metadata"
+                >{{ work.owner }} ·
+                {{ work.model ?? "Model not reported" }}</small
+              >
             </div>
           </section>
-        </div></section
-    ></Teleport>
+        </div>
+      </section></Teleport
+    >
     <dialog
       ref="dialog"
       class="review-dialog"
@@ -157,7 +156,7 @@ const preview = `<!doctype html><html lang="en"><meta name="viewport" content="w
           <div>
             <strong :title="thread.title">{{ thread.title }}</strong
             ><small
-              >Feedback → main thread
+              >Feedback → {{ thread.title }}
               <span v-if="thread.items.length > 1"
                 >· {{ item.owner }}’s work</span
               ></small
@@ -175,8 +174,13 @@ const preview = `<!doctype html><html lang="en"><meta name="viewport" content="w
                 : "Ready for your feedback on " + item.title + "."
             }}
           </p>
-          <button @click="transcript = !transcript" :aria-expanded="transcript">
-            Transcript
+          <button
+            @click="transcript = !transcript"
+            :aria-expanded="transcript"
+            aria-label="Expand feedback transcript"
+            title="Expand feedback transcript"
+          >
+            ⌄
           </button>
         </div>
         <div class="voice-controls">
@@ -208,7 +212,7 @@ const preview = `<!doctype html><html lang="en"><meta name="viewport" content="w
             @click="feedback = true"
             title="Simulate speech; microphone is off"
           >
-            ● Listening to main thread
+            ● Listening to {{ thread.title }}
           </button>
         </div>
         <button
@@ -832,5 +836,63 @@ a:focus-visible,
 }
 .approval-dialog::backdrop {
   background: #0008;
+}
+
+.work-title :deep(.full-task-title) {
+  flex: 1;
+  min-width: 0;
+  overflow: visible;
+  white-space: normal;
+}
+.ready-list :deep(.full-task-title) {
+  font-size: 10px;
+  line-height: 16px;
+}
+.work-meta {
+  gap: 10px;
+  margin-top: 3px;
+}
+.work-meta > b {
+  font-size: 8px;
+  font-weight: 400;
+  min-width: 35px;
+  color: #9ba5b5;
+}
+.work-meta > b.ready {
+  color: var(--brand-accent, #a8c8ef);
+}
+.work-meta > b.blocked {
+  color: #d9ad73;
+}
+.track {
+  flex: 1;
+  width: auto;
+  height: 4px;
+  border-radius: 3px;
+}
+.track i {
+  border-radius: 3px;
+}
+.agent-metadata {
+  display: block;
+  font-size: 8px !important;
+  line-height: 15px;
+  margin-top: 2px;
+}
+.work-item {
+  padding-top: 7px;
+  padding-bottom: 6px;
+}
+.thread h3 {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.conversation button {
+  writing-mode: initial;
+  font-size: 17px;
+  right: 8px;
+  top: 18px;
 }
 </style>
