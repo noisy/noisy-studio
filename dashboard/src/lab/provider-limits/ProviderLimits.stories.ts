@@ -1,0 +1,11 @@
+import type { Meta, StoryObj } from '@storybook/vue3';
+import ProviderLimits from './ProviderLimits.vue';
+const meta = { title: 'Lab/Provider Limits', component: ProviderLimits, parameters: { layout: 'fullscreen' }, args: { variant: 'strip', mixed: false, light: false }, argTypes: { variant: { control: 'select', options: ['strip', 'cards', 'ledger'] } } } satisfies Meta<typeof ProviderLimits>;
+export default meta;
+type Story = StoryObj<typeof meta>;
+export const CompactOverview: Story = {};
+export const AccountCards: Story = { args: { variant: 'cards' } };
+export const WindowLedger: Story = { args: { variant: 'ledger' } };
+export const MixedFreshness: Story = { args: { variant: 'cards', mixed: true } };
+export const LightOverview: Story = { args: { light: true } };
+export const LightMixedFreshness: Story = { args: { variant: 'cards', mixed: true, light: true } };
