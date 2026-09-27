@@ -44,6 +44,10 @@ class DirectHold extends ChangeNotifier with WidgetsBindingObserver {
   String? selectedId;
   bool auto, connected = true;
   int _queued = 0;
+  bool get displayAuto => _hold?.priorAuto ?? auto;
+  String? get displaySelectedId =>
+      _hold?.priorAuto == true ? _hold!.priorAgent : selectedId;
+  int get resetToken => _revision;
   bool get busy => _queued > 0;
   String? get heldAgentId =>
       _hold?.wanted == true && _hold?.acquired == true ? _hold!.agent : null;
@@ -64,11 +68,11 @@ class DirectHold extends ChangeNotifier with WidgetsBindingObserver {
     return _tail = _tail.then((_) async {
       try {
         await action();
-      } catch (_) {
+      } catch (error) {
         connected = false;
         _hold?.wanted = false;
         onError(
-          'Could not confirm the desktop command. Recording stopped; reconnect before trying again.',
+          error is RecordingCompatibilityException ? error.toString() : 'Could not confirm the desktop command. Reconnect before recording again.',
         );
       } finally {
         _queued--;
@@ -136,8 +140,9 @@ class DirectHold extends ChangeNotifier with WidgetsBindingObserver {
           hold.suspendedAuto) {
         if (hold.priorAgent != null) {
           final confirmed = await selectAgent(hold.priorAgent!);
-          if (confirmed != hold.priorAgent)
+          if (confirmed != hold.priorAgent) {
             throw StateError('Original recipient was not restored');
+          }
           selectedId = confirmed;
         }
         if (connected && !_disposed && hold.revision == _revision) {
@@ -186,7 +191,11 @@ class DirectHold extends ChangeNotifier with WidgetsBindingObserver {
   void observe(Snapshot snapshot) {
     if (!connected || _disposed || busy) return;
     if (_hold != null) {
-      if (snapshot.activeId != _hold!.agent ||
+      if (!snapshot.agents.any(
+            (agent) =>
+                agent.id == _hold!.agent && agent.state != AgentState.offline,
+          ) ||
+          snapshot.activeId != _hold!.agent ||
           snapshot.auto ||
           snapshot.muted) {
         _revision++;

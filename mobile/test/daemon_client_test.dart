@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
@@ -6,6 +7,63 @@ import 'package:http/testing.dart';
 import 'package:noisy_studio_mobile/core/daemon_client.dart';
 
 void main() {
+  test(
+    'poll started before a command cannot publish stale recipient afterwards',
+    () async {
+      final pending = Completer<http.Response>();
+      var polls = 0;
+      final remote = DaemonClient(
+        'http://localhost:7765',
+        pollInterval: const Duration(milliseconds: 1),
+        client: MockClient((request) async {
+          if (request.url.path == '/active-agent') {
+            return http.Response('{"active_agent":"a2"}', 200);
+          }
+          if (request.url.path == '/utterances') {
+            return http.Response('{"utterances":[]}', 200);
+          }
+          polls++;
+          if (polls == 1) return pending.future;
+          return http.Response('{"active_agent":"a2"}', 200);
+        }),
+      );
+      final next = remote.watch().first;
+      await Future<void>.delayed(Duration.zero);
+      await remote.selectAgent('a2');
+      pending.complete(http.Response('{"active_agent":"a1"}', 200));
+      expect((await next).activeId, 'a2');
+      await remote.close();
+    },
+  );
+  test(
+    'discard waits for abort consumption and rejects an older daemon',
+    () async {
+      var count = 0;
+      var old = false;
+      final remote = DaemonClient(
+        'http://localhost:7765',
+        client: MockClient((_) async {
+          count++;
+          return http.Response(
+            jsonEncode({
+              'recording': false,
+              if (!old) 'recording_abort_pending': count == 1,
+            }),
+            200,
+          );
+        }),
+      );
+      await remote.waitForRecordingIdle(discarded: true);
+      expect(count, 2);
+      old = true;
+      await expectLater(
+        remote.waitForRecordingIdle(discarded: true),
+        throwsA(isA<RecordingCompatibilityException>()),
+      );
+      await remote.close();
+    },
+  );
+
   test(
     'selection honors server alias resolution and rejects absent confirmation',
     () async {

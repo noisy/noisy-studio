@@ -9,6 +9,13 @@ abstract interface class DaemonCommands {
   Future<void> post(String path, Map<String, Object> body);
 }
 
+class RecordingCompatibilityException implements Exception {
+  const RecordingCompatibilityException();
+  @override
+  String toString() =>
+      'Update or restart Noisy Studio on your desktop to finish safe recording cleanup. Auto stays off.';
+}
+
 class DaemonAccessException implements Exception {
   const DaemonAccessException(this.status);
   final int status;
@@ -130,9 +137,13 @@ class DaemonClient implements DaemonCommands {
     final deadline = DateTime.now().add(const Duration(seconds: 6));
     while (!_closed && DateTime.now().isBefore(deadline)) {
       final status = await _get('/status');
+      if (discarded && !status.containsKey('recording_abort_pending')) {
+        throw const RecordingCompatibilityException();
+      }
       if (status['recording'] == false &&
-          (!discarded || status['recording_abort_pending'] == false))
+          (!discarded || status['recording_abort_pending'] == false)) {
         return;
+      }
       await Future<void>.delayed(const Duration(milliseconds: 100));
     }
     throw StateError(
