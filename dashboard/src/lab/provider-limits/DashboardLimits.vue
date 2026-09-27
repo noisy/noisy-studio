@@ -141,7 +141,7 @@ onBeforeUnmount(() => {
                 :aria-label="
                   resetTooltip(provider.name, window.label, window.seconds)
                 "
-                >{{ variant === "legend" ? "↻ " : "resets "
+                >{{ variant === "legend" ? "↻ " : "resets in "
                 }}{{ countdown(window.seconds) }}</span
               >
             </div>
@@ -472,7 +472,7 @@ onBeforeUnmount(() => {
   margin-left: 6px;
 }
 .quota-row {
-  grid-template-columns: 44px minmax(0, 1fr) 27px 67px;
+  grid-template-columns: 44px minmax(0, 1fr) 27px 75px;
   gap: 5px;
 }
 .reset-time {
