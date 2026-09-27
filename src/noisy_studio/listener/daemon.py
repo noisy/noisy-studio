@@ -433,6 +433,8 @@ def run(config: VadConfig | None = None) -> None:
     port = int(os.environ.get(PORT_ENV_VAR, str(DEFAULT_PORT)))
 
     state = ListenerState()
+    from noisy_studio.listener.task_progress import TaskProgressStore
+    state.task_progress = TaskProgressStore(CONFIG_DIR / "task-progress.json")
     state.microphone_sample.sample_rate = config.sample_rate
     state.set_mode(os.environ.get(MODE_ENV_VAR, "live"))
     state.set_language(os.environ.get(STT_LANGUAGE_ENV_VAR, ""))

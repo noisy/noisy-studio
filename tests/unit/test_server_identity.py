@@ -99,3 +99,26 @@ def test_the_server_derives_no_identity_of_its_own():
     assert not hasattr(server, "_cwd_agent")
     assert not hasattr(server, "_register_agent")
     assert not hasattr(server, "_SESSIONS_MAP")
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_task_report_keeps_hook_identity_and_delegated_reporter(monkeypatch):
+    monkeypatch.setenv("NOISY_STUDIO_LISTENER_PORT", "12345")
+    route = respx.post("http://127.0.0.1:12345/task-report").mock(return_value=httpx.Response(200, json={"task": {}}))
+
+    await server.report_task("task-1", "Prepare design", "working", agent_id="thread-1", reporter_id="child-1")
+
+    assert json.loads(route.calls[0].request.content) == {"agent": "thread-1", "reporter_id": "child-1", "report": {"task_id": "task-1", "title": "Prepare design", "state": "working", "revision": 1, "completed": None, "total": None, "participant": None, "role": None, "model": None, "review": None}}
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_task_report_without_hook_identity_never_submits(monkeypatch):
+    monkeypatch.setenv("NOISY_STUDIO_LISTENER_PORT", "12345")
+    respx.post("http://127.0.0.1:12345/event").mock(return_value=httpx.Response(200, json={"ok": True}))
+    route = respx.post("http://127.0.0.1:12345/task-report").mock(return_value=httpx.Response(200, json={}))
+
+    result = await server.report_task("task-1", "Prepare design", "working")
+
+    assert ("identity is missing" in result["error"], route.called) == (True, False)

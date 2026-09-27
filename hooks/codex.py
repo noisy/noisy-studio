@@ -12,7 +12,7 @@ from pathlib import Path
 from _codex_config import configure
 
 HOOKS = Path(__file__).resolve().parent
-IDENTITY_TOOLS = re.compile(r"^mcp__[^\s]*noisy[_-]studio[^\s]*__(speak|announce|change_voice)$")
+IDENTITY_TOOLS = re.compile(r"^mcp__[^\s]*noisy[_-]studio[^\s]*__(speak|announce|change_voice|report_task|list_tasks)$")
 SCRIPTS = {
     "SessionStart": "user_prompt_submit.py",
     "UserPromptSubmit": "user_prompt_submit.py",
@@ -68,6 +68,8 @@ def main():
         if not isinstance(arguments, dict):
             warn("noisy-studio: speech arguments must be an object.", block=True)
             return
+        if str(payload.get("tool_name", "")).endswith(("__report_task", "__list_tasks")):
+            arguments = {**arguments, "reporter_id": payload.get("agent_id") or None}
         # Always overwrite model-supplied identity, including a forged value.
         print(json.dumps({"hookSpecificOutput": {
             "hookEventName": "PreToolUse", "permissionDecision": "allow",
