@@ -82,11 +82,19 @@ class ConversationRegistry:
         self._by_key: dict[str, Conversation] = {}
         self._alias: dict[str, str] = {}
         self._capabilities: dict[str, Capabilities] = {}
+        self._usage_providers: dict[str, str] = {}
         if path is not None:
             self._load()
             self.providers.restore_connections()
 
     # -- identity -----------------------------------------------------
+
+    def set_usage_provider(self, key: str, provider: str | None) -> None:
+        # Presentation metadata must never reclassify a conversation's delivery
+        # transport or lifecycle. Kept outside row data for rollback compatibility.
+        if key in self._by_key and provider in ("claude", "codex", "grok"):
+            self._usage_providers[key] = provider
+            self._save()
 
     def resolve(self, presented: str) -> str | None:
         """The conversation key an id refers to, or None if unknown."""
@@ -289,6 +297,7 @@ class ConversationRegistry:
                 "title": conversation_title(c.title),
                 "short_id": c.short_id,
                 "harness": c.harness,
+                "usage_provider": self._usage_providers.get(key),
                 "status": self.status(key),
                 "deaf_reason": self.deaf_reason(key),
                 "position": c.position,
@@ -320,6 +329,7 @@ class ConversationRegistry:
             "conversations": [
                 {**asdict(c), "listener": None} for c in self._by_key.values()
             ],
+            "usage_providers": dict(self._usage_providers),
             "capabilities": {name: asdict(caps) for name, caps in self._capabilities.items()},
         }
         try:
@@ -371,6 +381,10 @@ class ConversationRegistry:
             self._by_key[conversation.key] = conversation
             for alias in conversation.aliases:
                 self._alias[alias] = conversation.key
+        self._usage_providers = {
+            key: provider for key, provider in data.get("usage_providers", {}).items()
+            if key in self._by_key and provider in ("claude", "codex", "grok")
+        } if isinstance(data.get("usage_providers", {}), dict) else {}
         for name, caps in data.get("capabilities", {}).items():
             try:
                 self._capabilities[provider_name(name)] = Capabilities(**caps)

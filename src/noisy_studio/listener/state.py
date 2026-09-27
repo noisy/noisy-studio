@@ -119,6 +119,8 @@ class ListenerState:
         # listener lease, status). The daemon swaps in a persisted one at
         # boot; tests get an in-memory registry.
         self.conversations = ConversationRegistry()
+        from noisy_studio.listener.provider_usage import ProviderUsage
+        self.provider_usage = ProviderUsage()
         # Signals every change to the recording/paused/muted flags, so
         # waiters (the playback gate) block on a condition instead of polling.
         self._turn_cond = threading.Condition(self._lock)

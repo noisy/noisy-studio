@@ -42,6 +42,10 @@ def read_payload() -> dict:
 
 def run(harness: str, payload: dict, listen_seconds: float | None = None) -> int:
     """Handle one hook invocation; returns the process exit code."""
+    import _provider_usage
+    provider = {"claude-hooks": "claude", "codex-hooks": "codex"}.get(harness)
+    if provider:
+        payload = {**payload, "noisy_studio_usage_scope": _provider_usage.connection_scope(provider)}
     body = {"harness": harness, "payload": payload}
     if listen_seconds is not None:
         body["listen_seconds"] = listen_seconds
@@ -68,6 +72,13 @@ def run(harness: str, payload: dict, listen_seconds: float | None = None) -> int
             }
         print(json.dumps(output))
         return 0
+
+    if harness == "codex-hooks" and reply.get("conversation") and not reply.get("participant"):
+        try:
+            import _provider_usage
+            _provider_usage.schedule_codex(reply["conversation"])
+        except Exception:
+            pass  # Quota collection must never delay or break voice delivery.
 
     if event_name == "PreToolUse":
         return _pre_tool_use(payload, reply)

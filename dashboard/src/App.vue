@@ -17,6 +17,7 @@ import SpeechSettings from "./components/SpeechSettings.vue";
 import HudPanel from "./components/HudPanel.vue";
 import Oscilloscope from "./components/Oscilloscope.vue";
 import TurnHistory from "./components/TurnHistory.vue";
+import ProviderLimits from "./components/ProviderLimits.vue";
 import AudioControls from "./components/AudioControls.vue";
 import { AUDIO_PANEL_WIDTH, type AudioChange } from "./components/audioControls";
 import { useAudioControlVisibility } from "./composables/useAudioControlVisibility";
@@ -498,6 +499,7 @@ function changeAudio({id,value}: AudioChange) {
         </HudPanel>
         <!-- Global, machine-wide cost/state: deliberately OUTSIDE the
              conversation frame — the daemon meters all conversations. -->
+        <ProviderLimits :providers="status?.provider_usage ?? []" :offline="offline" />
         <HudPanel index="05" title="Session usage">
           <StatusStrip :status="status" :offline="offline" />
         </HudPanel>
