@@ -26,6 +26,37 @@ void main() {
     );
   });
 
+  for (final auto in [false, true]) {
+    testWidgets(
+      'portrait position stays fixed during and after hold (Auto: $auto)',
+      (tester) async {
+        await tester.pumpWidget(
+          MaterialApp(
+            theme: studioTheme(Brightness.dark),
+            home: TalkFirstPreview(initialAuto: auto),
+          ),
+        );
+        await tester.pumpAndSettle();
+        final portrait = find.byKey(const ValueKey('portrait-0'));
+        final before = tester.getRect(portrait);
+        final gesture = await tester.startGesture(tester.getCenter(portrait));
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(tester.getRect(portrait), before);
+        expect(find.text('Recording…'), findsOneWidget);
+        expect(find.textContaining('drag away to cancel'), findsNothing);
+        await gesture.up();
+        await tester.pumpAndSettle();
+        expect(tester.getRect(portrait), before);
+        final cancelled = await tester.startGesture(tester.getCenter(portrait));
+        await tester.pump(const Duration(milliseconds: 600));
+        await cancelled.moveBy(const Offset(80, 0));
+        await cancelled.up();
+        await tester.pumpAndSettle();
+        expect(tester.getRect(portrait), before);
+      },
+    );
+  }
+
   testWidgets(
     'a portrait hold sends without opening detail; dragging cancels',
     (tester) async {

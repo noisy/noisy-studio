@@ -120,19 +120,7 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
               tooltip: 'Back',
             ),
       title: Text(detail == null ? 'Noisy Studio' : _crew[detail!].name),
-      actions: [
-        Tooltip(
-          message: 'Desktop connected · design preview',
-          child: Icon(
-            Icons.link,
-            size: 18,
-            color: Theme.of(context).colorScheme.primary,
-          ),
-        ),
-        const SizedBox(width: 8),
-        _mode(),
-        const SizedBox(width: 12),
-      ],
+      actions: [_mode(), const SizedBox(width: 12)],
     ),
     body: detail != null
         ? _detail(detail!)
@@ -175,7 +163,11 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
       ),
     ),
     segments: const [
-      ButtonSegment(value: false, label: Text('PTT'), tooltip: 'Push to talk'),
+      ButtonSegment(
+        value: false,
+        label: Text('Push to talk'),
+        tooltip: 'Push to talk',
+      ),
       ButtonSegment(
         value: true,
         label: Text('Auto'),
@@ -190,11 +182,12 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
     }),
   );
 
-  Widget _status() {
+  Widget _status({bool crew = false}) {
+    if (crew && !auto) return const SizedBox.shrink();
     if (held == null && !auto && feedback == null) {
       return const SizedBox.shrink();
     }
-    final text = held != null
+    final text = !crew && held != null
         ? 'Recording → ${_crew[held!].name} · drag away to cancel'
         : auto
         ? '${paused ? 'Auto paused' : 'Auto listening'} → ${_crew[selected].name}'
@@ -211,7 +204,7 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
           const Icon(Icons.mic_none, size: 20),
           const SizedBox(width: 8),
           Expanded(child: Text(text, style: const TextStyle(fontSize: 12))),
-          if (auto && held == null)
+          if (auto && (held == null || crew))
             IconButton(
               visualDensity: VisualDensity.compact,
               tooltip: paused ? 'Resume Auto' : 'Pause Auto',
@@ -226,7 +219,7 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
   Widget _agents() => ListView(
     padding: const EdgeInsets.fromLTRB(16, 4, 16, 20),
     children: [
-      _status(),
+      _status(crew: true),
       GridView.count(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
@@ -414,42 +407,40 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
             final index = int.parse(message.agentId.substring(1)) - 1;
             return Padding(
               padding: const EdgeInsets.only(bottom: 14),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+              child: Stack(
                 children: [
                   MessageCard(message: message),
                   if (message.role != 'user')
-                    Padding(
-                      padding: const EdgeInsets.only(top: 5),
+                    Positioned(
+                      bottom: 4,
+                      right: 8,
                       child: PreviewHold(
                         key: ValueKey('reply-${message.id}'),
                         onStart: () => startHold(index),
                         onFinish: finishHold,
                         label: 'Hold to reply to ${_crew[index].name}',
-                        child: Container(
+                        child: Padding(
                           padding: const EdgeInsets.symmetric(
-                            vertical: 12,
-                            horizontal: 14,
-                          ),
-                          decoration: BoxDecoration(
-                            color: Theme.of(context).colorScheme.primary
-                                .withValues(alpha: .1),
-                            borderRadius: BorderRadius.circular(10),
+                            horizontal: 6,
+                            vertical: 6,
                           ),
                           child: Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Icon(
-                                held == index ? Icons.graphic_eq : Icons.mic,
-                                size: 24,
-                              ),
-                              const SizedBox(width: 10),
-                              Text(
                                 held == index
-                                    ? 'Release to send to ${_crew[index].name}'
-                                    : 'Hold to reply to ${_crew[index].name}',
-                                style: const TextStyle(
+                                    ? Icons.graphic_eq
+                                    : Icons.mic_none,
+                                size: 16,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Reply',
+                                style: TextStyle(
+                                  fontSize: 11,
                                   fontWeight: FontWeight.w600,
-                                  fontSize: 12,
+                                  color: Theme.of(context).colorScheme.primary,
                                 ),
                               ),
                             ],
