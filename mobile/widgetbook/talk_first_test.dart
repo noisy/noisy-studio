@@ -6,6 +6,40 @@ import 'talk_first.dart';
 
 void main() {
   testWidgets(
+    'half-revealed sheet ignores invisible area but cancels on exposed red',
+    (tester) async {
+      final outcomes = <bool>[];
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: Center(
+              child: PreviewHold(
+                cancelBelow: true,
+                label: 'Target',
+                onStart: () {},
+                onFinish: outcomes.add,
+                child: const SizedBox(width: 200, height: 150),
+              ),
+            ),
+          ),
+        ),
+      );
+      final target = find.byType(PreviewHold);
+      final rect = tester.getRect(target);
+      for (final depth in [48.0, 10.0]) {
+        final gesture = await tester.startGesture(rect.center);
+        await tester.pump(const Duration(milliseconds: 600));
+        await tester.pump(const Duration(milliseconds: 90));
+        expect(tester.getRect(target), rect);
+        await gesture.moveTo(Offset(rect.center.dx, rect.bottom + depth));
+        await gesture.up();
+        await tester.pump();
+      }
+      expect(outcomes, [false, true]);
+    },
+  );
+
+  testWidgets(
     'detail cancel sheet covers navigation and release cancels without navigating',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(360, 740));
@@ -21,6 +55,13 @@ void main() {
       final before = tester.getRect(talk);
       final hold = await tester.startGesture(tester.getCenter(talk));
       await tester.pump(const Duration(milliseconds: 600));
+      await tester.pump(const Duration(milliseconds: 200));
+      final red = tester.getRect(find.byKey(const ValueKey('cancel-sheet')));
+      final navigation = tester.getRect(find.byType(NavigationBar));
+      expect(red.left, lessThanOrEqualTo(navigation.left));
+      expect(red.right, greaterThanOrEqualTo(navigation.right));
+      expect(red.top, lessThanOrEqualTo(navigation.top));
+      expect(red.bottom, greaterThanOrEqualTo(navigation.bottom));
       final cancel = tester.getCenter(find.text('Cancel'));
       expect(
         cancel.dy,
@@ -92,6 +133,7 @@ void main() {
         final before = tester.getRect(portrait);
         final gesture = await tester.startGesture(tester.getCenter(portrait));
         await tester.pump(const Duration(milliseconds: 600));
+        await tester.pump(const Duration(milliseconds: 200));
         expect(tester.getRect(portrait), before);
         expect(find.text('Recording…'), findsWidgets);
         expect(find.textContaining('drag away to cancel'), findsNothing);
@@ -100,6 +142,7 @@ void main() {
         expect(tester.getRect(portrait), before);
         final cancelled = await tester.startGesture(tester.getCenter(portrait));
         await tester.pump(const Duration(milliseconds: 600));
+        await tester.pump(const Duration(milliseconds: 200));
         await cancelled.moveBy(const Offset(80, 0));
         await cancelled.up();
         await tester.pumpAndSettle();
@@ -133,6 +176,7 @@ void main() {
         final origin = tester.getCenter(target);
         final gesture = await tester.startGesture(origin);
         await tester.pump(const Duration(milliseconds: 600));
+        await tester.pump(const Duration(milliseconds: 200));
         await gesture.moveBy(Offset(left ? -60 : 0, left ? 0 : 60));
         expect(outcomes, isEmpty);
         final cancel = find.text('Cancel');
@@ -143,11 +187,13 @@ void main() {
         expect(outcomes, [false]);
         final outside = await tester.startGesture(origin);
         await tester.pump(const Duration(milliseconds: 600));
+        await tester.pump(const Duration(milliseconds: 200));
         await outside.moveBy(const Offset(220, 0));
         await outside.up();
         expect(outcomes, [false, false]);
         final releaseCancel = await tester.startGesture(origin);
         await tester.pump(const Duration(milliseconds: 600));
+        await tester.pump(const Duration(milliseconds: 200));
         await releaseCancel.moveTo(tester.getCenter(find.text('Cancel')));
         expect(outcomes, [false, false]);
         await releaseCancel.up();
@@ -171,6 +217,7 @@ void main() {
       final before = tester.getRect(portrait);
       final gesture = await tester.startGesture(tester.getCenter(portrait));
       await tester.pump(const Duration(milliseconds: 600));
+      await tester.pump(const Duration(milliseconds: 200));
       expect(tester.getRect(portrait), before);
       expect(
         tester.getBottomLeft(find.text('Cancel')).dy,
@@ -203,6 +250,7 @@ void main() {
       await tester.pump();
       final gesture = await tester.startGesture(tester.getCenter(target));
       await tester.pump(const Duration(milliseconds: 600));
+      await tester.pump(const Duration(milliseconds: 200));
       await gesture.moveBy(const Offset(80, 0));
       await gesture.up();
       await tester.pump();
@@ -268,6 +316,7 @@ void main() {
       final before = tester.getRect(reply);
       final gesture = await tester.startGesture(tester.getCenter(reply));
       await tester.pump(const Duration(milliseconds: 600));
+      await tester.pump(const Duration(milliseconds: 200));
       expect(find.text('Cancel'), findsOneWidget);
       expect(tester.getRect(reply), before);
       expect(find.text('Auto listening → Lux'), findsOneWidget);

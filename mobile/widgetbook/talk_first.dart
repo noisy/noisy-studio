@@ -97,6 +97,12 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
       : widget.showRecentCancel
       ? 2
       : null;
+  final _navigationKey = GlobalKey();
+  Rect _navigationRect() {
+    final box = _navigationKey.currentContext!.findRenderObject()! as RenderBox;
+    return box.localToGlobal(Offset.zero) & box.size;
+  }
+
   bool paused = false;
   String? feedback;
 
@@ -139,24 +145,28 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
         : tab == 2
         ? const Center(child: Text('Connection and preferences'))
         : _agents(),
-    bottomNavigationBar: NavigationBar(
-      selectedIndex: tab,
-      onDestinationSelected: (value) => setState(() {
-        tab = value;
-        detail = null;
-        held = null;
-      }),
-      destinations: const [
-        NavigationDestination(
-          icon: Icon(Icons.people_outline),
-          label: 'Agents',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.forum_outlined),
-          label: 'Recent',
-        ),
-        NavigationDestination(icon: Icon(Icons.tune), label: 'Settings'),
-      ],
+    bottomNavigationBar: AbsorbPointer(
+      absorbing: held != null,
+      child: NavigationBar(
+        key: _navigationKey,
+        selectedIndex: tab,
+        onDestinationSelected: (value) => setState(() {
+          tab = value;
+          detail = null;
+          held = null;
+        }),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.people_outline),
+            label: 'Agents',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.forum_outlined),
+            label: 'Recent',
+          ),
+          NavigationDestination(icon: Icon(Icons.tune), label: 'Settings'),
+        ],
+      ),
     ),
   );
 
@@ -303,6 +313,7 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
 
   Widget _talkSurface(int index) => PreviewHold(
     key: ValueKey('talk-$index'),
+    cancelArea: _navigationRect,
     cancelBelow: true,
     initiallyHeld: widget.showDetailCancel,
     onStart: () => startHold(index),
@@ -533,6 +544,7 @@ class PreviewHold extends StatefulWidget {
     this.cancelBelow = false,
     this.cancelLeft = false,
     this.initiallyHeld = false,
+    this.cancelArea,
   });
   final Widget child;
   final String label;
@@ -542,17 +554,32 @@ class PreviewHold extends StatefulWidget {
   final bool cancelBelow;
   final bool cancelLeft;
   final bool initiallyHeld;
+  final Rect Function()? cancelArea;
   @override
   State<PreviewHold> createState() => _PreviewHoldState();
 }
 
-class _PreviewHoldState extends State<PreviewHold> {
+class _PreviewHoldState extends State<PreviewHold>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _reveal = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 180),
+  );
+  double get progress => Curves.easeOutCubic.transform(_reveal.value);
+  Offset? _pointer;
+  @override
+  void dispose() {
+    _reveal.dispose();
+    super.dispose();
+  }
+
   static const cancelDistance = 48.0;
   final _overlay = OverlayPortalController();
   bool cancelled = false;
   bool cancelArmed = false;
-  Color get cancelColor =>
-      cancelArmed ? const Color(0xffed4058) : const Color(0xffb52d43);
+  Color get cancelColor => (_pointer != null && cancelZone.contains(_pointer!))
+      ? const Color(0xffed4058)
+      : const Color(0xffb52d43);
   bool holding = false;
   final _link = LayerLink();
   final _target = GlobalKey();
@@ -564,13 +591,27 @@ class _PreviewHoldState extends State<PreviewHold> {
 
   Rect get cancelZone {
     final current = tile;
+    if (widget.cancelArea != null) {
+      final nav = widget.cancelArea!();
+      return Rect.fromLTWH(
+        nav.left,
+        current.bottom,
+        nav.width,
+        (nav.bottom - current.bottom) * progress,
+      );
+    }
     return widget.cancelLeft
-        ? Rect.fromLTWH(current.left - 80, current.top, 80, current.height)
+        ? Rect.fromLTWH(
+            current.left - 80 * progress,
+            current.top,
+            80 * progress,
+            current.height,
+          )
         : Rect.fromLTWH(
             current.left,
             current.bottom,
             current.width,
-            current.height / 3,
+            current.height / 3 * progress,
           );
   }
 
@@ -587,9 +628,15 @@ class _PreviewHoldState extends State<PreviewHold> {
   void _begin() {
     cancelled = false;
     cancelArmed = false;
+    _pointer = null;
     holding = true;
     if (widget.cancelBelow || widget.cancelLeft) {
       controlSize = tile.size;
+      if (MediaQuery.disableAnimationsOf(context)) {
+        _reveal.value = 1;
+      } else {
+        _reveal.forward(from: 0);
+      }
       _overlay.show();
     }
     widget.onStart();
@@ -599,6 +646,7 @@ class _PreviewHoldState extends State<PreviewHold> {
     if (!holding) return;
     holding = false;
     cancelled = cancel;
+    _reveal.stop();
     _overlay.hide();
     widget.onFinish(cancel);
   }
@@ -623,32 +671,52 @@ class _PreviewHoldState extends State<PreviewHold> {
     ),
   );
 
-  @override
-  Widget build(BuildContext context) => OverlayPortal(
-    controller: _overlay,
-    overlayChildBuilder: (_) => Positioned(
-      left: 0,
-      top: 0,
-      child: CompositedTransformFollower(
-        link: _link,
-        showWhenUnlinked: false,
-        offset: widget.cancelLeft ? const Offset(-80, 0) : Offset.zero,
-        child: IgnorePointer(
-          child: widget.cancelLeft
-              ? SizedBox(
-                  width: 80 + controlSize.width,
-                  height: controlSize.height,
-                  child: Stack(
-                    children: [
+  Widget _animatedPaper() {
+    final left = widget.cancelLeft;
+    final nav = widget.cancelArea?.call();
+    final controlLeft = nav == null ? 0.0 : tile.left - nav.left;
+    final width = left
+        ? 80 + controlSize.width
+        : nav?.width ?? controlSize.width;
+    final exposed = left
+        ? 80.0
+        : nav == null
+        ? controlSize.height / 3
+        : nav.bottom - tile.bottom;
+    final height = left ? controlSize.height : controlSize.height + exposed;
+    final overlap = (left ? controlSize.width : controlSize.height) * .28;
+    final clip = left
+        ? Rect.fromLTRB(80 * (1 - progress), 0, 80 + overlap * progress, height)
+        : Rect.fromLTRB(
+            0,
+            controlSize.height - overlap * progress,
+            width,
+            controlSize.height + exposed * progress,
+          );
+    return SizedBox(
+      width: width,
+      height: height,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: ClipRect(
+              clipper: _PaperClip(clip),
+              child: Transform.translate(
+                offset: left
+                    ? Offset(exposed * (1 - progress), 0)
+                    : Offset(0, -exposed * (1 - progress)),
+                child: Stack(
+                  children: [
+                    if (left) ...[
                       Positioned(
                         left: 0,
                         top: 0,
                         bottom: 0,
-                        width: 80 + controlSize.width * .28,
+                        width: 80 + overlap,
                         child: Material(
+                          key: const ValueKey('cancel-sheet'),
                           color: cancelColor,
                           borderRadius: BorderRadius.circular(6),
-                          elevation: 8,
                         ),
                       ),
                       Positioned(
@@ -658,30 +726,16 @@ class _PreviewHoldState extends State<PreviewHold> {
                         width: 80,
                         child: _cancelLabel(),
                       ),
+                    ] else ...[
                       Positioned(
-                        left: 80,
-                        top: 0,
-                        bottom: 0,
-                        width: controlSize.width,
-                        child: ExcludeSemantics(child: widget.child),
-                      ),
-                    ],
-                  ),
-                )
-              : SizedBox(
-                  width: controlSize.width,
-                  height: controlSize.height * 4 / 3,
-                  child: Stack(
-                    children: [
-                      Positioned(
-                        top: controlSize.height * .72,
+                        top: controlSize.height - overlap,
                         left: 0,
                         right: 0,
                         bottom: 0,
                         child: Material(
+                          key: const ValueKey('cancel-sheet'),
                           color: cancelColor,
                           borderRadius: BorderRadius.circular(14),
-                          elevation: 8,
                         ),
                       ),
                       Positioned(
@@ -691,16 +745,43 @@ class _PreviewHoldState extends State<PreviewHold> {
                         bottom: 0,
                         child: _cancelLabel(),
                       ),
-                      Positioned(
-                        top: 0,
-                        left: 0,
-                        right: 0,
-                        height: controlSize.height,
-                        child: ExcludeSemantics(child: widget.child),
-                      ),
                     ],
-                  ),
+                  ],
                 ),
+              ),
+            ),
+          ),
+          Positioned(
+            left: left ? 80 : controlLeft,
+            top: 0,
+            width: controlSize.width,
+            height: controlSize.height,
+            child: ExcludeSemantics(child: widget.child),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => OverlayPortal(
+    controller: _overlay,
+    overlayChildBuilder: (_) => Positioned(
+      left: 0,
+      top: 0,
+      child: CompositedTransformFollower(
+        link: _link,
+        showWhenUnlinked: false,
+        offset: widget.cancelLeft
+            ? const Offset(-80, 0)
+            : widget.cancelArea == null
+            ? Offset.zero
+            : Offset(widget.cancelArea!().left - tile.left, 0),
+        child: IgnorePointer(
+          child: AnimatedBuilder(
+            animation: _reveal,
+            builder: (_, _) => _animatedPaper(),
+          ),
         ),
       ),
     ),
@@ -719,6 +800,7 @@ class _PreviewHoldState extends State<PreviewHold> {
             onLongPressMoveUpdate: (details) {
               if (!holding || cancelled) return;
               if (widget.cancelBelow || widget.cancelLeft) {
+                _pointer = details.globalPosition;
                 final armed = cancelZone.contains(details.globalPosition);
                 if (armed != cancelArmed) setState(() => cancelArmed = armed);
               } else if (details.offsetFromOrigin.distance > cancelDistance) {
@@ -740,4 +822,13 @@ class _PreviewHoldState extends State<PreviewHold> {
       ),
     ),
   );
+}
+
+class _PaperClip extends CustomClipper<Rect> {
+  const _PaperClip(this.rect);
+  final Rect rect;
+  @override
+  Rect getClip(Size size) => rect;
+  @override
+  bool shouldReclip(_PaperClip oldClipper) => oldClipper.rect != rect;
 }
