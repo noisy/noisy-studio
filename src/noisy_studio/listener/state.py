@@ -732,6 +732,11 @@ class ListenerState:
         with self._lock:
             self._recording_abort_requested = True
 
+    @property
+    def recording_abort_pending(self) -> bool:
+        with self._lock:
+            return self._recording_abort_requested
+
     def consume_recording_abort(self) -> bool:
         with self._lock:
             was = self._recording_abort_requested

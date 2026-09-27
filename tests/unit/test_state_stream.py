@@ -41,3 +41,21 @@ def test_provider_capability_change_reaches_status_and_stream(monkeypatch):
     assert (http_api.status_payload(state)['audio_capabilities'],
             after['status']['audio_capabilities'],
             snapshot_digest(before) != snapshot_digest(after)) == (capabilities, capabilities, True)
+
+
+def test_status_distinguishes_idle_capture_from_an_unconsumed_recording_abort(monkeypatch):
+    from noisy_studio.listener import http_api
+    from noisy_studio.listener.state import ListenerState
+
+    monkeypatch.setattr(http_api, '_maybe_refresh_latest_version', lambda state: None)
+    state = ListenerState()
+    before = http_api.status_payload(state)
+    state.request_recording_abort()
+    requested = http_api.status_payload(state)
+    state.consume_recording_abort()
+    consumed = http_api.status_payload(state)
+
+    assert [
+        (snapshot['recording'], snapshot['recording_abort_pending'])
+        for snapshot in (before, requested, consumed)
+    ] == [(False, False), (False, True), (False, False)]

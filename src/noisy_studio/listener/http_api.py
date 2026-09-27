@@ -481,6 +481,7 @@ def status_payload(state: ListenerState) -> dict:
                             "speaker_labels": state.speaker_labels(),
                             "api_key_hint": credentials.api_key_hint(),
                             "recording": state.recording,
+                            "recording_abort_pending": state.recording_abort_pending,
                             "claude_speaking": state.claude_speaking,
                             "playing_utterance_id": state.playing_utterance_id,
                             "stt_latency_ms": state.latency_ms["stt"],
