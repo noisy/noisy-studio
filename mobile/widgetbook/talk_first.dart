@@ -198,7 +198,7 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
       return const SizedBox.shrink();
     }
     final text = !crew && held != null
-        ? 'Recording → ${_crew[held!].name} · drag away to cancel'
+        ? 'Recording → ${_crew[held!].name}'
         : auto
         ? '${paused ? 'Auto paused' : 'Auto listening'} → ${_crew[selected].name}'
         : feedback ?? '';
@@ -331,7 +331,10 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
             style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
           ),
           const SizedBox(height: 4),
-          const Text('Drag away to cancel', style: TextStyle(fontSize: 11)),
+          const Text(
+            'Release on Cancel to discard',
+            style: TextStyle(fontSize: 11),
+          ),
         ],
       ),
     ),
