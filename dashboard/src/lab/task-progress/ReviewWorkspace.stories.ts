@@ -19,9 +19,9 @@ const meta = {
 } satisfies Meta<typeof ReviewWorkspace>;
 export default meta;
 type Story = StoryObj<typeof meta>;
-export const FloatingControls: Story = { args: { placement: "floating" } };
-export const TopStrip: Story = { args: { placement: "strip" } };
-export const SideDock: Story = { args: { placement: "dock" } };
+export const CompactHeader: Story = { args: { header: "inline" } };
+export const ConversationRibbon: Story = { args: { header: "ribbon" } };
+export const CompanionHeader: Story = { args: { header: "companion" } };
 export const CannotEmbed: Story = {
-  args: { placement: "floating", unavailable: true },
+  args: { header: "inline", unavailable: true },
 };

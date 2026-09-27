@@ -2,34 +2,33 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from "vue";
 import App from "../../App.vue";
 import VoiceAvatar from "../../components/VoiceAvatar.vue";
-import { conversations, counts } from "./fixtures";
-import type { Work } from "./fixtures";
-const props = withDefaults(
+import { reviewThreads } from "./reviewFixtures";
+import type { ReviewItem, ReviewThread } from "./reviewFixtures";
+withDefaults(
   defineProps<{
-    placement?: "strip" | "floating" | "dock";
+    header?: "inline" | "ribbon" | "companion";
     unavailable?: boolean;
   }>(),
-  { placement: "floating", unavailable: false },
+  { header: "inline", unavailable: false },
 );
 const root = ref<HTMLElement | null>(null),
   target = ref<HTMLElement | null>(null),
-  dialog = ref<HTMLDialogElement | null>(null);
-const selected = ref<Work>(conversations[2]!);
-const mode = ref<"auto" | "ptt">("ptt");
-const holding = ref(false),
+  dialog = ref<HTMLDialogElement | null>(null),
+  approvalDialog = ref<HTMLDialogElement | null>(null);
+const thread = ref(reviewThreads[0]!),
+  item = ref(reviewThreads[0]!.items[0]!);
+const mode = ref<"auto" | "ptt">("ptt"),
+  holding = ref(false),
   feedback = ref(false),
-  confirming = ref(false),
-  approved = ref(false);
-const position = ref({ x: 32, y: 110 });
-const dragging = ref<{ x: number; y: number } | null>(null);
-const widgetStyle = computed(() =>
-  props.placement === "floating"
-    ? { left: position.value.x + "px", top: position.value.y + "px" }
-    : {},
+  approved = ref(false),
+  transcript = ref(false);
+const ready = computed(() =>
+  reviewThreads.flatMap((thread) =>
+    thread.items
+      .filter((item) => item.state === "ready")
+      .map((item) => ({ thread, item })),
+  ),
 );
-const preview = `<!doctype html><html lang="en"><meta name="viewport" content="width=device-width"><style>body{margin:0;background:#172322;color:#ecebe3;font:16px system-ui;padding:65px 8%;text-align:center}small{letter-spacing:3px;color:#9eb9ac}h1{font:54px Georgia;margin:25px 0}p{color:#b5c6ba}.crew{display:flex;justify-content:center;gap:28px;margin:75px 0}.person{width:130px;padding:35px 12px;border:1px solid #64776a;border-radius:60px 60px 15px 15px;background:#233732}.person b{display:block;font:40px Georgia;color:#c6d7aa;margin-bottom:18px}.person span{font-size:12px}footer{margin-top:70px;font:22px Georgia;color:#c6d7aa}
-.floating .review-widget { max-height: calc(100dvh - 90px); overflow: auto; }
-</style><small>NOISY STUDIO · FICTIONAL REVIEW ARTIFACT</small><h1>A company of characters.</h1><p>Shared ambition. A whole crew of different minds.</p><div class="crew"><div class="person"><b>M</b>Mira<br><span>Design lead</span></div><div class="person"><b>R</b>Rook<br><span>Quality</span></div><div class="person"><b>L</b>Lux<br><span>Engineering</span></div></div><footer>“The team has opinions. That’s why it works.”</footer></html>`;
 onMounted(async () => {
   await nextTick();
   const rail = root.value?.querySelector(".col-left");
@@ -39,44 +38,19 @@ onMounted(async () => {
   target.value = host;
 });
 onBeforeUnmount(() => target.value?.remove());
-function open(work: Work) {
-  selected.value = work;
+function open(selectedThread: ReviewThread, selectedItem: ReviewItem) {
+  thread.value = selectedThread;
+  item.value = selectedItem;
   feedback.value = false;
   approved.value = false;
-  confirming.value = false;
+  approvalDialog.value?.close();
+  transcript.value = false;
   dialog.value?.showModal();
 }
 function close() {
   holding.value = false;
-  confirming.value = false;
+  approvalDialog.value?.close();
   dialog.value?.close();
-}
-function startDrag(event: PointerEvent) {
-  if (props.placement !== "floating") return;
-  dragging.value = {
-    x: event.clientX - position.value.x,
-    y: event.clientY - position.value.y,
-  };
-  (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-}
-function move(event: PointerEvent) {
-  if (!dragging.value) return;
-  position.value = {
-    x: Math.max(
-      8,
-      Math.min(window.innerWidth - 350, event.clientX - dragging.value.x),
-    ),
-    y: Math.max(
-      70,
-      Math.min(window.innerHeight - 320, event.clientY - dragging.value.y),
-    ),
-  };
-}
-function place(side: string) {
-  position.value = {
-    x: side === "left" ? 16 : Math.max(16, window.innerWidth - 370),
-    y: 90,
-  };
 }
 function release() {
   if (holding.value) {
@@ -84,201 +58,251 @@ function release() {
     feedback.value = true;
   }
 }
+const preview = `<!doctype html><html lang="en"><meta name="viewport" content="width=device-width"><style>body{margin:0;background:#172322;color:#ecebe3;font:16px system-ui;padding:65px 8%;text-align:center}small{letter-spacing:3px;color:#9eb9ac}h1{font:54px Georgia;margin:25px 0}p{color:#b5c6ba}.crew{display:flex;justify-content:center;gap:28px;margin:75px 0}.person{width:130px;padding:35px 12px;border:1px solid #64776a;border-radius:60px 60px 15px 15px;background:#233732}.person b{display:block;font:40px Georgia;color:#c6d7aa;margin-bottom:18px}.person span{font-size:12px}footer{margin-top:70px;font:22px Georgia;color:#c6d7aa}
+
+.approval-dialog { border: 0; padding: 0; border-radius: 12px; color: #e4e7ee; background: #242e3c; }
+.approval-dialog::backdrop { background: #0008; }
+</style><small>NOISY STUDIO · FICTIONAL REVIEW ARTIFACT</small><h1>A company of characters.</h1><p>Shared ambition. A whole crew of different minds.</p><div class="crew"><div class="person"><b>M</b>Mira<br><span>Design lead</span></div><div class="person"><b>R</b>Rook<br><span>Quality</span></div><div class="person"><b>L</b>Lux<br><span>Engineering</span></div></div><footer>“The team has opinions. That’s why it works.”</footer></html>`;
 </script>
 <template>
   <div ref="root" class="task-review-lab">
     <App /><Teleport v-if="target" :to="target"
-      ><section class="thin-tasks">
+      ><section class="task-panel">
         <header>
-          <h2>Tasks <small>demo</small></h2>
-          <span>1 ready</span>
+          <h2>Ready for review</h2>
+          <span>{{ ready.length }}</span>
         </header>
-        <div v-for="work in conversations" :key="work.id" class="thin-row">
-          <span :title="work.topic">{{ work.name }}</span>
-          <div
-            class="thin-track"
-            :aria-label="
-              work.tasks
-                ? `${counts(work).done} of ${counts(work).total} tasks complete`
-                : 'No task information'
-            "
-          >
-            <i
-              v-if="work.tasks?.length"
-              :style="{
-                width: (counts(work).done / counts(work).total) * 100 + '%',
-              }"
-            /><span v-else>no task info</span>
-          </div>
-          <button v-if="work.review" @click="open(work)">
-            {{ work.visited ? "Revisit" : "Review" }} ↗</button
-          ><small v-else>{{
-            work.state === "done"
-              ? "Done"
-              : work.state === "unknown"
-                ? "—"
-                : "Working"
-          }}</small>
+        <div class="ready-list">
+          <article v-for="result in ready" :key="result.item.id">
+            <div>
+              <strong :title="result.item.title">{{ result.item.title }}</strong
+              ><small :title="result.thread.title">{{
+                result.thread.title
+              }}</small>
+            </div>
+            <button
+              @click="open(result.thread, result.item)"
+              :aria-label="'Review ' + result.item.title"
+            >
+              Review ↗
+            </button>
+          </article>
         </div>
-        <footer>Task steps, not time estimates.</footer>
-      </section></Teleport
-    >
+        <header class="work-heading">
+          <h2>Work by thread</h2>
+          <small>demo</small>
+        </header>
+        <div class="thread-list" tabindex="0" aria-label="Thread tasks">
+          <section
+            v-for="parent in reviewThreads"
+            :key="parent.id"
+            class="thread"
+          >
+            <h3 tabindex="0" :title="parent.title">{{ parent.title }}</h3>
+            <small>{{
+              parent.items.length > 1
+                ? "Manager · " + parent.items.length + " delegated work items"
+                : "Solo · no subagents"
+            }}</small>
+            <div v-for="work in parent.items" :key="work.id" class="work-item">
+              <div class="work-title">
+                <span tabindex="0" :title="work.title">{{ work.title }}</span
+                ><button
+                  v-if="work.review"
+                  @click="open(parent, work)"
+                  :aria-label="'Review ' + work.title"
+                >
+                  ↗
+                </button>
+              </div>
+              <div class="work-meta">
+                <small
+                  >{{ work.owner }} ·
+                  <b :class="work.state">{{ work.state }}</b></small
+                >
+                <div
+                  class="track"
+                  :aria-label="
+                    work.completed + ' of ' + work.total + ' steps complete'
+                  "
+                >
+                  <i
+                    :style="{
+                      width: (work.completed / work.total) * 100 + '%',
+                    }"
+                  />
+                </div>
+              </div>
+            </div>
+          </section>
+        </div></section
+    ></Teleport>
     <dialog
       ref="dialog"
       class="review-dialog"
-      :class="placement"
+      :class="header"
       @cancel="holding = false"
     >
       <header class="review-header">
-        <button @click="close">← Back to dashboard</button>
-        <div>
-          <strong>{{ selected.topic }}</strong
-          ><small>Review workspace · demo</small>
+        <button
+          class="back"
+          aria-label="Back to dashboard"
+          title="Back to dashboard"
+          @click="close"
+        >
+          ←
+        </button>
+        <div class="recipient">
+          <VoiceAvatar :voice="thread.voice" :size="32" set="editorial" />
+          <div>
+            <strong :title="thread.title">{{ thread.title }}</strong
+            ><small
+              >Feedback → main thread
+              <span v-if="thread.items.length > 1"
+                >· {{ item.owner }}’s work</span
+              ></small
+            >
+          </div>
         </div>
-        <a
-          :href="selected.review?.url"
+        <div class="conversation" aria-live="polite">
+          <small>{{
+            feedback ? "YOU → MAIN THREAD · DEMO" : "MAIN THREAD · REVIEW READY"
+          }}</small>
+          <p>
+            {{
+              feedback
+                ? "I like the direction. Please make the labels larger and keep the layout compact. The current names are hard to read at a distance."
+                : "Ready for your feedback on " + item.title + "."
+            }}
+          </p>
+          <button @click="transcript = !transcript" :aria-expanded="transcript">
+            Transcript
+          </button>
+        </div>
+        <div class="voice-controls">
+          <label
+            >Mode
+            <select v-model="mode" @change="holding = false">
+              <option value="ptt">Push to talk</option>
+              <option value="auto">Auto</option>
+            </select></label
+          ><button
+            v-if="mode === 'ptt'"
+            class="talk"
+            @pointerdown="
+              holding = true;
+              ($event.currentTarget as HTMLElement).setPointerCapture(
+                $event.pointerId,
+              );
+            "
+            @pointerup="release"
+            @pointercancel="holding = false"
+            @keydown.space.prevent="holding = true"
+            @keyup.space.prevent="release"
+            @blur="holding = false"
+          >
+            {{ holding ? "Recording…" : "Hold for feedback" }}</button
+          ><button
+            v-else
+            class="auto"
+            @click="feedback = true"
+            title="Simulate speech; microphone is off"
+          >
+            ● Listening to main thread
+          </button>
+        </div>
+        <button
+          v-if="!approved"
+          class="approve"
+          @click="approvalDialog?.showModal()"
+        >
+          Approve…</button
+        ><button
+          v-else
+          class="approved"
+          @click="approved = false"
+          title="Undo simulated approval"
+        >
+          ✓ Approved · Undo</button
+        ><a
+          class="external"
+          :href="item.review"
           target="_blank"
           rel="noopener noreferrer"
-          >Open externally ↗</a
-        >
+          :aria-label="'Open ' + item.title + ' externally'"
+          title="Open externally"
+          >↗</a
+        ><span class="demo-label">DEMO · MIC OFF</span>
       </header>
+      <aside v-if="transcript" class="transcript">
+        <header>
+          <strong>Review conversation · demo</strong
+          ><button @click="transcript = false" aria-label="Close transcript">
+            ✕
+          </button>
+        </header>
+        <p><b>Main thread:</b> Ready for your feedback on {{ item.title }}.</p>
+        <p v-if="feedback">
+          <b>You:</b> I like the direction. Please make the labels larger and
+          keep the layout compact. The current names are hard to read at a
+          distance.
+        </p>
+        <small>No audio captured. Sample feedback is not sent.</small>
+      </aside>
       <section class="artifact">
-        <div v-if="unavailable" class="embed-fallback">
-          <h2>This page cannot be shown here.</h2>
+        <div v-if="unavailable" class="fallback">
+          <h2>Open this result in a separate tab.</h2>
           <p>
-            Some sites require a separate browser tab. Your review controls stay
-            available in Noisy Studio.
+            This site does not allow embedded previews. Keep this review
+            workspace open for feedback and approval.
           </p>
-          <a
-            :href="selected.review?.url"
-            target="_blank"
-            rel="noopener noreferrer"
-            >Open review in a new tab ↗</a
-          ><small>Demo of an embedding restriction; no policy bypass.</small>
+          <a :href="item.review" target="_blank" rel="noopener noreferrer"
+            >Open review ↗</a
+          ><small>Embedding restriction demonstration · no policy bypass</small>
         </div>
         <iframe
           v-else
-          title="Synthetic design under review"
+          title="Synthetic review artifact"
           sandbox=""
           :srcdoc="preview"
         />
       </section>
-      <aside
-        class="review-widget"
-        :style="widgetStyle"
-        aria-label="Review conversation"
+      <dialog
+        ref="approvalDialog"
+        class="approval-dialog"
+        aria-labelledby="confirm-title"
       >
-        <div
-          class="widget-handle"
-          @pointerdown="startDrag"
-          @pointermove="move"
-          @pointerup="dragging = null"
-          @pointercancel="dragging = null"
+        <section
+          class="confirmation"
+          role="alertdialog"
+          aria-modal="true"
+          aria-labelledby="confirm-title"
         >
-          <span>{{
-            placement === "floating"
-              ? "⠿ Drag review controls"
-              : "Review with your agent"
-          }}</span
-          ><small>IN-APP · DEMO</small>
-        </div>
-        <div class="review-person">
-          <VoiceAvatar
-            :voice="selected.id === 'nova' ? 'eve' : 'ara'"
-            :size="42"
-            set="editorial"
-          />
+          <h2 id="confirm-title">Approve this result?</h2>
+          <p>{{ item.title }}</p>
+          <small
+            >Approval returns to the main thread: {{ thread.title }}. Opening a
+            result or giving feedback does not approve it.</small
+          >
           <div>
-            <strong>{{ selected.name }}</strong
-            ><small>Feedback recipient · {{ selected.topic }}</small>
+            <button @click="approvalDialog?.close()">Keep reviewing</button
+            ><button
+              @click="
+                approved = true;
+                approvalDialog?.close();
+              "
+            >
+              Yes, approve result
+            </button>
           </div>
-        </div>
-        <div class="mode">
-          <button
-            :aria-pressed="mode === 'ptt'"
-            @click="
-              mode = 'ptt';
-              holding = false;
-            "
-          >
-            Push to talk</button
-          ><button
-            :aria-pressed="mode === 'auto'"
-            @click="
-              mode = 'auto';
-              holding = false;
-            "
-          >
-            Auto
-          </button>
-        </div>
-        <button
-          v-if="mode === 'ptt'"
-          class="talk"
-          @pointerdown="
-            holding = true;
-            ($event.currentTarget as HTMLElement).setPointerCapture(
-              $event.pointerId,
-            );
-          "
-          @pointerup="release"
-          @pointercancel="holding = false"
-          @keydown.space.prevent="holding = true"
-          @keyup.space.prevent="release"
-          @blur="holding = false"
-        >
-          {{
-            holding
-              ? "Recording to " + selected.name + "… (demo)"
-              : "Hold to talk to " + selected.name
-          }}
-        </button>
-        <div v-else class="auto-note">
-          ● Auto · listening to {{ selected.name }}
-          <small>Preview only · microphone is off</small
-          ><button @click="feedback = true">Simulate spoken feedback</button>
-        </div>
-        <p class="privacy">
-          No microphone or messages connected in this prototype.
-        </p>
-        <div v-if="feedback" class="feedback">
-          <small>YOU → {{ selected.name }} · SAMPLE TRANSCRIPT</small>
-          <p>
-            “I like this direction. Could you make the labels a little larger?”
-          </p>
-          <span>Feedback preview · not sent</span>
-        </div>
-        <div v-if="approved" class="approved">
-          ✓ Approved in this demo
-          <button @click="approved = false">Undo</button>
-        </div>
-        <div v-else-if="confirming" class="confirm">
-          <strong>Approve {{ selected.topic }}?</strong>
-          <p>
-            This marks the result approved, separately from sending feedback.
-          </p>
-          <button
-            @click="
-              approved = true;
-              confirming = false;
-            "
-          >
-            Yes, approve result</button
-          ><button @click="confirming = false">Keep reviewing</button>
-        </div>
-        <button v-else class="approve" @click="confirming = true">
-          Approve result…
-        </button>
-        <div v-if="placement === 'floating'" class="position">
-          <span>Move controls</span><button @click="place('left')">Left</button
-          ><button @click="place('right')">Right</button>
-        </div>
-      </aside>
+          <small>Prototype only · no approval is sent</small>
+        </section>
+      </dialog>
     </dialog>
   </div>
 </template>
 <style scoped>
-.thin-tasks {
+.task-panel {
   padding: 8px 12px;
   border: 1px solid var(--line, #363a43);
   border-radius: 8px;
@@ -286,67 +310,137 @@ function release() {
   background: var(--panel, #202329);
   font: 11px var(--sans, system-ui);
 }
-.thin-tasks header {
+.task-panel header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  padding: 4px 0 9px;
 }
-.thin-tasks h2 {
+.task-panel h2 {
   font-size: 11px;
   margin: 0;
 }
-.thin-tasks h2 small,
-.thin-tasks header > span {
+.task-panel header span {
+  color: var(--brand-accent, #a8c8ef);
+}
+.task-panel small {
+  color: var(--muted, #9ba5b5);
   font-size: 9px;
-  color: var(--muted, #9ba5b5);
-  font-weight: 400;
 }
-.thin-row {
-  display: grid;
-  grid-template-columns: 38px minmax(0, 1fr) 55px;
-  gap: 7px;
+.ready-list article {
+  display: flex;
   align-items: center;
-  height: 25px;
+  gap: 7px;
+  padding: 7px 0;
+  border-top: 1px solid #77839b22;
 }
-.thin-track {
-  height: 3px;
-  background: #77839b33;
-  border-radius: 2px;
-  position: relative;
+.ready-list article > div {
+  min-width: 0;
+  flex: 1;
 }
-.thin-track i {
+.ready-list strong {
   display: block;
-  background: var(--brand-accent, #a8c8ef);
-  height: 100%;
-  border-radius: 2px;
+  font-size: 10px;
+  font-weight: 500;
+  line-height: 14px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
-.thin-track > span {
-  position: absolute;
-  top: -6px;
-  background: var(--panel, #202329);
+.ready-list small {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
   font-size: 8px;
-  color: var(--muted, #9ba5b5);
+  margin-top: 3px;
 }
-.thin-row button {
-  padding: 2px 0;
+.task-panel button {
   border: 0;
   background: none;
   color: var(--brand-accent, #a8c8ef);
   font: inherit;
   font-size: 9px;
   cursor: pointer;
-  text-align: right;
+  white-space: nowrap;
+  padding: 3px;
 }
-.thin-row small {
-  font-size: 8px;
-  color: var(--muted, #9ba5b5);
-  text-align: right;
+.work-heading {
+  border-top: 1px solid #77839b44;
+  margin-top: 9px;
+  padding-top: 13px !important;
 }
-.thin-tasks footer {
+.thread-list {
+  max-height: 318px;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+.thread {
+  margin: 0 0 13px;
+}
+.thread h3 {
+  font-size: 10px;
+  font-weight: 600;
+  margin: 0 0 4px;
+  line-height: 14px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.thread > small {
   font-size: 8px;
-  color: var(--muted, #9ba5b5);
-  margin-top: 7px;
+}
+.work-item {
+  border-left: 1px solid #77839b44;
+  padding: 5px 0 4px 8px;
+  margin-left: 3px;
+}
+.work-title {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.work-title > span {
+  font-size: 9px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  line-height: 16px;
+}
+.work-title button {
+  font-size: 12px;
+  padding: 0 2px;
+}
+.work-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.work-meta small {
+  font-size: 8px;
+  flex: 1;
+}
+.work-meta b {
+  font-weight: 400;
+}
+.ready {
+  color: var(--brand-accent, #a8c8ef);
+}
+.blocked {
+  color: #d9ad73;
+}
+.track {
+  width: 37px;
+  height: 2px;
+  background: #77839b44;
+}
+.track i {
+  height: 100%;
+  display: block;
+  background: var(--brand-accent, #a8c8ef);
 }
 .review-dialog {
   width: 100vw;
@@ -358,41 +452,140 @@ function release() {
   margin: 0;
   background: #171b20;
   color: #e4e7ee;
-  font: 13px var(--sans, system-ui);
+  font: 12px var(--sans, system-ui);
+  --header-height: 88px;
 }
 .review-header {
-  height: 64px;
+  height: var(--header-height);
   display: flex;
   align-items: center;
-  gap: 25px;
-  padding: 0 20px;
+  gap: 12px;
+  padding: 10px 16px 15px;
   border-bottom: 1px solid #39404b;
   box-sizing: border-box;
+  position: relative;
+  background: #202731;
 }
-.review-header div {
-  flex: 1;
-}
-.review-header small {
-  display: block;
-  color: #9ca8b8;
-  font-size: 10px;
-  margin-top: 4px;
-}
-.review-header a {
-  color: #bed2f0;
-  font-size: 12px;
-}
-.review-dialog button {
+.review-dialog button,
+.review-dialog select {
   font: inherit;
   color: inherit;
   background: #2b3441;
   border: 1px solid #506076;
-  border-radius: 6px;
-  padding: 8px 12px;
+  border-radius: 5px;
+  padding: 7px 9px;
   cursor: pointer;
 }
+.recipient {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  width: 245px;
+  flex-shrink: 0;
+  min-width: 0;
+}
+.recipient > div {
+  min-width: 0;
+}
+.recipient strong {
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 15px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.recipient small {
+  display: block;
+  font-size: 8px;
+  color: #aab8cc;
+  margin-top: 4px;
+}
+.recipient small span {
+  display: none;
+}
+.conversation {
+  flex: 1;
+  min-width: 100px;
+  padding: 7px 40px 7px 10px;
+  background: #a5c4eb0b;
+  border-left: 2px solid #a5c4eb;
+  max-height: 60px;
+  box-sizing: border-box;
+  position: relative;
+}
+.conversation small {
+  font-size: 7px;
+  color: #aab8cc;
+  display: block;
+}
+.conversation p {
+  font-size: 10px;
+  line-height: 14px;
+  margin: 3px 0 0;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.conversation button {
+  position: absolute;
+  right: 4px;
+  top: 7px;
+  border: 0;
+  background: none;
+  font-size: 7px;
+  padding: 0;
+  writing-mode: vertical-rl;
+}
+.voice-controls {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.voice-controls label {
+  font-size: 0;
+}
+.voice-controls select {
+  font-size: 10px;
+  padding: 7px 4px;
+  width: 91px;
+}
+.voice-controls button {
+  font-size: 10px;
+  white-space: nowrap;
+}
+.talk {
+  background: #b7cae8 !important;
+  color: #14202e !important;
+  touch-action: none;
+}
+.auto {
+  color: #bad9bc !important;
+  font-size: 9px !important;
+}
+.approve,
+.approved {
+  white-space: nowrap;
+  font-size: 10px !important;
+}
+.external {
+  color: #c6d9f6;
+  font-size: 22px;
+  text-decoration: none;
+  padding: 6px;
+}
+.demo-label {
+  position: absolute;
+  bottom: 3px;
+  right: 17px;
+  color: #91a1b7;
+  font-size: 7px;
+  letter-spacing: 0.07em;
+}
 .artifact {
-  height: calc(100% - 64px);
+  height: calc(100% - var(--header-height));
 }
 iframe {
   width: 100%;
@@ -400,254 +593,244 @@ iframe {
   border: 0;
   background: #172322;
 }
-.review-widget {
-  width: 340px;
-  box-sizing: border-box;
-  background: #202731f5;
-  border: 1px solid #65778d;
-  border-radius: 12px;
-  box-shadow: 0 12px 50px #0005;
+.transcript {
   position: absolute;
-  padding: 12px;
-  z-index: 2;
-}
-.widget-handle {
-  display: flex;
-  justify-content: space-between;
-  touch-action: none;
-  color: #aebace;
-  font-size: 10px;
-  gap: 10px;
-  padding: 0 0 12px;
-  cursor: grab;
-}
-.widget-handle small {
-  font-size: 8px;
-}
-.review-person {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  margin-bottom: 14px;
-}
-.review-person strong {
-  font-size: 14px;
-}
-.review-person small {
-  display: block;
-  font-size: 10px;
-  margin-top: 4px;
-  color: #acb8c8;
-}
-.mode {
-  display: flex;
-  gap: 6px;
-  margin-bottom: 10px;
-}
-.mode button {
-  flex: 1;
-  font-size: 11px;
-  padding: 6px;
-}
-.mode button[aria-pressed="true"] {
-  background: #bad3f02b;
-  border-color: #b7cae8;
-}
-.talk,
-.approve {
-  width: 100%;
-}
-.talk {
-  background: #b7cae8 !important;
-  color: #14202e !important;
-  font-weight: 600 !important;
-  touch-action: none;
-}
-.privacy {
-  font-size: 9px;
-  color: #adb9c8;
-  margin: 9px 0 14px;
-}
-.approve {
-  margin-top: 8px;
-}
-.position {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  border-top: 1px solid #4e596733;
-  padding-top: 9px;
-  margin-top: 12px;
-  font-size: 10px;
-  color: #aebaca;
-}
-.position span {
-  flex: 1;
-}
-.position button {
-  padding: 3px 10px;
-  font-size: 10px;
-}
-.auto-note {
-  color: #c0dcbf;
-  padding: 8px;
-  border: 1px solid #7fa082;
-  border-radius: 7px;
-  font-size: 12px;
-}
-.auto-note small {
-  display: block;
-  margin: 6px 0 10px;
-  color: #adb9c8;
-  font-size: 9px;
-}
-.auto-note button {
-  font-size: 10px;
-}
-.feedback {
-  border-left: 2px solid #a5c4eb;
-  padding: 8px 10px;
-  background: #a5c4eb0b;
-  margin: 10px 0;
-}
-.feedback small,
-.feedback span {
-  font-size: 8px;
-  color: #acbed4;
-}
-.feedback p {
-  font-size: 12px;
-  line-height: 1.5;
-  margin: 7px 0;
-}
-.confirm {
-  background: #a5c4eb10;
-  padding: 12px;
-  border-radius: 8px;
-}
-.confirm p {
-  font-size: 11px;
-  color: #bcc9d9;
-  line-height: 1.5;
-}
-.confirm button {
-  font-size: 11px;
-  margin: 4px 4px 0 0;
-}
-.approved {
-  color: #b7dbb9;
-  padding: 12px 0;
-}
-.approved button {
-  float: right;
-  font-size: 10px;
-}
-.dock .review-widget {
-  right: 18px;
-  top: 82px;
-  bottom: 18px;
+  right: 22px;
+  top: calc(var(--header-height) + 8px);
+  width: min(440px, calc(100vw - 44px));
+  max-height: 230px;
   overflow: auto;
-}
-.dock .artifact {
-  margin-right: 375px;
-}
-.strip .review-widget {
-  top: 64px;
-  left: 0;
-  width: 100%;
-  border-radius: 0;
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  flex-wrap: wrap;
-  padding: 12px 20px;
-  box-shadow: none;
-}
-.strip .widget-handle,
-.strip .privacy {
-  display: none;
-}
-.strip .review-person {
-  margin: 0;
-  min-width: 210px;
-}
-.strip .mode {
-  margin: 0;
-}
-.strip .mode button {
-  white-space: nowrap;
-}
-.strip .talk,
-.strip .approve {
-  width: auto;
-  margin: 0;
-}
-.strip .artifact {
-  padding-top: 106px;
   box-sizing: border-box;
+  padding: 16px;
+  background: #242e3c;
+  border: 1px solid #738298;
+  border-radius: 9px;
+  z-index: 3;
+  box-shadow: 0 8px 35px #0005;
 }
-.strip .feedback {
-  max-width: 330px;
-  margin: 0;
+.transcript header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
-.strip .confirm {
-  max-width: 340px;
+.transcript p {
+  font-size: 12px;
+  line-height: 1.6;
 }
-.embed-fallback {
+.transcript small {
+  color: #aab8cc;
+  font-size: 10px;
+}
+.transcript button {
+  padding: 3px 7px;
+}
+.confirmation-backdrop {
+  position: absolute;
+  inset: 0;
+  background: #0008;
+  display: grid;
+  place-items: center;
+  z-index: 5;
+}
+.confirmation {
+  background: #242e3c;
+  border: 1px solid #8497ad;
+  padding: 25px;
+  border-radius: 12px;
+  width: min(410px, calc(100vw - 70px));
+  box-shadow: 0 15px 50px #0008;
+}
+.confirmation h2 {
+  font-size: 19px;
+  margin-top: 0;
+}
+.confirmation p {
+  font-size: 14px;
+  line-height: 1.5;
+}
+.confirmation small {
+  display: block;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #b8c7d9;
+}
+.confirmation > div {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin: 22px 0 14px;
+}
+.confirmation button {
+  font-size: 11px;
+}
+.fallback {
   max-width: 470px;
   margin: auto;
   padding: 100px 25px;
   text-align: center;
 }
-.embed-fallback p {
+.fallback p {
   line-height: 1.6;
   color: #acb8c8;
 }
-.embed-fallback a {
+.fallback a {
   color: #b7cae8;
 }
-.embed-fallback small {
+.fallback small {
   display: block;
   margin-top: 25px;
   color: #acb8c8;
+  font-size: 10px;
 }
-button:focus-visible,
-a:focus-visible {
+.ribbon {
+  --header-height: 98px;
+}
+.ribbon .review-header {
+  display: grid;
+  grid-template-columns: 35px minmax(210px, 1fr) auto auto 30px;
+  grid-template-rows: 36px 31px;
+  gap: 5px 12px;
+  padding: 8px 16px 13px;
+}
+.ribbon .recipient {
+  width: auto;
+}
+.ribbon .recipient strong {
+  -webkit-line-clamp: 1;
+}
+.ribbon .recipient small span {
+  display: inline;
+}
+.ribbon .conversation {
+  grid-column: 2/5;
+  grid-row: 2;
+  max-height: 31px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 4px 60px 4px 10px;
+}
+.ribbon .conversation small {
+  white-space: nowrap;
+}
+.ribbon .conversation p {
+  -webkit-line-clamp: 1;
+  margin: 0;
+}
+.ribbon .conversation button {
+  writing-mode: initial;
+  top: 8px;
+  right: 6px;
+}
+.ribbon .external {
+  grid-column: 5;
+  grid-row: 1;
+}
+.companion.review-dialog {
+  --header-height: 84px;
+  padding: 0;
+  border: 0;
+  max-height: none;
+  display: revert;
+}
+.companion.review-dialog .recipient {
+  width: 190px;
+}
+.companion.review-dialog .conversation {
+  background: #314051;
+  border-radius: 12px;
+  border-left: 0;
+  padding-left: 14px;
+}
+.companion.review-dialog .voice-controls {
+  flex-direction: column;
+  gap: 3px;
+}
+.companion.review-dialog .voice-controls select {
+  padding: 3px 4px;
+}
+.companion.review-dialog .talk {
+  padding: 5px 8px;
+}
+.review-dialog button:focus-visible,
+a:focus-visible,
+.task-panel button:focus-visible,
+.task-panel [tabindex]:focus-visible {
   outline: 2px solid #b7d4ff;
-  outline-offset: 3px;
+  outline-offset: 2px;
 }
-@media (max-width: 600px) {
+@media (max-width: 1000px) {
+  .review-dialog {
+    --header-height: 120px;
+  }
   .review-header {
-    gap: 10px;
-    padding: 8px;
-    height: 80px;
+    flex-wrap: wrap;
+    gap: 6px;
   }
-  .review-header button,
-  .review-header a {
-    font-size: 10px;
+  .recipient {
+    width: calc(100% - 60px);
   }
-  .review-widget {
-    width: min(340px, calc(100vw - 16px));
+  .conversation {
+    order: 5;
+    flex: 1;
   }
-  .dock .artifact {
-    margin-right: 0;
+  .voice-controls {
+    order: 6;
   }
-  .dock .review-widget {
-    top: auto;
-    bottom: 8px;
-    right: 8px;
-    max-height: 70vh;
+  .approve,
+  .approved {
+    order: 7;
   }
-  .strip .artifact {
-    padding-top: 200px;
+  .external {
+    position: absolute;
+    right: 12px;
+    top: 12px;
   }
-  .strip .review-person {
-    min-width: 180px;
+  .ribbon .review-header {
+    grid-template-columns: 30px minmax(100px, 1fr) auto 30px;
+    grid-template-rows: 38px 50px;
+  }
+  .ribbon .recipient {
+    width: auto;
+  }
+  .ribbon .voice-controls {
+    grid-column: 3;
+    grid-row: 1;
+  }
+  .ribbon .approve,
+  .ribbon .approved {
+    grid-column: 3;
+    grid-row: 2;
+  }
+  .ribbon .conversation {
+    grid-column: 2;
+    grid-row: 2;
+    height: 42px;
+    max-height: 42px;
+    display: block;
+  }
+  .ribbon .external {
+    position: static;
+    grid-column: 4;
+  }
+  .ribbon {
+    --header-height: 120px;
+  }
+  .companion.review-dialog {
+    --header-height: 120px;
+  }
+  .companion.review-dialog .recipient {
+    width: calc(100% - 60px);
   }
 }
-
-.floating .review-widget {
-  max-height: calc(100dvh - 90px);
-  overflow: auto;
+.approval-dialog {
+  border: 0;
+  padding: 0;
+  border-radius: 12px;
+  color: #e4e7ee;
+  background: #242e3c;
+}
+.approval-dialog::backdrop {
+  background: #0008;
 }
 </style>
