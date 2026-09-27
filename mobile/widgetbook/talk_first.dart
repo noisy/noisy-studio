@@ -533,9 +533,25 @@ class _PreviewHoldState extends State<PreviewHold> {
   final _overlay = OverlayPortalController();
   bool cancelled = false;
   bool holding = false;
-  Rect tile = Rect.zero;
-  Rect cancelZone = Rect.zero;
-  Offset overlayOrigin = Offset.zero;
+  final _link = LayerLink();
+  final _target = GlobalKey();
+  Size controlSize = Size.zero;
+  Rect get tile {
+    final box = _target.currentContext!.findRenderObject()! as RenderBox;
+    return box.localToGlobal(Offset.zero) & box.size;
+  }
+
+  Rect get cancelZone {
+    final current = tile;
+    return widget.cancelLeft
+        ? Rect.fromLTWH(current.left - 84, current.top, 80, current.height)
+        : Rect.fromLTWH(
+            current.left,
+            current.bottom + 4,
+            current.width,
+            current.height / 3,
+          );
+  }
 
   @override
   void initState() {
@@ -551,19 +567,7 @@ class _PreviewHoldState extends State<PreviewHold> {
     cancelled = false;
     holding = true;
     if (widget.cancelBelow || widget.cancelLeft) {
-      final box = context.findRenderObject()! as RenderBox;
-      tile = box.localToGlobal(Offset.zero) & box.size;
-      cancelZone = widget.cancelLeft
-          ? Rect.fromLTWH(tile.left - 84, tile.top, 80, tile.height)
-          : Rect.fromLTWH(
-              tile.left,
-              tile.bottom + 4,
-              tile.width,
-              tile.height / 3,
-            );
-      overlayOrigin =
-          (Overlay.of(context).context.findRenderObject()! as RenderBox)
-              .localToGlobal(Offset.zero);
+      controlSize = tile.size;
       _overlay.show();
     }
     widget.onStart();
@@ -580,61 +584,79 @@ class _PreviewHoldState extends State<PreviewHold> {
   @override
   Widget build(BuildContext context) => OverlayPortal(
     controller: _overlay,
-    overlayChildBuilder: (_) => Positioned.fromRect(
-      rect: cancelZone.shift(-overlayOrigin),
-      child: IgnorePointer(
-        child: Material(
-          color: const Color(0xffb52d43),
-          borderRadius: BorderRadius.circular(12),
-          elevation: 8,
-          child: const Center(
-            child: FittedBox(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.close, color: Colors.white, size: 20),
-                  SizedBox(width: 6),
-                  Text(
-                    'Cancel',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
-                    ),
+    overlayChildBuilder: (_) => Positioned(
+      left: 0,
+      top: 0,
+      child: CompositedTransformFollower(
+        link: _link,
+        showWhenUnlinked: false,
+        offset: widget.cancelLeft
+            ? const Offset(-84, 0)
+            : Offset(0, controlSize.height + 4),
+        child: SizedBox(
+          width: widget.cancelLeft ? 80 : controlSize.width,
+          height: widget.cancelLeft
+              ? controlSize.height
+              : controlSize.height / 3,
+          child: IgnorePointer(
+            child: Material(
+              color: const Color(0xffb52d43),
+              borderRadius: BorderRadius.circular(12),
+              elevation: 8,
+              child: const Center(
+                child: FittedBox(
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.close, color: Colors.white, size: 20),
+                      SizedBox(width: 6),
+                      Text(
+                        'Cancel',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),
         ),
       ),
     ),
-    child: Semantics(
-      button: true,
-      label: widget.label,
-      child: Listener(
-        onPointerCancel: (_) => _finish(true),
-        child: GestureDetector(
-          behavior: HitTestBehavior.opaque,
-          onTap: widget.onTap,
-          onLongPressStart: (_) => _begin(),
-          onLongPressMoveUpdate: (details) {
-            if (!holding || cancelled) return;
-            final cancel = (widget.cancelBelow || widget.cancelLeft)
-                ? cancelZone.contains(details.globalPosition)
-                : details.offsetFromOrigin.distance > cancelDistance;
-            if (cancel) _finish(true);
-          },
-          onLongPressEnd: (details) {
-            if (!cancelled) {
-              _finish(
-                (widget.cancelBelow || widget.cancelLeft) &&
-                    !tile.contains(details.globalPosition),
-              );
-            }
-          },
-          onLongPressCancel: () => _finish(true),
-          child: widget.child,
+    child: CompositedTransformTarget(
+      key: _target,
+      link: _link,
+      child: Semantics(
+        button: true,
+        label: widget.label,
+        child: Listener(
+          onPointerCancel: (_) => _finish(true),
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: widget.onTap,
+            onLongPressStart: (_) => _begin(),
+            onLongPressMoveUpdate: (details) {
+              if (!holding || cancelled) return;
+              final cancel = (widget.cancelBelow || widget.cancelLeft)
+                  ? cancelZone.contains(details.globalPosition)
+                  : details.offsetFromOrigin.distance > cancelDistance;
+              if (cancel) _finish(true);
+            },
+            onLongPressEnd: (details) {
+              if (!cancelled) {
+                _finish(
+                  (widget.cancelBelow || widget.cancelLeft) &&
+                      !tile.contains(details.globalPosition),
+                );
+              }
+            },
+            onLongPressCancel: () => _finish(true),
+            child: widget.child,
+          ),
         ),
       ),
     ),

@@ -5,6 +5,25 @@ import 'package:noisy_studio_mobile/ui/design.dart';
 import 'talk_first.dart';
 
 void main() {
+  testWidgets(
+    'Recent cancel preview follows Reply after the reversed list settles',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(360, 740));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: studioTheme(Brightness.dark),
+          home: const TalkFirstPreview(initialTab: 1, showRecentCancel: true),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final reply = tester.getRect(find.byKey(const ValueKey('reply-6')));
+      final cancel = tester.getRect(find.text('Cancel'));
+      expect(cancel.center.dy, closeTo(reply.center.dy, 1));
+      expect(cancel.right, lessThan(reply.left));
+    },
+  );
+
   testWidgets('compact header and bottom talk surface fit a small phone', (
     tester,
   ) async {
