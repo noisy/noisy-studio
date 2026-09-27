@@ -24,4 +24,4 @@ Red sheets slide out over 180 ms with ease-out cubic motion. Clipping prevents h
 
 ## Portrait-led crew
 
-Crew cards now give almost all available space to the proportionate portrait, with a five-pixel inset and only the conversation title below. Agent names and gesture/state text remain in accessible labels rather than visible card copy. During recording, a microphone on a contrasting circular backing sits near the portrait's lower-right edge; the face remains unobscured. Quick taps, Auto selection and cancellation sheets retain their behavior.
+Crew cards now give almost all available space to the proportionate portrait, flush to the top and side borders, clipped by the single outer card shape, with only the conversation title in the footer below. The portrait itself has no nested rounded frame. Existing avatars elsewhere keep their default radius. Agent names and gesture/state text remain in accessible labels rather than visible card copy. During recording, a microphone on a contrasting circular backing sits near the portrait's lower-right edge; the face remains unobscured. Quick taps, Auto selection and cancellation sheets retain their behavior.

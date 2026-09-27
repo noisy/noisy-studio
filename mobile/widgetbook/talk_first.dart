@@ -286,17 +286,27 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
           ),
           borderRadius: BorderRadius.circular(14),
         ),
-        padding: const EdgeInsets.all(5),
+        clipBehavior: Clip.antiAlias,
         child: Column(
           children: [
             Expanded(
               child: LayoutBuilder(
                 builder: (context, constraints) => Stack(
                   children: [
-                    Center(
-                      child: VoiceAvatar(
-                        voice: agent.voice,
-                        size: constraints.biggest.shortestSide,
+                    Positioned.fill(
+                      child: ClipRect(
+                        child: OverflowBox(
+                          alignment: Alignment.topCenter,
+                          minWidth: constraints.maxWidth,
+                          maxWidth: constraints.maxWidth,
+                          minHeight: constraints.maxWidth,
+                          maxHeight: constraints.maxWidth,
+                          child: VoiceAvatar(
+                            voice: agent.voice,
+                            size: constraints.maxWidth,
+                            borderRadius: BorderRadius.zero,
+                          ),
+                        ),
                       ),
                     ),
                     if (held == index)
@@ -327,14 +337,18 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
                 ),
               ),
             ),
-            const SizedBox(height: 5),
-            Text(
-              agent.topic,
-              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+              child: Text(
+                agent.topic,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-            const SizedBox(height: 3),
           ],
         ),
       ),

@@ -6,9 +6,15 @@ import 'avatar_catalog.dart';
 
 /// VoiceAvatar.vue equivalent. Bottom-aligned, proportionate irregular crop.
 class VoiceAvatar extends StatelessWidget {
-  const VoiceAvatar({super.key, required this.voice, this.size = 64});
+  const VoiceAvatar({
+    super.key,
+    required this.voice,
+    this.size = 64,
+    this.borderRadius,
+  });
   final String voice;
   final double size;
+  final BorderRadius? borderRadius;
   @override
   Widget build(BuildContext context) {
     final frame = portraitFrames[voice.trim().toLowerCase()];
@@ -16,7 +22,7 @@ class VoiceAvatar extends StatelessWidget {
       label: '$voice voice portrait',
       image: true,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(size * .24),
+        borderRadius: borderRadius ?? BorderRadius.circular(size * .24),
         child: SizedBox(
           width: size,
           height: size,

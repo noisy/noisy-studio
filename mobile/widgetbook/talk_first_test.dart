@@ -43,7 +43,11 @@ void main() {
       expect(find.text('Lux'), findsNothing);
       expect(find.text('Release review'), findsOneWidget);
       expect(find.text('Hold to talk'), findsNothing);
-      expect(tester.getSize(image).width, greaterThan(120));
+      expect(
+        tester.getSize(image).width,
+        closeTo(tester.getSize(portrait).width - 2, .01),
+      );
+      expect(tester.widget<VoiceAvatar>(image).borderRadius, BorderRadius.zero);
       expect(tester.takeException(), isNull);
     },
   );
