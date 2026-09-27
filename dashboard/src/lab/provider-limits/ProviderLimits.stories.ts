@@ -28,5 +28,6 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 export const ThinBars: Story = { args: { variant: "rows" } };
-export const BoldBars: Story = { args: { variant: "inset" } };
+export const ThinBarsSecondaryReset: Story = { args: { variant: "secondary" } };
+export const ThinBarsResetLegend: Story = { args: { variant: "legend" } };
 export const ThreeColumns: Story = { args: { variant: "columns" } };

@@ -1,21 +1,72 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, onMounted, ref } from "vue";
+import {
+  computed,
+  watch,
+  nextTick,
+  onBeforeUnmount,
+  onMounted,
+  ref,
+} from "vue";
 import App from "../../App.vue";
 import QuotaHistory from "./QuotaHistory.vue";
-withDefaults(defineProps<{ variant?: "rows" | "inset" | "columns" }>(), {
-  variant: "rows",
-});
+withDefaults(
+  defineProps<{ variant?: "rows" | "secondary" | "legend" | "columns" }>(),
+  {
+    variant: "rows",
+  },
+);
 const root = ref<HTMLElement | null>(null);
 const summaryTarget = ref<HTMLElement | null>(null);
 const detailsTarget = ref<HTMLElement | null>(null);
 const details = ref(false);
 const section = ref("History");
 const windowName = ref("Session");
-const windows = [
-  { name: "Session", used: 76, reset: "42m", color: "warning" },
-  { name: "Weekly", used: 48, reset: "3d 8h", color: "brand-accent" },
-  { name: "Opus", used: 92, reset: "1d 4h", color: "red" },
+const previewNow = Date.now();
+const providers = [
+  {
+    name: "Claude",
+    windows: [
+      { label: "Session", used: 76, seconds: 42 * 60, color: "warning" },
+      { label: "Weekly", used: 48, seconds: 80 * 3600, color: "brand-accent" },
+    ],
+  },
+  {
+    name: "Codex",
+    windows: [
+      { label: "Session", used: 36, seconds: 2 * 3600, color: "brand-accent" },
+      { label: "Weekly", used: 61, seconds: 53 * 3600, color: "brand-accent" },
+    ],
+  },
+  {
+    name: "Grok",
+    windows: [{ label: "Weekly", used: 92, seconds: 5 * 86400, color: "red" }],
+  },
 ];
+function countdown(seconds: number) {
+  if (seconds <= 0) return "Awaiting update";
+  if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
+  if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
+  const hours = Math.floor((seconds % 86400) / 3600);
+  return `${Math.floor(seconds / 86400)}d${hours ? ` ${hours}h` : ""}`;
+}
+function resetTooltip(provider: string, label: string, seconds: number) {
+  if (seconds <= 0)
+    return "Reset passed; waiting for a fresh sample. No current estimate.";
+  const time = new Date(previewNow + seconds * 1000).toLocaleString(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+  return `${provider} ${label}: resets ${time} local time. Account-wide; synthetic snapshot.`;
+}
+const selectedProvider = ref("Claude");
+watch(selectedProvider, () => {
+  windowName.value = selectedProvider.value === "Grok" ? "Weekly" : "Session";
+});
+const selectedWindows = computed(
+  () =>
+    providers.find((provider) => provider.name === selectedProvider.value)
+      ?.windows ?? [],
+);
 onMounted(async () => {
   await nextTick();
   // Lab-only insertion into the real dashboard; no production slot or wiring.
@@ -47,32 +98,53 @@ onBeforeUnmount(() => {
       <section
         class="quota-summary"
         :class="variant"
-        aria-label="Claude plan usage, shared across conversations"
+        aria-label="Provider limits, shared across conversations"
       >
         <header>
-          <h2>Claude limits <small>% used</small></h2>
+          <h2>Plan limits <small>% used · demo</small></h2>
           <button @click="details = true">Details ↗</button>
         </header>
-        <div class="quota-windows">
-          <div
-            v-for="window in windows"
-            :key="window.name"
-            class="quota-row"
-            :style="{ '--quota-color': `var(--${window.color})` }"
-            :title="`${window.name === 'Opus' ? 'Opus weekly' : window.name} · resets in ${window.reset} · account-wide`"
-          >
-            <span>{{ window.name === "Opus" ? "Opus wk" : window.name }}</span>
+        <p v-if="variant === 'legend'" class="reset-legend">
+          ↻ time until reset
+        </p>
+        <div
+          v-for="provider in providers"
+          :key="provider.name"
+          class="provider-block"
+        >
+          <h3>{{ provider.name }}</h3>
+          <div class="quota-windows">
             <div
-              class="quota-track"
-              role="meter"
-              :aria-label="`${window.name} percent used`"
-              :aria-valuenow="window.used"
-              aria-valuemin="0"
-              aria-valuemax="100"
+              v-for="window in provider.windows"
+              :key="window.label"
+              class="quota-row"
+              :style="{ '--quota-color': `var(--${window.color})` }"
             >
-              <i :style="{ width: `${window.used}%` }" />
+              <span>{{ window.label }}</span>
+              <div
+                class="quota-track"
+                role="meter"
+                :aria-label="`${provider.name} ${window.label} percent used`"
+                :aria-valuenow="window.used"
+                aria-valuemin="0"
+                aria-valuemax="100"
+              >
+                <i :style="{ width: `${window.used}%` }" />
+              </div>
+              <strong>{{ window.used }}%</strong>
+              <span
+                class="reset-time"
+                tabindex="0"
+                :title="
+                  resetTooltip(provider.name, window.label, window.seconds)
+                "
+                :aria-label="
+                  resetTooltip(provider.name, window.label, window.seconds)
+                "
+                >{{ variant === "legend" ? "↻ " : "resets in "
+                }}{{ countdown(window.seconds) }}</span
+              >
             </div>
-            <strong>{{ window.used }}%</strong>
           </div>
         </div>
       </section>
@@ -82,9 +154,7 @@ onBeforeUnmount(() => {
         <header>
           <div>
             <h1>Usage</h1>
-            <p>
-              Claude plan limits · account-wide, shared across conversations
-            </p>
+            <p>Provider limits · account-wide, shared across conversations</p>
           </div>
           <button @click="details = false">← Back</button>
         </header>
@@ -101,17 +171,27 @@ onBeforeUnmount(() => {
         <template v-if="section === 'History'">
           <div class="history-heading">
             <label
+              >Provider
+              <select v-model="selectedProvider">
+                <option>Claude</option>
+                <option>Codex</option>
+                <option>Grok</option>
+              </select></label
+            >
+            <label
               >Window
               <select v-model="windowName">
-                <option v-for="window in windows" :key="window.name">
-                  {{ window.name }}
+                <option v-for="window in selectedWindows" :key="window.label">
+                  {{ window.label }}
                 </option>
               </select></label
             ><span>Illustrative data · sampled every 5m</span>
           </div>
           <template
-            v-for="window in windows.filter((item) => item.name === windowName)"
-            :key="window.name"
+            v-for="window in selectedWindows.filter(
+              (item) => item.label === windowName,
+            )"
+            :key="window.label"
           >
             <div class="history-numbers">
               <div>
@@ -119,7 +199,8 @@ onBeforeUnmount(() => {
                 ><strong>{{ window.used }}% <em>used</em></strong>
               </div>
               <div>
-                <small>Resets in</small><strong>{{ window.reset }}</strong>
+                <small>Resets in</small
+                ><strong>{{ countdown(window.seconds) }}</strong>
               </div>
               <div>
                 <small>Sample age</small><strong>15m <em>stale</em></strong>
@@ -127,10 +208,15 @@ onBeforeUnmount(() => {
             </div>
             <QuotaHistory
               :last-used="window.used"
-              :weekly="window.name !== 'Session'"
+              :weekly="window.label !== 'Session'"
             />
           </template>
-          <p class="explanation">
+          <p v-if="selectedProvider === 'Grok'" class="explanation">
+            Grok plan allowance is a shared weekly pool. These values are
+            fictional; a supported collector is not verified. Grok API limits
+            are separate per-model RPS and TPM limits.
+          </p>
+          <p v-else class="explanation">
             The plot stops at the last sample. Gaps and reset boundaries are not
             joined. Historical values do not claim current availability.
           </p>
@@ -225,16 +311,6 @@ onBeforeUnmount(() => {
   height: 100%;
   background: var(--quota-color);
   border-radius: inherit;
-}
-.inset .quota-track {
-  height: 9px;
-  border-radius: 2px;
-}
-.inset .quota-track i {
-  border-radius: 2px;
-}
-.inset .quota-row {
-  grid-template-columns: 46px minmax(0, 1fr) 29px;
 }
 .columns .quota-windows {
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -381,5 +457,68 @@ onBeforeUnmount(() => {
   .history-numbers strong {
     font-size: 18px;
   }
+}
+
+.provider-block {
+  margin-top: 8px;
+}
+.provider-block h3 {
+  font: 600 10px var(--sans);
+  margin-bottom: 4px;
+}
+.provider-block h3 small {
+  font: 9px var(--sans);
+  color: var(--muted);
+  margin-left: 6px;
+}
+.quota-row {
+  grid-template-columns: 44px minmax(0, 1fr) 27px 75px;
+  gap: 5px;
+}
+.reset-time {
+  font: 9px var(--sans);
+  color: var(--muted);
+  text-align: right;
+  white-space: nowrap;
+}
+.reset-time:focus-visible {
+  outline: 1px solid var(--brand-accent);
+}
+.reset-legend {
+  font: 9px var(--sans);
+  color: var(--muted);
+  margin: 0 0 5px;
+}
+.legend .quota-row {
+  grid-template-columns: 44px minmax(0, 1fr) 27px 50px;
+}
+.secondary .quota-row {
+  grid-template-columns: 44px minmax(0, 1fr) 27px;
+  height: auto;
+  gap: 3px 6px;
+}
+.secondary .reset-time {
+  grid-column: 2/4;
+  text-align: left;
+  font-size: 9px;
+}
+.secondary .quota-windows {
+  gap: 5px;
+}
+.columns .quota-row {
+  grid-template-columns: 1fr auto;
+}
+.columns .reset-time {
+  grid-row: 3;
+  grid-column: 1/-1;
+  text-align: left;
+  font-size: 8px;
+}
+.columns .quota-windows {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 7px;
+}
+.history-heading {
+  flex-wrap: wrap;
 }
 </style>
