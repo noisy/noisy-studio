@@ -32,7 +32,7 @@ const error = ref(""),
   selected = ref(false),
   busy = ref(false),
   transcript = ref(false);
-const embedded = ref(false);
+const embedded = ref(true);
 const approval = ref(props.target.task.review_state === "approved");
 const afterId = Math.max(0, ...props.utterances.map((u) => u.id));
 let disposed = false;
@@ -46,6 +46,11 @@ const voice = computed(
   () => props.status?.agent_voices?.[props.target.agent] ?? "ara",
 );
 const url = computed(() => reviewUrl(props.target.task));
+// Cross-origin previews keep their own origin for storage and module loading.
+// Same-origin previews stay opaque so scripts cannot reach the review controls.
+const previewSandbox = computed(() => url.value && new URL(url.value).origin !== window.location.origin
+  ? "allow-scripts allow-forms allow-same-origin"
+  : "allow-scripts allow-forms");
 const matched = computed(
   () =>
     selected.value &&
@@ -250,8 +255,8 @@ onBeforeUnmount(() => {
         :href="url"
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="Open review externally"
-        title="Open review externally"
+        aria-label="Open artifact without wrapper"
+        title="Open artifact without wrapper"
         >↗</a
       >
     </header>
@@ -287,7 +292,7 @@ onBeforeUnmount(() => {
         v-if="url && embedded"
         :src="url"
         title="Review artifact"
-        sandbox="allow-scripts allow-forms"
+        :sandbox="previewSandbox"
         referrerpolicy="no-referrer"
       />
       <p v-if="url && !embedded">Review the artifact in your browser. Use this panel for voice feedback and approval.</p>
@@ -299,7 +304,7 @@ onBeforeUnmount(() => {
         :href="url"
         target="_blank"
         rel="noopener noreferrer"
-        >Open in browser ↗</a
+        >Open without wrapper ↗</a
       >
     </main>
     <dialog

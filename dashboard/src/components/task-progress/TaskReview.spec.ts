@@ -35,3 +35,10 @@ it('does not show successful approval when the artifact revision changed',async(
  const wrapper=render();await flushPromises();vi.mocked(reviewTask).mockRejectedValueOnce(new Error('The task changed; reopen the current result before reviewing'));
  await wrapper.findAll('.confirmation button')[1]!.trigger('click');await flushPromises();expect(wrapper.get('.approve').text()).toBe('Approve…');expect(wrapper.text()).toContain('The task changed');wrapper.unmount();
 });
+it('shows the artifact beneath feedback controls and offers the unwrapped URL', async () => {
+ const wrapper=render();await flushPromises();
+ expect(wrapper.get('iframe').attributes('src')).toBe('http://localhost:6038/preview');
+ expect(wrapper.get('a[aria-label="Open artifact without wrapper"]').attributes('href')).toBe('http://localhost:6038/preview');
+ expect(wrapper.get('.approve').text()).toBe('Approve…');
+ wrapper.unmount();
+});

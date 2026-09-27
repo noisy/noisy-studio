@@ -11,7 +11,7 @@ vi.mock('../../composables/useTaskProgress', () => ({ useTaskProgress: () => ({
 it.each([undefined,'thread-1'])('opens review externally in the %s panel without mounting the in-app review', async agent => {
   const wrapper=mount(TaskProgressPanel,{props:{agent,status:{agent_labels:{'thread-1':'Design'}} as any,offline:false,utterances:[]}});
   const link=wrapper.get('a[aria-label="Review onboarding"]');
-  expect({href:link.attributes('href'),target:link.attributes('target'),rel:link.attributes('rel')}).toEqual({href:'https://example.com/onboarding',target:'_blank',rel:'noopener noreferrer'});
+  expect({href:link.attributes('href'),target:link.attributes('target'),rel:link.attributes('rel')}).toEqual({href:window.location.origin+window.location.pathname+'?review_agent=thread-1&review_task=task-1&review_revision=1',target:'_blank',rel:'noopener noreferrer'});
   await link.trigger('click');
   expect(wrapper.find('iframe').exists()).toBe(false);
   expect(wrapper.findAll('button').map(button => button.text())).not.toContain('Feedback');

@@ -24,7 +24,15 @@ import { AUDIO_PANEL_WIDTH, type AudioChange } from "./components/audioControls"
 import { useAudioControlVisibility } from "./composables/useAudioControlVisibility";
 import StageLive from "./components/StageLive.vue";
 import TaskProgressPanel from "./components/task-progress/TaskProgressPanel.vue";
-const taskReviewOpen = ref(false);
+import TaskReviewPage from "./components/task-progress/TaskReviewPage.vue";
+import { reviewPageTarget } from "./components/task-progress/reviewPage";
+const reviewPage = reviewPageTarget(window.location.search);
+const taskReviewOpen = ref(!!reviewPage);
+function leaveReviewPage() {
+  const url = new URL(window.location.href);
+  for (const key of ["review_agent", "review_task", "review_revision"]) url.searchParams.delete(key);
+  window.location.assign(url.href);
+}
 import SettingsView from "./components/SettingsView.vue";
 import ShutdownBanner from "./components/ShutdownBanner.vue";
 import { useTabStatus } from "./composables/useTabStatus";
@@ -342,6 +350,8 @@ function changeAudio({id,value}: AudioChange) {
 </script>
 
 <template>
+  <TaskReviewPage v-if="reviewPage" :agent="reviewPage.agent" :task-id="reviewPage.taskId" :revision="reviewPage.revision" :status="status" :offline="offline" :utterances="allUtterances" @close="leaveReviewPage" @start-ptt="startPtt" @stop-ptt="stopPtt" />
+  <template v-else>
 
   <!-- First contact: the HUD itself is the demo — live scopes prove the
        mic works, API-dependent sections sit dimmed behind the key prompt. -->
@@ -640,4 +650,5 @@ function changeAudio({id,value}: AudioChange) {
       <span>{{ offline ? "Connection lost" : lastError ? "Needs attention" : "Ready" }}</span>
     </footer>
   </div>
+  </template>
 </template>

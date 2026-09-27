@@ -4,7 +4,8 @@ import type { DaemonStatus, Utterance } from "../../types";
 import { conversationLabel } from "../../conversationLabel";
 import { orderAgents } from "../agentOrder";
 import { useTaskProgress } from "../../composables/useTaskProgress";
-import { readyForReview, reviewUrl } from "./types";
+import { reviewPageUrl } from "./reviewPage";
+import { readyForReview } from "./types";
 import ThreadProgress from "./ThreadProgress.vue";
 import TaskTitle from "./TaskTitle.vue";
 const props = defineProps<{
@@ -57,7 +58,7 @@ const ready = computed(() =>
             result.thread.label
           }}</small>
         </div>
-        <a :href="reviewUrl(result.task) ?? undefined" target="_blank" rel="noopener noreferrer" :aria-label="result.task.report.review?.label">Review ↗</a>
+        <a :href="reviewPageUrl(result.thread.agent, result.task.report.task_id, result.task.report.revision)" target="_blank" rel="noopener noreferrer" :aria-label="result.task.report.review?.label">Review ↗</a>
       </article>
     </div>
     <ThreadProgress v-if="agent" :tasks="Object.values(snapshot.threads[agent] ?? {})" />
