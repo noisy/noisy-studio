@@ -1,3 +1,5 @@
+import json
+
 import pytest
 
 from noisy_studio.listener.task_progress import TaskProgressStore, validate_report
@@ -152,3 +154,43 @@ def test_delegated_reporter_cannot_replace_manager_or_other_participant(tmp_path
         store.report("thread-1", {**report, "task_id": "task-2", "participant": "child-2"}, reporter_id="child-1")
     result = store.report("thread-1", {**report, "task_id": "task-2"}, reporter_id="child-1")
     assert result["report"]["participant"] == "child-1"
+
+
+def test_task_start_survives_revisions_and_restart(tmp_path, report):
+    path = tmp_path / "tasks.json"
+    now = 100
+    store = TaskProgressStore(path, clock=lambda: now)
+    first = store.report("thread-1", report)
+    now = 200
+    revised = store.report("thread-1", {**report, "revision": 2})
+    recovered = TaskProgressStore(path, clock=lambda: 300).snapshot("thread-1")["threads"]["thread-1"]["task-1"]
+
+    assert {
+        "first_start": first["started_at"],
+        "revised_start": revised["started_at"],
+        "updated": revised["updated_at"],
+        "recovered_start": recovered["started_at"],
+    } == {"first_start": 100, "revised_start": 100, "updated": 200, "recovered_start": 100}
+
+
+def test_legacy_task_start_remains_unknown_after_revision_and_restart(tmp_path, report):
+    path = tmp_path / "tasks.json"
+    entry = {"report": validate_report(report), "updated_at": 100, "review_state": "unopened"}
+    path.write_text(json.dumps({"version": 1, "threads": {"thread-1": {"task-1": entry}}}))
+    store = TaskProgressStore(path, clock=lambda: 200)
+    before = store.snapshot("thread-1")["threads"]["thread-1"]["task-1"]
+    revised = store.report("thread-1", {**report, "revision": 2})
+    recovered = TaskProgressStore(path).snapshot("thread-1")["threads"]["thread-1"]["task-1"]
+
+    assert [before["started_at"], revised["started_at"], recovered["started_at"]] == [None, None, None]
+
+
+@pytest.mark.parametrize("started_at", [True, -1, "100", float("inf")])
+def test_invalid_persisted_task_start_preserves_original_file(tmp_path, report, started_at):
+    path = tmp_path / "tasks.json"
+    entry = {"report": validate_report(report), "updated_at": 100, "started_at": started_at, "review_state": "unopened"}
+    original = json.dumps({"version": 1, "threads": {"thread-1": {"task-1": entry}}})
+    path.write_text(original)
+    store = TaskProgressStore(path)
+
+    assert {"error": bool(store.load_error), "preserved": path.read_text() == original} == {"error": True, "preserved": True}

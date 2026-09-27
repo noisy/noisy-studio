@@ -138,6 +138,15 @@ class TaskProgressStore:
                             or not math.isfinite(entry["updated_at"])
                         ):
                             raise ValueError("Invalid persisted task")
+                        started_at = entry.get("started_at")
+                        if started_at is not None and (
+                            type(started_at) not in (float, int)
+                            or not math.isfinite(started_at)
+                            or started_at < 0
+                        ):
+                            raise ValueError("Invalid task start time")
+                        # Older records did not capture a start; a later update cannot recover it.
+                        entry["started_at"] = started_at
                         if entry["review_state"] not in {
                             "unopened",
                             "opened",
@@ -201,9 +210,11 @@ class TaskProgressStore:
                 raise ValueError("Task limit reached for this conversation")
             updated = deepcopy(self._threads)
             # Every changed work revision needs fresh review, even when its URL is stable.
+            now = self._clock()
             entry = {
                 "report": report,
-                "updated_at": self._clock(),
+                "started_at": existing.get("started_at") if existing else now,
+                "updated_at": now,
                 "review_state": "unopened",
             }
             updated.setdefault(thread, {})[report["task_id"]] = entry
