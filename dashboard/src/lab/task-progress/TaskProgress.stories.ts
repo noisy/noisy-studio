@@ -1,19 +1,56 @@
-import type {Meta,StoryObj} from '@storybook/vue3';
-import TaskProgress from './TaskProgress.vue';
-const meta={title:'Lab/Task Progress',component:TaskProgress,parameters:{layout:'fullscreen'},args:{variant:'ledger',theme:'dark',scenario:'normal'},argTypes:{variant:{control:'select',options:['ledger','cards','checklist','owners','combined']},theme:{control:'radio',options:['dark','light']},scenario:{control:'select',options:['normal','idle','stale','blocked','completed','unknown']}}} satisfies Meta<typeof TaskProgress>;
+import type { Meta, StoryObj } from "@storybook/vue3";
+import TaskProgress from "./TaskProgress.vue";
+const meta = {
+  title: "Lab/Task Progress",
+  component: TaskProgress,
+  parameters: { layout: "fullscreen" },
+  args: { variant: "ledger", theme: "dark", scenario: "normal" },
+  argTypes: {
+    variant: {
+      control: "select",
+      options: [
+        "compact",
+        "ledger",
+        "cards",
+        "checklist",
+        "owners",
+        "combined",
+      ],
+    },
+    theme: { control: "radio", options: ["dark", "light"] },
+    scenario: {
+      control: "select",
+      options: ["normal", "idle", "stale", "blocked", "completed", "unknown"],
+    },
+  },
+} satisfies Meta<typeof TaskProgress>;
 export default meta;
-type Story=StoryObj<typeof meta>;
-export const OverviewLedger:Story={};
-export const OverviewCards:Story={args:{variant:'cards'}};
-export const DetailChecklist:Story={args:{variant:'checklist'}};
-export const DetailOwners:Story={args:{variant:'owners'}};
-export const CombinedExpandable:Story={args:{variant:'combined'}};
-export const LightOverview:Story={args:{theme:'light'}};
-export const LightDetail:Story={args:{theme:'light',variant:'owners'}};
-export const NarrowOverview:Story={args:{narrow:true}};
-export const NarrowLight:Story={args:{narrow:true,theme:'light'}};
-export const StaleUpdate:Story={args:{scenario:'stale'}};
-export const BlockedTask:Story={args:{scenario:'blocked',variant:'combined'}};
-export const JustCompleted:Story={args:{scenario:'completed'}};
-export const NoTaskInformation:Story={args:{scenario:'unknown',variant:'checklist'}};
-export const Idle:Story={args:{scenario:'idle',variant:'checklist'}};
+type Story = StoryObj<typeof meta>;
+export const OverviewLedger: Story = {};
+export const OverviewCards: Story = { args: { variant: "cards" } };
+export const DetailChecklist: Story = { args: { variant: "checklist" } };
+export const DetailOwners: Story = { args: { variant: "owners" } };
+export const CombinedExpandable: Story = { args: { variant: "combined" } };
+export const LightOverview: Story = { args: { theme: "light" } };
+export const LightDetail: Story = {
+  args: { theme: "light", variant: "owners" },
+};
+export const NarrowOverview: Story = { args: { narrow: true } };
+export const NarrowLight: Story = { args: { narrow: true, theme: "light" } };
+export const StaleUpdate: Story = { args: { scenario: "stale" } };
+export const BlockedTask: Story = {
+  args: { scenario: "blocked", variant: "combined" },
+};
+export const JustCompleted: Story = { args: { scenario: "completed" } };
+export const NoTaskInformation: Story = {
+  args: { scenario: "unknown", variant: "checklist" },
+};
+export const Idle: Story = { args: { scenario: "idle", variant: "checklist" } };
+
+export const CompactOverview: Story = { args: { variant: "compact" } };
+export const CompactLight: Story = {
+  args: { variant: "compact", theme: "light" },
+};
+export const CompactNarrow: Story = {
+  args: { variant: "compact", narrow: true },
+};

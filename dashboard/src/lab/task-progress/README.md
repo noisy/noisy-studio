@@ -4,7 +4,8 @@ Prototype only. No task collection, daemon calls, production component changes o
 
 ## Alternatives
 
-- **Overview ledger (recommended):** tab-order rows, consistent information slots; review-ready results have an accent edge and explicit action.
+- **Compact overview (recommended):** 268px rail, 72px fixed rows, all six conversations visible; selected details appear to the right.
+- **Overview ledger:** tab-order rows, consistent information slots; review-ready results have an accent edge and explicit action.
 - **Overview cards:** same information, stronger separation between conversations, slightly more scrolling.
 - **Detail checklist:** plan order, with owner labels beside each task.
 - **Detail owners (recommended):** parent agent and two named specialist groups; makes delegation visible without pretending the list is a runtime hierarchy.
