@@ -6,8 +6,8 @@ import VoiceAvatar from "./VoiceAvatar.vue";
 // The voice picker: a collapsed current pick that unfolds into a
 // scrollable list (portrait thumb left, name right). Emits the new voice
 // name; persisting it is the parent's business.
-const props = defineProps<{ voice: string; voiceLabels?: Record<string, string> }>();
-const emit = defineEmits<{ change: [voice: string] }>();
+const props = withDefaults(defineProps<{ voice: string; voiceLabels?: Record<string, string>; open?: boolean }>(), { open: undefined });
+const emit = defineEmits<{ change: [voice: string]; "update:open": [open: boolean] }>();
 
 const THUMB_PX = 44;
 const ROW_PX = THUMB_PX + 8;
@@ -47,7 +47,14 @@ onBeforeUnmount(() => {
   window.removeEventListener('resize', updateOnResize);
 });
 
-const open = ref(false);
+const internalOpen = ref(false);
+const open = computed({
+  get: () => props.open ?? internalOpen.value,
+  set: (value: boolean) => {
+    internalOpen.value = value;
+    emit("update:open", value);
+  },
+});
 const trigger = ref<HTMLButtonElement | null>(null);
 function close() {
   open.value = false;
