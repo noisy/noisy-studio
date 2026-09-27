@@ -16,7 +16,7 @@ export interface Work {
   visited?: boolean;
 }
 const preview =
-  "/iframe.html?id=lab-company-stage--company-portrait&viewMode=story";
+  "/iframe.html?id=lab-stage-crew--just-faces&viewMode=story";
 export const conversations: Work[] = [
   {
     id: "astra",
