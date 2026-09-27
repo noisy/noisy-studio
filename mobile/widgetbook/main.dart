@@ -4,6 +4,8 @@ import 'package:noisy_studio_mobile/core/models.dart';
 import 'package:noisy_studio_mobile/ui/screens.dart';
 import 'package:noisy_studio_mobile/main.dart' show Companion;
 
+import 'talk_first.dart';
+
 void main() => runApp(const Catalog());
 
 class Catalog extends StatelessWidget {
@@ -11,6 +13,27 @@ class Catalog extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Widgetbook.material(
     directories: [
+      WidgetbookComponent(
+        name: 'Talk first · proposals',
+        useCases: [
+          WidgetbookUseCase(
+            name: 'Portrait cards · hold to talk',
+            builder: (_) => const TalkFirstPreview(),
+          ),
+          WidgetbookUseCase(
+            name: 'Portrait cards · auto recipient',
+            builder: (_) => const TalkFirstPreview(initialAuto: true),
+          ),
+          WidgetbookUseCase(
+            name: 'Compact roster',
+            builder: (_) => const TalkFirstPreview(compact: true),
+          ),
+          WidgetbookUseCase(
+            name: 'Recent across all agents',
+            builder: (_) => const TalkFirstPreview(initialTab: 1),
+          ),
+        ],
+      ),
       WidgetbookComponent(
         name: 'Mobile app',
         useCases: [
