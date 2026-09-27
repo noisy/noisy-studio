@@ -45,9 +45,11 @@ Files: mobile/pubspec.yaml, release notes/documentation as needed; existing .git
 
 - [x] Verify previous iOS upload succeeded and signing secret names exist without reading their values.
 - [x] Advance the mobile prerelease version coherently; GitHub run number supplies the increasing iOS build number.
-- [ ] Merge reviewed mobile branch to main, rerun checks on the combined tree, commit release metadata and push main.
-- [ ] Trigger mobile-ios.yml on main with upload_testflight=true. Monitor archive/export/upload to completion; diagnose failures without exposing secrets.
-- [ ] Verify Android preview CI separately. Do not represent debug APK artifacts as a signed Play Store release.
-- [ ] Report exact version/build, upload outcome and any Apple processing/tester-availability limitation. Do not claim public App Store publication.
+- [x] Merge reviewed mobile branch to main, rerun checks on the combined tree, commit release metadata and push main.
+- [x] Trigger mobile-ios.yml on main with upload_testflight=true. Monitor archive/export/upload to completion; diagnose failures without exposing secrets.
+- [x] Verify Android preview CI separately. Do not represent debug APK artifacts as a signed Play Store release.
+- [x] Report exact version/build, upload outcome and any Apple processing/tester-availability limitation. Do not claim public App Store publication.
 
 Validation: 499 isolated-config Python unit tests, 43 mobile tests, 16 shared gesture tests, clean Flutter analyzer and successful production/Widgetbook web builds. Production offline, portrait crew, Recent and detail screens inspected at 390×844 with demo data. The mobile branch was fast-forwarded to main, preserving the exact tested combined tree.
+
+Release outcome: mobile **0.2.0 (4)** archived, signed and uploaded to TestFlight successfully in [iOS run36352510457](https://github.com/noisy/noisy-studio/actions/runs/36352510457), source b5936c5. Apple processing/tester availability was not independently verified. [Android/web run36352500410](https://github.com/noisy/noisy-studio/actions/runs/36352500410) also succeeded with debug APK, app web, Widgetbook and screenshot artifacts. No public App Store submission or Play Store release.
