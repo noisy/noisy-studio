@@ -32,6 +32,7 @@ const error = ref(""),
   selected = ref(false),
   busy = ref(false),
   transcript = ref(false);
+const embedded = ref(false);
 const approval = ref(props.target.task.review_state === "approved");
 const afterId = Math.max(0, ...props.utterances.map((u) => u.id));
 let disposed = false;
@@ -283,20 +284,22 @@ onBeforeUnmount(() => {
     </aside>
     <main>
       <iframe
-        v-if="url"
+        v-if="url && embedded"
         :src="url"
         title="Review artifact"
         sandbox="allow-scripts allow-forms"
         referrerpolicy="no-referrer"
       />
-      <p v-else>There is no supported review URL.</p>
+      <p v-if="url && !embedded">Review the artifact in your browser. Use this panel for voice feedback and approval.</p>
+      <button v-if="url && !embedded" @click="embedded = true">Try embedded preview</button>
+      <p v-if="!url">There is no supported review URL.</p>
       <a
         v-if="url"
         class="fallback"
         :href="url"
         target="_blank"
         rel="noopener noreferrer"
-        >Preview not loading? Open in a new tab ↗</a
+        >Open in browser ↗</a
       >
     </main>
     <dialog

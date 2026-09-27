@@ -10,6 +10,7 @@
  * thing being replaced should be this file, not an application.
  */
 const { app, BrowserWindow, Tray, Menu, globalShortcut, nativeImage, screen, dialog } = require("electron");
+const { installExternalLinks } = require("./external-links");
 const path = require("node:path");
 const { loadDesktopIcons } = require("./icons");
 const http = require("node:http");
@@ -217,6 +218,7 @@ function createDashboard() {
     show: false,
     webPreferences: { contextIsolation: true, nodeIntegration: false },
   });
+  installExternalLinks(dash.webContents, require("electron").shell);
   dash.loadURL(dashboardUrl());
   dash.once("ready-to-show", () => dash.show());
   dash.on("closed", () => (dash = null));

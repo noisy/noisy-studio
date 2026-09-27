@@ -4,7 +4,7 @@ import type { DaemonStatus, Utterance } from "../../types";
 import { conversationLabel } from "../../conversationLabel";
 import { orderAgents } from "../agentOrder";
 import { useTaskProgress } from "../../composables/useTaskProgress";
-import { readyForReview } from "./types";
+import { readyForReview, reviewUrl } from "./types";
 import ThreadProgress from "./ThreadProgress.vue";
 import TaskTitle from "./TaskTitle.vue";
 import TaskReview from "./TaskReview.vue";
@@ -72,12 +72,8 @@ function close() {
             result.thread.label
           }}</small>
         </div>
-        <button
-          @click="open({ agent: result.thread.agent, task: result.task })"
-          :aria-label="result.task.report.review?.label"
-        >
-          Review ↗
-        </button>
+        <a :href="reviewUrl(result.task) ?? undefined" target="_blank" rel="noopener noreferrer" :aria-label="result.task.report.review?.label">Review ↗</a>
+        <button @click="open({ agent: result.thread.agent, task: result.task })" aria-label="Open feedback and approval controls">Feedback</button>
       </article>
     </div>
     <ThreadProgress v-if="agent" :tasks="Object.values(snapshot.threads[agent] ?? {})" />
@@ -114,9 +110,11 @@ h2 {
   margin: 0;
 }
 header > span,
+a,
 button {
   color: var(--brand-accent, #a8c8ef);
 }
+a { text-decoration:none; font-size:9px; white-space:nowrap; }
 button {
   border: 0;
   background: none;
