@@ -1,9 +1,16 @@
-# Provider limits · three compact dashboard designs
+# Provider limits · compact renewal comparison
 
-Exactly three Lab stories: Thin Bars, Bold Bars, Three Columns. All render the actual App.vue with the existing synthetic conversation fixture. The wrapper inserts a lab-only Teleport target before Session usage in the real 268px left rail, then removes its targets on unmount. No production UI changes, live daemon access, account credentials, or provider APIs.
+Four design-only stories render the actual App.vue with synthetic conversation fixtures: Thin Bars (inline reset), Thin Bars Secondary Reset, Thin Bars Reset Legend, and preserved Three Columns. Bold Bars is removed. A lab-only Teleport inserts the summary into the real left rail and removes its targets on unmount.
 
-Each summary has a compact title, Details action, and Session / Weekly / Opus weekly progress bars. Percentages mean USED. Account icons and account labels are deliberately omitted. Tooltips identify reset times and account-wide scope. Defaults use amber at 70% and red at 90% in these fixtures.
+Claude and Codex show Session/Weekly; Grok shows a shared Weekly plan pool. Every percentage and countdown is fictional, explicitly marked “demo” in the header. No account credentials, real usage, provider requests, or production UI integration are involved. Account icons and extra account labels are omitted.
 
-Details opens a separate Usage center pane and Back restores the conversation. The history graph uses synthetic regular five-minute samples, leaves collection gaps empty, and breaks at reset boundaries. A weekly quota window is shown over the same short observation interval; the chart is not a full week. Attribution remains unavailable because account deltas cannot prove per-thread consumption.
+Each renewal caption is keyboard focusable with exact local date/time in its tooltip and accessible label. Countdown values are a frozen illustration, not a running clock. Nonpositive reset intervals say “Awaiting update”; stale history is labelled historical rather than presented as current capacity. All summaries represent account-wide allowances, not per-conversation budgets.
 
-Earlier standalone account panels and mock dashboards have been removed, including their story IDs. This remains design-only pending user selection.
+Details remains a separate Usage center pane with Back, synthetic sampled history, disconnected reset/gap segments, and unavailable attribution. Account delta data cannot prove per-thread consumption.
+
+## Sources supplied by parent research, 2026-09-27
+
+- Claude official statusline: https://code.claude.com/docs/en/statusline — `rate_limits.five_hour` / `seven_day` and `resets_at`. Each window can be independently absent. Model-specific Opus data was not confirmed for this collector, so it is not shown by default.
+- Codex official app-server: https://learn.chatgpt.com/docs/app-server — `account/rateLimits/read`, updated notifications, `usedPercent`, `windowDurationMins`, `resetsAt`. Windows are nullable; classify by duration, never assume primary means five-hour.
+- Grok plan FAQ: https://docs.x.ai/grok/faq — shared weekly subscription allowance including Build, with reset date/time in Settings Usage. A supported programmatic collector is NOT verified. The fixture demonstrates layout, not a live integration claim.
+- Grok API limits are a separate concept: https://docs.x.ai/developers/rate-limits — per-model requests per second/tokens per minute, not this subscription weekly pool.
