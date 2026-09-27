@@ -73,10 +73,14 @@ class TalkFirstPreview extends StatefulWidget {
     this.initialTab = 0,
     this.initialDetail,
     this.initialAuto = false,
+    this.showCancelTarget = false,
+    this.showRecentCancel = false,
   });
   final int initialTab;
   final int? initialDetail;
   final bool initialAuto;
+  final bool showCancelTarget;
+  final bool showRecentCancel;
   @override
   State<TalkFirstPreview> createState() => _TalkFirstPreviewState();
 }
@@ -86,7 +90,11 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
   late int tab = widget.initialTab;
   late int selected = widget.initialDetail ?? 0;
   late int? detail = widget.initialDetail;
-  int? held;
+  late int? held = widget.showCancelTarget
+      ? 0
+      : widget.showRecentCancel
+      ? 2
+      : null;
   bool paused = false;
   String? feedback;
 
@@ -238,6 +246,8 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
     final active = held == index || auto && selected == index;
     return PreviewHold(
       key: ValueKey('portrait-$index'),
+      cancelBelow: true,
+      initiallyHeld: widget.showCancelTarget && index == 0,
       onTap: () => openDetail(index),
       onStart: () => startHold(index),
       onFinish: finishHold,
@@ -274,6 +284,8 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
                   : auto && selected == index
                   ? 'Auto recipient'
                   : 'Hold to talk',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(fontSize: 11, color: colors.primary),
             ),
           ],
@@ -393,7 +405,7 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
               'All messages · in time order',
               style: TextStyle(fontSize: 12),
             ),
-            _status(),
+            _status(crew: true),
           ],
         ),
       ),
@@ -407,48 +419,80 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
             final index = int.parse(message.agentId.substring(1)) - 1;
             return Padding(
               padding: const EdgeInsets.only(bottom: 14),
-              child: Stack(
-                children: [
-                  MessageCard(message: message),
-                  if (message.role != 'user')
-                    Positioned(
-                      bottom: 4,
-                      right: 8,
-                      child: PreviewHold(
-                        key: ValueKey('reply-${message.id}'),
-                        onStart: () => startHold(index),
-                        onFinish: finishHold,
-                        label: 'Hold to reply to ${_crew[index].name}',
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 6,
-                            vertical: 6,
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                held == index
-                                    ? Icons.graphic_eq
-                                    : Icons.mic_none,
-                                size: 16,
-                                color: Theme.of(context).colorScheme.primary,
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                'Reply',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
-                                  color: Theme.of(context).colorScheme.primary,
+              child: Container(
+                padding: const EdgeInsets.all(2),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(12),
+                  color: auto && selected == index
+                      ? Theme.of(context).colorScheme.primary
+                      : Colors.transparent,
+                ),
+                child: GestureDetector(
+                  key: ValueKey('message-${message.id}'),
+                  onTap: auto ? () => setState(() => selected = index) : null,
+                  child: Stack(
+                    children: [
+                      MessageCard(message: message),
+                      if (message.role != 'user')
+                        Positioned(
+                          bottom: 4,
+                          right: 8,
+                          child: PreviewHold(
+                            key: ValueKey('reply-${message.id}'),
+                            cancelLeft: true,
+                            initiallyHeld:
+                                widget.showRecentCancel && message.id == 6,
+                            onStart: () => startHold(index),
+                            onFinish: finishHold,
+                            label: 'Hold to reply to ${_crew[index].name}',
+                            onTap: auto
+                                ? () => setState(() => selected = index)
+                                : null,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.primary
+                                    .withValues(alpha: .12),
+                                border: Border.all(
+                                  color: Theme.of(context).colorScheme.primary
+                                      .withValues(alpha: .6),
                                 ),
+                                borderRadius: BorderRadius.circular(6),
                               ),
-                            ],
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 6,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    held == index
+                                        ? Icons.graphic_eq
+                                        : Icons.mic_none,
+                                    size: 16,
+                                    color: Theme.of(context)
+                                        .colorScheme
+                                        .primary,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    'Reply',
+                                    style: TextStyle(
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .primary,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                ],
+                    ],
+                  ),
+                ),
               ),
             );
           },
@@ -468,41 +512,131 @@ class PreviewHold extends StatefulWidget {
     required this.onStart,
     required this.onFinish,
     this.onTap,
+    this.cancelBelow = false,
+    this.cancelLeft = false,
+    this.initiallyHeld = false,
   });
   final Widget child;
   final String label;
   final VoidCallback onStart;
   final ValueChanged<bool> onFinish;
   final VoidCallback? onTap;
+  final bool cancelBelow;
+  final bool cancelLeft;
+  final bool initiallyHeld;
   @override
   State<PreviewHold> createState() => _PreviewHoldState();
 }
 
 class _PreviewHoldState extends State<PreviewHold> {
   static const cancelDistance = 48.0;
+  final _overlay = OverlayPortalController();
   bool cancelled = false;
+  bool holding = false;
+  Rect tile = Rect.zero;
+  Rect cancelZone = Rect.zero;
+  Offset overlayOrigin = Offset.zero;
+
   @override
-  Widget build(BuildContext context) => Semantics(
-    button: true,
-    label: widget.label,
-    child: GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: widget.onTap,
-      onLongPressStart: (_) {
-        cancelled = false;
-        widget.onStart();
-      },
-      onLongPressMoveUpdate: (details) {
-        if (!cancelled && details.offsetFromOrigin.distance > cancelDistance) {
-          cancelled = true;
-          widget.onFinish(true);
-        }
-      },
-      onLongPressEnd: (_) {
-        if (!cancelled) widget.onFinish(false);
-      },
-      onLongPressCancel: () => widget.onFinish(true),
-      child: widget.child,
+  void initState() {
+    super.initState();
+    if (widget.initiallyHeld) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _begin();
+      });
+    }
+  }
+
+  void _begin() {
+    cancelled = false;
+    holding = true;
+    if (widget.cancelBelow || widget.cancelLeft) {
+      final box = context.findRenderObject()! as RenderBox;
+      tile = box.localToGlobal(Offset.zero) & box.size;
+      cancelZone = widget.cancelLeft
+          ? Rect.fromLTWH(tile.left - 84, tile.top, 80, tile.height)
+          : Rect.fromLTWH(
+              tile.left,
+              tile.bottom + 4,
+              tile.width,
+              tile.height / 3,
+            );
+      overlayOrigin =
+          (Overlay.of(context).context.findRenderObject()! as RenderBox)
+              .localToGlobal(Offset.zero);
+      _overlay.show();
+    }
+    widget.onStart();
+  }
+
+  void _finish(bool cancel) {
+    if (!holding) return;
+    holding = false;
+    cancelled = cancel;
+    _overlay.hide();
+    widget.onFinish(cancel);
+  }
+
+  @override
+  Widget build(BuildContext context) => OverlayPortal(
+    controller: _overlay,
+    overlayChildBuilder: (_) => Positioned.fromRect(
+      rect: cancelZone.shift(-overlayOrigin),
+      child: IgnorePointer(
+        child: Material(
+          color: const Color(0xffb52d43),
+          borderRadius: BorderRadius.circular(12),
+          elevation: 8,
+          child: const Center(
+            child: FittedBox(
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.close, color: Colors.white, size: 20),
+                  SizedBox(width: 6),
+                  Text(
+                    'Cancel',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    ),
+    child: Semantics(
+      button: true,
+      label: widget.label,
+      child: Listener(
+        onPointerCancel: (_) => _finish(true),
+        child: GestureDetector(
+          behavior: HitTestBehavior.opaque,
+          onTap: widget.onTap,
+          onLongPressStart: (_) => _begin(),
+          onLongPressMoveUpdate: (details) {
+            if (!holding || cancelled) return;
+            final cancel = (widget.cancelBelow || widget.cancelLeft)
+                ? cancelZone.contains(details.globalPosition)
+                : details.offsetFromOrigin.distance > cancelDistance;
+            if (cancel) _finish(true);
+          },
+          onLongPressEnd: (details) {
+            if (!cancelled) {
+              _finish(
+                (widget.cancelBelow || widget.cancelLeft) &&
+                    !tile.contains(details.globalPosition),
+              );
+            }
+          },
+          onLongPressCancel: () => _finish(true),
+          child: widget.child,
+        ),
+      ),
     ),
   );
 }

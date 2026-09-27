@@ -57,6 +57,72 @@ void main() {
     );
   }
 
+  for (final left in [false, true]) {
+    testWidgets(
+      'visible ${left ? 'left' : 'below'} target governs cancellation and outside release cannot send',
+      (tester) async {
+        final outcomes = <bool>[];
+        await tester.pumpWidget(
+          MaterialApp(
+            home: Scaffold(
+              body: Center(
+                child: PreviewHold(
+                  cancelBelow: !left,
+                  cancelLeft: left,
+                  label: 'Target',
+                  onStart: () {},
+                  onFinish: outcomes.add,
+                  child: const SizedBox(width: 200, height: 150),
+                ),
+              ),
+            ),
+          ),
+        );
+        final target = find.byType(PreviewHold);
+        final origin = tester.getCenter(target);
+        final gesture = await tester.startGesture(origin);
+        await tester.pump(const Duration(milliseconds: 600));
+        await gesture.moveBy(Offset(left ? -60 : 0, left ? 0 : 60));
+        expect(outcomes, isEmpty);
+        final cancel = find.text('Cancel');
+        await gesture.moveTo(tester.getCenter(cancel));
+        await tester.pump();
+        await gesture.moveTo(origin);
+        await gesture.up();
+        expect(outcomes, [true]);
+        final outside = await tester.startGesture(origin);
+        await tester.pump(const Duration(milliseconds: 600));
+        await outside.moveBy(const Offset(220, 0));
+        await outside.up();
+        expect(outcomes, [true, true]);
+      },
+    );
+  }
+  testWidgets(
+    'bottom row cancel target remains above navigation on small phone',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(360, 740));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: studioTheme(Brightness.dark),
+          home: const TalkFirstPreview(initialAuto: true),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final portrait = find.byKey(const ValueKey('portrait-2'));
+      final before = tester.getRect(portrait);
+      final gesture = await tester.startGesture(tester.getCenter(portrait));
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(tester.getRect(portrait), before);
+      expect(
+        tester.getBottomLeft(find.text('Cancel')).dy,
+        lessThan(tester.getTopLeft(find.byType(NavigationBar)).dy),
+      );
+      await gesture.up();
+    },
+  );
+
   testWidgets(
     'a portrait hold sends without opening detail; dragging cancels',
     (tester) async {
@@ -115,6 +181,22 @@ void main() {
     expect(actions, isEmpty);
   });
 
+  testWidgets('Auto Recent changes recipient only when a bubble is tapped', (
+    tester,
+  ) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: studioTheme(Brightness.dark),
+        home: const TalkFirstPreview(initialTab: 1, initialAuto: true),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Auto listening → Lux'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('message-6')));
+    await tester.pumpAndSettle();
+    expect(find.text('Auto listening → Iris'), findsOneWidget);
+  });
+
   testWidgets(
     'Recent reply holds target the message author rather than selected Auto recipient',
     (tester) async {
@@ -126,12 +208,12 @@ void main() {
       );
       await tester.pumpAndSettle();
       final reply = find.byKey(const ValueKey('reply-6'));
+      final before = tester.getRect(reply);
       final gesture = await tester.startGesture(tester.getCenter(reply));
       await tester.pump(const Duration(milliseconds: 600));
-      expect(
-        find.text('Recording → Iris · drag away to cancel'),
-        findsOneWidget,
-      );
+      expect(find.text('Cancel'), findsOneWidget);
+      expect(tester.getRect(reply), before);
+      expect(find.text('Auto listening → Lux'), findsOneWidget);
       await gesture.up();
       await tester.pumpAndSettle();
       expect(find.text('Auto listening → Lux'), findsOneWidget);

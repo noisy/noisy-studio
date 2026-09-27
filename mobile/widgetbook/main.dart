@@ -21,8 +21,22 @@ class Catalog extends StatelessWidget {
             builder: (_) => const TalkFirstPreview(),
           ),
           WidgetbookUseCase(
+            name: 'Portrait crew · cancel target',
+            builder: (_) => const TalkFirstPreview(showCancelTarget: true),
+          ),
+          WidgetbookUseCase(
             name: 'Agent detail · bottom talk surface',
             builder: (_) => const TalkFirstPreview(initialDetail: 0),
+          ),
+          WidgetbookUseCase(
+            name: 'Recent · Auto recipient',
+            builder: (_) =>
+                const TalkFirstPreview(initialTab: 1, initialAuto: true),
+          ),
+          WidgetbookUseCase(
+            name: 'Recent · cancel reply',
+            builder: (_) =>
+                const TalkFirstPreview(initialTab: 1, showRecentCancel: true),
           ),
           WidgetbookUseCase(
             name: 'Recent · chronological replies',
