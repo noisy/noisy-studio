@@ -895,4 +895,5 @@ a:focus-visible,
   right: 8px;
   top: 18px;
 }
+.task-review-lab :deep(.live-task-progress) { display: none; }
 </style>

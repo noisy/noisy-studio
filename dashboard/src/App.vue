@@ -21,6 +21,8 @@ import AudioControls from "./components/AudioControls.vue";
 import { AUDIO_PANEL_WIDTH, type AudioChange } from "./components/audioControls";
 import { useAudioControlVisibility } from "./composables/useAudioControlVisibility";
 import StageLive from "./components/StageLive.vue";
+import TaskProgressPanel from "./components/task-progress/TaskProgressPanel.vue";
+const taskReviewOpen = ref(false);
 import SettingsView from "./components/SettingsView.vue";
 import ShutdownBanner from "./components/ShutdownBanner.vue";
 import { useTabStatus } from "./composables/useTabStatus";
@@ -154,7 +156,7 @@ function isTypingTarget(target: EventTarget | null): boolean {
   return target instanceof HTMLElement && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
 }
 function onKeyDown(event: KeyboardEvent) {
-  if (event.code !== "Space" || isTypingTarget(event.target)) return;
+  if (taskReviewOpen.value || event.code !== "Space" || isTypingTarget(event.target)) return;
   if (status.value?.detection_mode !== "ptt" || status.value?.muted) return;
   event.preventDefault(); // don't scroll / re-click focused buttons
   startPtt();
@@ -498,6 +500,7 @@ function changeAudio({id,value}: AudioChange) {
         </HudPanel>
         <!-- Global, machine-wide cost/state: deliberately OUTSIDE the
              conversation frame — the daemon meters all conversations. -->
+        <TaskProgressPanel :status="status" :offline="offline" :utterances="allUtterances" @review-open="taskReviewOpen = $event" @start-ptt="startPtt" @stop-ptt="stopPtt" />
         <HudPanel index="05" title="Session usage">
           <StatusStrip :status="status" :offline="offline" />
         </HudPanel>
