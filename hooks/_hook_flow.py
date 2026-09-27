@@ -42,6 +42,10 @@ def read_payload() -> dict:
 
 def run(harness: str, payload: dict, listen_seconds: float | None = None) -> int:
     """Handle one hook invocation; returns the process exit code."""
+    import _provider_usage
+    provider = {"claude-hooks": "claude", "codex-hooks": "codex"}.get(harness)
+    if provider:
+        payload = {**payload, "noisy_studio_usage_scope": _provider_usage.connection_scope(provider)}
     body = {"harness": harness, "payload": payload}
     if listen_seconds is not None:
         body["listen_seconds"] = listen_seconds
@@ -51,7 +55,7 @@ def run(harness: str, payload: dict, listen_seconds: float | None = None) -> int
     event_name = str(payload.get("hook_event_name") or "")
     tool_name = str(payload.get("tool_name") or "")
     identity_call = event_name == "PreToolUse" and "noisy" in tool_name and (
-        tool_name.endswith(("__speak", "__announce", "__change_voice", "__set_speaker_style", "__acknowledge_delivery"))
+        tool_name.endswith(("__speak", "__announce", "__change_voice", "__set_speaker_style", "__acknowledge_delivery", "__report_task", "__list_tasks"))
     )
     if reply is None or reply.get("status") == 404:
         return 0  # no daemon, or one too old to know this contract: never block
@@ -68,6 +72,13 @@ def run(harness: str, payload: dict, listen_seconds: float | None = None) -> int
             }
         print(json.dumps(output))
         return 0
+
+    if harness == "codex-hooks" and reply.get("conversation") and not reply.get("participant"):
+        try:
+            import _provider_usage
+            _provider_usage.schedule_codex(reply["conversation"])
+        except Exception:
+            pass  # Quota collection must never delay or break voice delivery.
 
     if event_name == "PreToolUse":
         return _pre_tool_use(payload, reply)
@@ -104,6 +115,8 @@ def _pre_tool_use(payload: dict, reply: dict) -> int:
     arguments = payload.get("tool_input")
     if not isinstance(arguments, dict):
         arguments = {}
+    if str(payload.get("tool_name", "")).endswith(("__report_task", "__list_tasks")):
+        arguments = {**arguments, "reporter_id": reply.get("participant")}
     output: dict = {
         "hookSpecificOutput": {
             "hookEventName": "PreToolUse",

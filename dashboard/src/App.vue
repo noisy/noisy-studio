@@ -8,7 +8,8 @@ import type { Character, Utterance } from "./types";
 import ActivityLine from "./components/ActivityLine.vue";
 import AgentTabs from "./components/AgentTabs.vue";
 import VoicePersona from "./components/VoicePersona.vue";
-import CharacterReadout from "./components/CharacterReadout.vue";
+import { provideTaskProgress } from "./composables/useTaskProgress";
+provideTaskProgress();
 import ConversationLog from "./components/ConversationLog.vue";
 import ConversationTelemetry from "./components/ConversationTelemetry.vue";
 import DiagnosticChecklist from "./components/DiagnosticChecklist.vue";
@@ -17,10 +18,21 @@ import SpeechSettings from "./components/SpeechSettings.vue";
 import HudPanel from "./components/HudPanel.vue";
 import Oscilloscope from "./components/Oscilloscope.vue";
 import TurnHistory from "./components/TurnHistory.vue";
+import ProviderLimits from "./components/ProviderLimits.vue";
 import AudioControls from "./components/AudioControls.vue";
 import { AUDIO_PANEL_WIDTH, type AudioChange } from "./components/audioControls";
 import { useAudioControlVisibility } from "./composables/useAudioControlVisibility";
 import StageLive from "./components/StageLive.vue";
+import TaskProgressPanel from "./components/task-progress/TaskProgressPanel.vue";
+import TaskReviewPage from "./components/task-progress/TaskReviewPage.vue";
+import { reviewPageTarget } from "./components/task-progress/reviewPage";
+const reviewPage = reviewPageTarget(window.location.search);
+const taskReviewOpen = ref(!!reviewPage);
+function leaveReviewPage() {
+  const url = new URL(window.location.href);
+  for (const key of ["review_agent", "review_task", "review_revision"]) url.searchParams.delete(key);
+  window.location.assign(url.href);
+}
 import SettingsView from "./components/SettingsView.vue";
 import ShutdownBanner from "./components/ShutdownBanner.vue";
 import { useTabStatus } from "./composables/useTabStatus";
@@ -154,7 +166,7 @@ function isTypingTarget(target: EventTarget | null): boolean {
   return target instanceof HTMLElement && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
 }
 function onKeyDown(event: KeyboardEvent) {
-  if (event.code !== "Space" || isTypingTarget(event.target)) return;
+  if (taskReviewOpen.value || event.code !== "Space" || isTypingTarget(event.target)) return;
   if (status.value?.detection_mode !== "ptt" || status.value?.muted) return;
   event.preventDefault(); // don't scroll / re-click focused buttons
   startPtt();
@@ -338,6 +350,8 @@ function changeAudio({id,value}: AudioChange) {
 </script>
 
 <template>
+  <TaskReviewPage v-if="reviewPage" :agent="reviewPage.agent" :task-id="reviewPage.taskId" :revision="reviewPage.revision" :status="status" :offline="offline" :utterances="allUtterances" @close="leaveReviewPage" @start-ptt="startPtt" @stop-ptt="stopPtt" />
+  <template v-else>
 
   <!-- First contact: the HUD itself is the demo — live scopes prove the
        mic works, API-dependent sections sit dimmed behind the key prompt. -->
@@ -498,6 +512,8 @@ function changeAudio({id,value}: AudioChange) {
         </HudPanel>
         <!-- Global, machine-wide cost/state: deliberately OUTSIDE the
              conversation frame — the daemon meters all conversations. -->
+        <ProviderLimits :providers="status?.provider_usage ?? []" :offline="offline" />
+        <TaskProgressPanel :status="status" :offline="offline" :utterances="allUtterances" @review-open="taskReviewOpen = $event" @start-ptt="startPtt" @stop-ptt="stopPtt" />
         <HudPanel index="05" title="Session usage">
           <StatusStrip :status="status" :offline="offline" />
         </HudPanel>
@@ -592,6 +608,9 @@ function changeAudio({id,value}: AudioChange) {
             <aside class="convo-rail">
               <section class="railbox">
                 <VoicePersona
+                  :key="viewedAgent ?? 'none'"
+                  :character="character"
+                  @character-change="changeCharacter"
                   :voice="character?.voice ?? ''"
                   :pending="characterPending"
                   :error="characterError"
@@ -602,11 +621,7 @@ function changeAudio({id,value}: AudioChange) {
                   @toggle-mute="toggleAgentMute"
                 />
               </section>
-              <section class="railbox">
-                <div class="railtitle">Character</div>
-                <CharacterReadout v-if="character" :character="character" @change="changeCharacter" />
-                <p v-else class="todo">Choose a conversation to see its character</p>
-              </section>
+              <TaskProgressPanel v-if="viewedAgent" :agent="viewedAgent" :status="status" :offline="offline" :utterances="allUtterances" @review-open="taskReviewOpen = $event" @start-ptt="startPtt" @stop-ptt="stopPtt" />
               <section class="railbox">
                 <div class="railtitle">Turn history</div>
                 <TurnHistory :utterances="utterances"
@@ -635,4 +650,5 @@ function changeAudio({id,value}: AudioChange) {
       <span>{{ offline ? "Connection lost" : lastError ? "Needs attention" : "Ready" }}</span>
     </footer>
   </div>
+  </template>
 </template>

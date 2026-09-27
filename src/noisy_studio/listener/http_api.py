@@ -533,6 +533,7 @@ def status_payload(state: ListenerState) -> dict:
                             # The harness-contract view of the tabs (keys,
                             # aliases, live/idle/deaf/ended, listening_until).
                             "conversations": state.conversations.snapshot(),
+                            "provider_usage": state.provider_usage.snapshot(state.conversations.snapshot()),
                         }
 
 
@@ -552,7 +553,10 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
 
         def _handle_GET(self) -> None:
             url = urlparse(self.path)
-            if url.path == "/":
+            if url.path == "/tasks":
+                store = getattr(state, "task_progress", None)
+                self._respond(store.snapshot() if store else {"threads": {}, "error": "Task reporting not initialized"})
+            elif url.path == "/":
                 # The Vue HUD is the main dashboard; the legacy one stays
                 # at /legacy (and serves as fallback before the first build).
                 if DIST_DIR.is_dir():
@@ -665,7 +669,20 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 self._respond({"error": str(error), "code": "invalid_speech_settings", "recovery": recovery_info()}, status=409)
 
         def _handle_POST(self) -> None:
-            if self.path == "/delivery/acknowledge":
+            if self.path in {"/task-report", "/task-list", "/task-review"}:
+                from noisy_studio.listener.task_api import handle_task_request
+                try:
+                    length = int(self.headers.get("Content-Length", "0"))
+                    if not 0 < length <= 16_384:
+                        raise ValueError("Task requests must be at most 16 KiB")
+                    body = json.loads(self.rfile.read(length))
+                    response = handle_task_request(state, self.path, body)
+                    self._respond(response)
+                except (ValueError, TypeError) as error:
+                    self._respond({"error": str(error)}, status=400)
+                except OSError:
+                    self._respond({"error": "Task progress could not be saved; retry after storage is available"}, status=503)
+            elif self.path == "/delivery/acknowledge":
                 body = self._read_json_body()
                 conversation = body.get("agent")
                 message_ids = body.get("message_ids")
@@ -688,6 +705,14 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     state.record_delivery(delivered_message, receipt)
                 confirmed = [receipt.message_id for _, receipt in receipts]
                 self._respond({"confirmed": confirmed, "unmatched": [value for value in message_ids if value not in confirmed]})
+            elif self.path == "/provider-usage":
+                body = self._read_json_body()
+                data = body.get("data")
+                accepted = isinstance(data, dict) and state.provider_usage.record(
+                    state.conversations, str(body.get("conversation") or ""),
+                    str(body.get("provider") or ""), str(body.get("scope") or ""), data,
+                )
+                self._respond({"accepted": bool(accepted)}, status=200 if accepted else 422)
             elif self.path == "/harness/event":
                 body = self._read_json_body()
                 name = str(body.get("harness") or "")
@@ -738,6 +763,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 name = state.conversations.resolve(name) or name
                 label = str(body.get("label", "")).strip()
                 known = state.conversations.get(name)
+                declared_provider = body.get("provider")
                 if known is not None and known.hidden:
                     # The user closed this tab. Sessions on the old hook
                     # scripts re-register on every tool call; that must not
@@ -753,6 +779,7 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     # registry so it is persisted and its rename is kept -
                     # otherwise these tabs vanished on every daemon restart.
                     state.conversations.adopt(name, label)
+                    state.conversations.set_usage_provider(name, declared_provider)
                     state.register_agent(name, label)
                     if not already:  # avoid spamming the event log every hook fire
                         state.add_event("agent", f"'{label or name}' registered")

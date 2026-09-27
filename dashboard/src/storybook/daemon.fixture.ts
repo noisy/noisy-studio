@@ -2,6 +2,7 @@
 import type { Character, DaemonStatus, SettingsPatch, Utterance } from '../types';
 import type { DiagnosticChecks, ProvidersInfo } from '../api/client';
 export type Scenario = 'conversation' | 'recording' | 'speaking' | 'queued' | 'muted' | 'offline' | 'error' | 'empty' | 'setup' | 'shutdown' | 'long' | 'no-tabs' | 'local-speech';
+let taskSnapshot: import('../components/task-progress/types').TaskSnapshot = {threads:{},error:null};
 let scenario: Scenario = 'conversation';
 let status: DaemonStatus;
 let messages: Utterance[] = [];
@@ -10,6 +11,7 @@ let providers: ProvidersInfo | null;
 const clone = <T>(value: T): T => JSON.parse(JSON.stringify(value));
 export function setProviderFixture(info: ProvidersInfo | null) { providers=clone(info); }
 export function resetScenario(next: Scenario, statusOverrides: Partial<DaemonStatus> = {}) {
+  taskSnapshot = {threads:{},error:null};
   scenario = next;
   providers = {active:{tts:'grok',stt:'grok'},catalog:[{name:'grok',label:'Grok (xAI)',kind:'cloud-api',directions:['tts','stt'],streaming:{tts:true,stt:true},ready:true,fields:[]},{name:'local',label:'On this device',kind:'local',directions:['tts','stt'],streaming:{tts:false,stt:false},ready:true,fields:[]}]};
   const now = Date.now() / 1000;
@@ -98,3 +100,12 @@ export async function previewSpeechVoice() { throw new Error('Storybook has no l
 export async function previewRecognition() {return {text:'The search should ignore capital letters.',elapsed_ms:640};}
 
 export async function restoreSpeechSettings(_revision:string) { speechSettingsError=undefined; status.voice_ready=true; return getSpeechSettings(); }
+
+export function setTaskProgressFixture(value: import('../components/task-progress/types').TaskSnapshot) { taskSnapshot=clone(value); }
+export async function getTaskProgress() { return clone(taskSnapshot); }
+export async function reviewTask(agent:string, task_id:string, revision:number, action:'opened'|'approve'|'undo') {
+  const task=taskSnapshot.threads[agent]?.[task_id];
+  if(!task || task.report.revision!==revision)throw new Error('Task changed; reopen the current result.');
+  if(action==='approve')task.review_state='approved';
+  else if(action==='undo'||task.review_state!=='approved')task.review_state='opened';
+}

@@ -15,7 +15,7 @@ from noisy_studio.harness.base import Delivery, Moment
 
 # Canonical Studio tools, including dev and plugin-namespaced registrations.
 IDENTITY_TOOLS = re.compile(
-    r"^mcp__[^\s]*noisy[_-]studio[^\s]*__(speak|announce|change_voice|set_speaker_style|acknowledge_delivery)$"
+    r"^mcp__[^\s]*noisy[_-]studio[^\s]*__(speak|announce|change_voice|set_speaker_style|acknowledge_delivery|report_task|list_tasks)$"
 )
 
 THINKING = "THINKING…"

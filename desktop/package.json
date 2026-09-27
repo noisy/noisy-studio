@@ -36,6 +36,7 @@
     },
     "files": [
       "main.js",
+      "external-links.js",
       "package.json",
       "build/tray*.png",
       "icons.js",

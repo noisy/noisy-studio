@@ -20,7 +20,7 @@ from post_tool_use import _activity_line, _post_activity  # noqa: E402
 import re  # noqa: E402
 
 IDENTITY_TOOLS = re.compile(
-    r"^mcp__[^\s]*noisy[_-]studio[^\s]*__(speak|announce|change_voice|set_speaker_style|acknowledge_delivery)$"
+    r"^mcp__[^\s]*noisy[_-]studio[^\s]*__(speak|announce|change_voice|set_speaker_style|acknowledge_delivery|report_task|list_tasks)$"
 )
 
 
@@ -44,6 +44,8 @@ def main() -> None:
         arguments = hook_input.get("tool_input")
         if not isinstance(arguments, dict):
             arguments = {}
+        if tool.endswith(("__report_task", "__list_tasks")):
+            arguments = {**arguments, "reporter_id": hook_input.get("agent_id") or None}
         print(json.dumps({"hookSpecificOutput": {
             "hookEventName": "PreToolUse",
             "permissionDecision": "allow",

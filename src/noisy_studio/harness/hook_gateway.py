@@ -37,6 +37,8 @@ def _apply_harness_event(
     registry = state.conversations
     conversation = registry.apply(name, result, adapter.capabilities)
     key = conversation.key
+    if result.participant is None:
+        state.provider_usage.bind(key, payload.get("noisy_studio_usage_scope", ""))
     provider = registry.providers.get(name)
     if provider is not None:
         connection = payload.get("noisy_studio_connection") if payload.get("hook_event_name") in ("SessionStart", "UserPromptSubmit") else None

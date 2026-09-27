@@ -11,3 +11,20 @@ describe('VoicePersona mute controls', () => {
     expect(wrapper.emitted('toggle-mute')).toEqual([[]]);
   });
 });
+
+it('keeps voice and character overlays exclusive and forwards character edits', async () => {
+  const wrapper = mount(VoicePersona, { attachTo: document.body, props: {
+    voice: 'ara', character: { voice: 'ara', speed: 1, humor: 50, honesty: 80, verbosity: 30, talkative: 40 },
+  } });
+  await wrapper.get('[aria-label="Choose voice"]').trigger('click');
+  expect(wrapper.find('.voicelist').exists()).toBe(true);
+  await wrapper.get('.character-button').trigger('click');
+  expect([wrapper.find('.voicelist').exists(), wrapper.find('[role="dialog"]').exists()]).toEqual([false, true]);
+  await wrapper.get('input[type="range"]').setValue('65');
+  expect(wrapper.emitted('characterChange')).toBeTruthy();
+  document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+  await wrapper.vm.$nextTick();
+  expect(wrapper.find('[role="dialog"]').exists()).toBe(false);
+  expect(document.activeElement).toBe(wrapper.get('.character-button').element);
+  wrapper.unmount();
+});
