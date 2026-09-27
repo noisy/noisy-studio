@@ -100,7 +100,10 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
   final _navigationKey = GlobalKey();
   Rect _navigationRect() {
     final box = _navigationKey.currentContext!.findRenderObject()! as RenderBox;
-    return box.localToGlobal(Offset.zero) & box.size;
+    return Rect.fromPoints(
+      box.localToGlobal(Offset.zero),
+      box.localToGlobal(box.size.bottomRight(Offset.zero)),
+    );
   }
 
   bool paused = false;
@@ -584,35 +587,33 @@ class _PreviewHoldState extends State<PreviewHold>
   final _link = LayerLink();
   final _target = GlobalKey();
   Size controlSize = Size.zero;
-  Rect get tile {
-    final box = _target.currentContext!.findRenderObject()! as RenderBox;
-    return box.localToGlobal(Offset.zero) & box.size;
+  RenderBox get targetBox =>
+      _target.currentContext!.findRenderObject()! as RenderBox;
+  Rect? get navLocal {
+    final nav = widget.cancelArea?.call();
+    return nav == null
+        ? null
+        : Rect.fromPoints(
+            targetBox.globalToLocal(nav.topLeft),
+            targetBox.globalToLocal(nav.bottomRight),
+          );
   }
 
   Rect get cancelZone {
-    final current = tile;
-    if (widget.cancelArea != null) {
-      final nav = widget.cancelArea!();
-      return Rect.fromLTWH(
-        nav.left,
-        current.bottom,
-        nav.width,
-        (nav.bottom - current.bottom) * progress,
-      );
-    }
-    return widget.cancelLeft
-        ? Rect.fromLTWH(
-            current.left - 80 * progress,
-            current.top,
-            80 * progress,
-            current.height,
-          )
+    final size = targetBox.size;
+    final nav = navLocal;
+    final local = widget.cancelLeft
+        ? Rect.fromLTWH(-80 * progress, 0, 80 * progress, size.height)
         : Rect.fromLTWH(
-            current.left,
-            current.bottom,
-            current.width,
-            current.height / 3 * progress,
+            nav?.left ?? 0,
+            size.height,
+            nav?.width ?? size.width,
+            ((nav?.bottom ?? size.height * 4 / 3) - size.height) * progress,
           );
+    return Rect.fromPoints(
+      targetBox.localToGlobal(local.topLeft),
+      targetBox.localToGlobal(local.bottomRight),
+    );
   }
 
   @override
@@ -631,7 +632,7 @@ class _PreviewHoldState extends State<PreviewHold>
     _pointer = null;
     holding = true;
     if (widget.cancelBelow || widget.cancelLeft) {
-      controlSize = tile.size;
+      controlSize = targetBox.size;
       if (MediaQuery.disableAnimationsOf(context)) {
         _reveal.value = 1;
       } else {
@@ -673,8 +674,8 @@ class _PreviewHoldState extends State<PreviewHold>
 
   Widget _animatedPaper() {
     final left = widget.cancelLeft;
-    final nav = widget.cancelArea?.call();
-    final controlLeft = nav == null ? 0.0 : tile.left - nav.left;
+    final nav = navLocal;
+    final controlLeft = nav == null ? 0.0 : -nav.left;
     final width = left
         ? 80 + controlSize.width
         : nav?.width ?? controlSize.width;
@@ -682,7 +683,7 @@ class _PreviewHoldState extends State<PreviewHold>
         ? 80.0
         : nav == null
         ? controlSize.height / 3
-        : nav.bottom - tile.bottom;
+        : nav.bottom - controlSize.height;
     final height = left ? controlSize.height : controlSize.height + exposed;
     final overlap = (left ? controlSize.width : controlSize.height) * .28;
     final clip = left
@@ -776,7 +777,7 @@ class _PreviewHoldState extends State<PreviewHold>
             ? const Offset(-80, 0)
             : widget.cancelArea == null
             ? Offset.zero
-            : Offset(widget.cancelArea!().left - tile.left, 0),
+            : Offset(navLocal!.left, 0),
         child: IgnorePointer(
           child: AnimatedBuilder(
             animation: _reveal,

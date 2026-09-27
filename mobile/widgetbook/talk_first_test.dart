@@ -6,6 +6,47 @@ import 'talk_first.dart';
 
 void main() {
   testWidgets(
+    'scaled phone cancel sheet covers transformed navigation bounds',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(800, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: studioTheme(Brightness.dark),
+          home: Center(
+            child: Transform.scale(
+              scale: .9,
+              child: const SizedBox(
+                width: 360,
+                height: 740,
+                child: TalkFirstPreview(
+                  initialDetail: 0,
+                  showDetailCancel: true,
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      Rect transformedRect(Finder finder) {
+        final box = tester.renderObject<RenderBox>(finder);
+        return Rect.fromPoints(
+          box.localToGlobal(Offset.zero),
+          box.localToGlobal(box.size.bottomRight(Offset.zero)),
+        );
+      }
+
+      final red = transformedRect(find.byKey(const ValueKey('cancel-sheet')));
+      final navigation = transformedRect(find.byType(NavigationBar));
+      expect(red.left, closeTo(navigation.left, .01));
+      expect(red.right, closeTo(navigation.right, .01));
+      expect(red.bottom, closeTo(navigation.bottom, .01));
+      expect(red.top, lessThan(navigation.top));
+    },
+  );
+
+  testWidgets(
     'half-revealed sheet ignores invisible area but cancels on exposed red',
     (tester) async {
       final outcomes = <bool>[];
