@@ -1,6 +1,6 @@
 # Agent provider plan limits
 
-The dashboard reads `provider_usage` from this daemon's `/status`. Only providers with a visible, non-ended conversation registered in this instance appear. Installed tools and speech-engine catalog entries do not count. Unknown or unsupported reports have no invented percentage. The compact panel has no Details view or historical statistics.
+The dashboard reads `provider_usage` from this daemon's `/status`. Only providers with a visible, non-ended conversation registered in this instance appear. Installed tools and speech-engine catalog entries do not count. Visible registered sessions that are currently idle/deaf remain included: this scope means registered in this instance, not actively speaking or recently online. Closed/ended sessions are excluded. Legacy provider metadata is stored separately and never changes voice-routing transport. Unknown or unsupported reports have no invented percentage. The compact panel has no Details view or historical statistics.
 
 Quota samples expire after five minutes and independently when their reset timestamp passes. Stale values remain visibly historical; missing windows in a new report are removed rather than interpreted as zero. Reports are memory-only, so a restarted daemon waits for fresh readings.
 
@@ -21,3 +21,5 @@ If a statusline already exists, preserve it as arguments after `--`; its origina
 A shared weekly plan pool is documented, but a supported quota collector has not been verified. Grok conversations registered with explicit `provider: "grok"` metadata display Usage unavailable. Legacy registrations without provider metadata are not guessed from labels; their client must supply this optional field to `/register`. Grok API RPS/TPM limits are not substituted for subscription allowance.
 
 Sources: https://code.claude.com/docs/en/statusline ; https://learn.chatgpt.com/docs/app-server ; https://docs.x.ai/grok/faq .
+
+The collector inherits the registering hook's environment (including CODEX_HOME) and receives the exact resolved `_client.BASE_URL` as its endpoint. Throttling uses that same endpoint. Today hook endpoints are loopback plus `NOISY_STUDIO_LISTENER_PORT`; `NOISY_STUDIO_DAEMON_URL` is the Vite proxy setting, not a hook override. Codex's configure() resolves its settings port before importing the hook client.

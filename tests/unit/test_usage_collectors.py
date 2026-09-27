@@ -65,3 +65,20 @@ def test_statusline_forwards_only_quota_fields_and_preserves_existing_command(mo
         'published': [('/provider-usage', 'c1', body['rate_limits'])],
         'chained': [(['existing-statusline', '--compact'], raw)],
     }
+
+
+def test_scheduled_collector_uses_exact_hook_endpoint_and_inherits_profile(tmp_path, monkeypatch):
+    from types import SimpleNamespace
+    module = collector()
+    monkeypatch.setitem(sys.modules, '_client', SimpleNamespace(BASE_URL='http://127.0.0.1:7765'))
+    monkeypatch.setenv('NOISY_STUDIO_LISTENER_PORT', '9765')
+    monkeypatch.setenv('CODEX_HOME', str(tmp_path / 'profile1'))
+    monkeypatch.setattr(module.tempfile, 'gettempdir', lambda: str(tmp_path))
+    monkeypatch.setattr(module.shutil, 'which', lambda name: '/tools/codex')
+    launched = []
+    monkeypatch.setattr(module.subprocess, 'Popen', lambda args, **kwargs: launched.append((args, kwargs)))
+    module.schedule_codex('c1')
+    module.schedule_codex('c2')
+    assert {'calls': len(launched), 'target': launched[0][0][-1], 'overrides_env': 'env' in launched[0][1]} == {
+        'calls': 1, 'target': 'http://127.0.0.1:7765', 'overrides_env': False,
+    }

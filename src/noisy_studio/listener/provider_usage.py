@@ -84,6 +84,8 @@ class ProviderUsage:
         groups = {}
         for key, conversation in conversations.items():
             provider = provider_name(conversation['harness'])
+            if provider == 'legacy':
+                provider = conversation.get('usage_provider')
             if provider not in LABELS or conversation.get('hidden') or conversation.get('status') == 'ended':
                 continue
             scope = scopes.get(key)

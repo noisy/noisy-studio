@@ -81,8 +81,8 @@ def schedule_codex(conversation):
         return
     scope = connection_scope('codex')
     # Scope includes daemon endpoint: one instance must not suppress another.
-    port = os.environ.get('NOISY_STUDIO_LISTENER_PORT', '8765')
-    name = hashlib.sha256(f'{scope}:{port}'.encode()).hexdigest()
+    import _client
+    name = hashlib.sha256(f'{scope}:{_client.BASE_URL}'.encode()).hexdigest()
     stamp = Path(tempfile.gettempdir()) / f'noisy-usage-{name}.lock'
     try:
         if stamp.exists() and time.time() - stamp.stat().st_mtime > 60:
@@ -91,12 +91,14 @@ def schedule_codex(conversation):
         os.close(descriptor)
     except OSError:
         return
-    subprocess.Popen([sys.executable, __file__, executable, conversation], stdin=subprocess.DEVNULL,
+    subprocess.Popen([sys.executable, __file__, executable, conversation, _client.BASE_URL], stdin=subprocess.DEVNULL,
                      stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
 
 
 def main():
     import _client
+    if len(sys.argv) > 3:
+        _client.BASE_URL = sys.argv[3]  # Exact resolved endpoint used by the registering hook.
     try:
         data = read_codex_limits([sys.argv[1], 'app-server'])
         if data is not None:

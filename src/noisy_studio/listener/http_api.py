@@ -748,9 +748,6 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 label = str(body.get("label", "")).strip()
                 known = state.conversations.get(name)
                 declared_provider = body.get("provider")
-                registration_harness = declared_provider if declared_provider in ("claude", "codex", "grok") else "legacy"
-                if known is not None and known.harness == "legacy" and registration_harness != "legacy":
-                    known.harness = registration_harness
                 if known is not None and known.hidden:
                     # The user closed this tab. Sessions on the old hook
                     # scripts re-register on every tool call; that must not
@@ -765,7 +762,8 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     # harness contract. Adopt the conversation into the
                     # registry so it is persisted and its rename is kept -
                     # otherwise these tabs vanished on every daemon restart.
-                    state.conversations.adopt(name, label, harness=registration_harness)
+                    state.conversations.adopt(name, label)
+                    state.conversations.set_usage_provider(name, declared_provider)
                     state.register_agent(name, label)
                     if not already:  # avoid spamming the event log every hook fire
                         state.add_event("agent", f"'{label or name}' registered")

@@ -54,3 +54,20 @@ def test_matching_registered_profile_uses_one_report_for_other_conversations():
     usage.bind('c2', 'a' * 64)
     usage.record(registry(), 'c1', 'claude', 'a' * 64, {'five_hour': {'used_percentage': 50, 'resets_at': 2000}})
     assert len(usage.snapshot({key: {'harness': 'claude-hooks'} for key in ('c1', 'c2')})) == 1
+
+
+def test_legacy_provider_metadata_survives_restart_without_changing_transport(tmp_path):
+    from noisy_studio.listener.conversations import ConversationRegistry
+    path = tmp_path / 'conversations.json'
+    original = ConversationRegistry(path=path)
+    original.adopt('g1', 'Example')
+    original.set_usage_provider('g1', 'grok')
+    restored = ConversationRegistry(path=path)
+    assert {
+        'harness': restored.get('g1').harness,
+        'routing_provider': restored.providers.for_conversation('g1'),
+        'usage': ProviderUsage().snapshot(restored.snapshot()),
+    } == {
+        'harness': 'legacy', 'routing_provider': None,
+        'usage': [{'provider': 'grok', 'label': 'Grok', 'sampled_at': None, 'scope': 'unknown', 'message': 'Usage unavailable', 'windows': []}],
+    }
