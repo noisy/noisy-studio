@@ -1,11 +1,32 @@
-import type { Meta, StoryObj } from '@storybook/vue3';
-import ProviderLimits from './ProviderLimits.vue';
-const meta = { title: 'Lab/Provider Limits', component: ProviderLimits, parameters: { layout: 'fullscreen' }, args: { variant: 'strip', mixed: false, light: false }, argTypes: { variant: { control: 'select', options: ['strip', 'cards', 'ledger'] } } } satisfies Meta<typeof ProviderLimits>;
+import type { Meta, StoryObj } from "@storybook/vue3";
+import DashboardLimits from "./DashboardLimits.vue";
+import { resetScenario } from "../../storybook/daemon.fixture";
+const meta = {
+  title: "Lab/Provider Limits",
+  component: DashboardLimits,
+  parameters: {
+    layout: "fullscreen",
+    docs: {
+      description: {
+        component:
+          "Synthetic design only. Actual dashboard with fixture conversations; quota percentages and reset times are illustrative. No accounts connected.",
+      },
+    },
+  },
+  render: (args) => {
+    resetScenario("conversation", {
+      version: __APP_VERSION__,
+      latest_version: __APP_VERSION__,
+    });
+    return {
+      components: { DashboardLimits },
+      setup: () => ({ args }),
+      template: '<DashboardLimits v-bind="args" />',
+    };
+  },
+} satisfies Meta<typeof DashboardLimits>;
 export default meta;
 type Story = StoryObj<typeof meta>;
-export const CompactOverview: Story = {};
-export const AccountCards: Story = { args: { variant: 'cards' } };
-export const WindowLedger: Story = { args: { variant: 'ledger' } };
-export const MixedFreshness: Story = { args: { variant: 'cards', mixed: true } };
-export const LightOverview: Story = { args: { light: true } };
-export const LightMixedFreshness: Story = { args: { variant: 'cards', mixed: true, light: true } };
+export const ThinBars: Story = { args: { variant: "rows" } };
+export const BoldBars: Story = { args: { variant: "inset" } };
+export const ThreeColumns: Story = { args: { variant: "columns" } };
