@@ -16,7 +16,7 @@ Flutter 3.47.5 / Dart 3.13.4; Java 17 for Android.
 cd mobile
 flutter pub get
 scripts/check.sh
-flutter run                              # fixture mode by default
+flutter run                              # connect in Settings; Demo is opt-in
 flutter run -d chrome -t widgetbook/main.dart
 flutter build apk --debug
 # Read-only single-origin HTTP contract check (never starts recording):
@@ -31,7 +31,7 @@ See `DESIGN.md` for the desktop component/interaction mapping and sync command. 
 Settings accepts an HTTP(S) origin, remembers only its address, and connects only
 on request. The daemon must already be reachable. This app never changes its bind
 address. HTTP uses `/status`, `/utterances`, `/active-agent`, `/ptt`, `/mute`,
-`/interrupt`, `/settings`. State refreshes once per second after the previous HTTP snapshot completes.
+`/abort-recording`, `/interrupt`, `/settings`, `/speak`, `/cancel`, `/playback-pause`. State refreshes once per second after the previous HTTP snapshot completes.
 Both reads and commands use exactly the supplied HTTP(S) origin; no second port
 or WebSocket proxy route is required. Each snapshot reads `/status` and
 `/utterances`; polling stops on failure, cancellation or disconnect. Reconnecting
@@ -44,18 +44,33 @@ Local HTTP is permitted by both
 platform manifests for this preview. Web preview requires the daemon's CORS policy
 to allow its origin; native builds do not use browser CORS.
 
-Agent selection is serialized and Talk controls remain disabled until the latest
-server confirmation. Disconnecting or switching to demo invalidates old routing
-completions. The confirmed identity, including aliases or no active conversation,
-is authoritative.
+The main screen shows conversation portraits. Tap opens the slim conversation detail;
+hold records directly to that conversation. Auto sends to the confirmed selected
+recipient. Recent combines chronological messages from all agents; in Auto a tap
+selects the message's conversation. Reply records directly to that bubble's agent.
+Unknown or closed conversations do not have a Reply action.
 
-PTT renews every 500 ms after the previous acknowledgement. Release waits for an
-in-flight renewal. Backgrounding, navigation, routing changes, Auto mode, muting,
-disconnection and disposal cancel the local hold. Network loss disables controls;
-reconnect is explicit, and never resumes a hold. The daemon's existing lease
-expiry is the final fallback if a release cannot reach it. This preview uses the
-existing global lease; it cannot arbitrate simultaneous desktop/mobile holds.
-Pending-message badges are labeled queued, not falsely described as read receipts.
+Holding reveals a red Cancel sheet. Sliding over it only highlights it; releasing
+over the visible red area discards. Sliding back and releasing elsewhere sends.
+The same gesture is shared by portraits, Reply and the large detail control.
+Widgetbook renders these production components with synthetic data and no network.
+
+Recording commands are serialized: suspend Auto and settle its current segment,
+confirm the recipient, then acquire the PTT lease. Releasing during selection never
+starts a late recording. PTT renews every 500 ms after the previous acknowledgement.
+Discard waits for a pending renewal, requests `/abort-recording`, then releases PTT.
+Restoring Auto requires a fresh status with `recording=false` and (after discard)
+`recording_abort_pending=false`, followed by restoring the original recipient.
+**The desktop must include `recording_abort_pending` in `/status`.** Older daemons
+receive an explicit update/restart message and Auto remains off when cleanup cannot
+be confirmed. No original recipient means Auto is not resumed on a different agent.
+
+Backgrounding, routing changes, connection loss and disposal discard an active hold
+without resuming Auto. A command or cleanup failure disables recording until explicit
+reconnection. Poll snapshots spanning commands are ignored so stale responses cannot
+undo confirmed routing. The existing global lease cannot arbitrate simultaneous
+desktop/mobile holds; expiry remains the fallback when the daemon is unreachable.
+Playback replay, pause/resume, skip and recall remain available on eligible messages.
 
 ## CI and signing handoff
 

@@ -35,7 +35,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      final portrait = find.byKey(const ValueKey('portrait-0'));
+      final portrait = find.byKey(const ValueKey('portrait-a1'));
       final image = find.descendant(
         of: portrait,
         matching: find.byType(VoiceAvatar),
@@ -86,7 +86,7 @@ void main() {
 
       final red = transformedRect(find.byKey(const ValueKey('cancel-sheet')));
       final navigation = transformedRect(find.byType(NavigationBar));
-      final talk = transformedRect(find.byKey(const ValueKey('talk-0')));
+      final talk = transformedRect(find.byKey(const ValueKey('talk-a1')));
       expect(red.left, closeTo(talk.left, .01));
       expect(red.right, closeTo(talk.right, .01));
       expect(red.bottom, closeTo(navigation.bottom, .01));
@@ -102,7 +102,7 @@ void main() {
         MaterialApp(
           home: Scaffold(
             body: Center(
-              child: PreviewHold(
+              child: HoldControl(
                 cancelBelow: true,
                 label: 'Target',
                 onStart: () {},
@@ -113,7 +113,7 @@ void main() {
           ),
         ),
       );
-      final target = find.byType(PreviewHold);
+      final target = find.byType(HoldControl);
       final rect = tester.getRect(target);
       for (final depth in [48.0, 10.0]) {
         final gesture = await tester.startGesture(rect.center);
@@ -140,7 +140,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      final talk = find.byKey(const ValueKey('talk-0'));
+      final talk = find.byKey(const ValueKey('talk-a1'));
       final before = tester.getRect(talk);
       final hold = await tester.startGesture(tester.getCenter(talk));
       await tester.pump(const Duration(milliseconds: 600));
@@ -175,7 +175,7 @@ void main() {
             .opacity,
         1,
       );
-      expect(find.byKey(const ValueKey('talk-0')), findsOneWidget);
+      expect(find.byKey(const ValueKey('talk-a1')), findsOneWidget);
     },
   );
 
@@ -210,11 +210,11 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const ValueKey('portrait-0')));
+    await tester.tap(find.byKey(const ValueKey('portrait-a1')));
     await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
     expect(
-      tester.getBottomLeft(find.byKey(const ValueKey('talk-0'))).dy,
+      tester.getBottomLeft(find.byKey(const ValueKey('talk-a1'))).dy,
       lessThan(tester.getTopLeft(find.byType(NavigationBar)).dy),
     );
   });
@@ -230,7 +230,7 @@ void main() {
           ),
         );
         await tester.pumpAndSettle();
-        final portrait = find.byKey(const ValueKey('portrait-0'));
+        final portrait = find.byKey(const ValueKey('portrait-a1'));
         final before = tester.getRect(portrait);
         final gesture = await tester.startGesture(tester.getCenter(portrait));
         await tester.pump(const Duration(milliseconds: 600));
@@ -261,7 +261,7 @@ void main() {
           MaterialApp(
             home: Scaffold(
               body: Center(
-                child: PreviewHold(
+                child: HoldControl(
                   cancelBelow: !left,
                   cancelLeft: left,
                   label: 'Target',
@@ -273,7 +273,7 @@ void main() {
             ),
           ),
         );
-        final target = find.byType(PreviewHold);
+        final target = find.byType(HoldControl);
         final origin = tester.getCenter(target);
         final gesture = await tester.startGesture(origin);
         await tester.pump(const Duration(milliseconds: 600));
@@ -314,7 +314,7 @@ void main() {
         ),
       );
       await tester.pumpAndSettle();
-      final portrait = find.byKey(const ValueKey('portrait-2'));
+      final portrait = find.byKey(const ValueKey('portrait-a3'));
       final before = tester.getRect(portrait);
       final gesture = await tester.startGesture(tester.getCenter(portrait));
       await tester.pump(const Duration(milliseconds: 600));
@@ -336,7 +336,7 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
-            body: PreviewHold(
+            body: HoldControl(
               label: 'Hold',
               onTap: () => taps++,
               onStart: () {},
@@ -346,7 +346,7 @@ void main() {
           ),
         ),
       );
-      final target = find.byType(PreviewHold);
+      final target = find.byType(HoldControl);
       await tester.longPress(target);
       await tester.pump();
       final gesture = await tester.startGesture(tester.getCenter(target));
@@ -369,7 +369,7 @@ void main() {
         home: Scaffold(
           body: ListView(
             children: [
-              PreviewHold(
+              HoldControl(
                 label: 'Hold',
                 onTap: () => actions.add('tap'),
                 onStart: () => actions.add('record'),
@@ -382,7 +382,7 @@ void main() {
         ),
       ),
     );
-    await tester.drag(find.byType(PreviewHold), const Offset(0, -150));
+    await tester.drag(find.byType(HoldControl), const Offset(0, -150));
     await tester.pumpAndSettle();
     expect(actions, isEmpty);
   });

@@ -4,10 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'core/daemon_client.dart';
-import 'core/agent_selection.dart';
+import 'core/direct_hold.dart';
 import 'core/message_actions.dart';
 import 'core/models.dart';
-import 'core/ptt_lease.dart';
+import 'ui/talk_first.dart';
 import 'ui/screens.dart';
 import 'l10n/app_localizations.dart';
 
@@ -35,16 +35,16 @@ class Companion extends StatefulWidget {
 }
 
 class _CompanionState extends State<Companion> with WidgetsBindingObserver {
-  Snapshot snapshot = fixture();
+  Snapshot snapshot = const Snapshot();
   final address = TextEditingController();
   DaemonClient? client;
-  PttLease? lease;
-  AgentSelection? selection;
+  DirectHold? recording;
   MessageActions? actions;
   StreamSubscription<Snapshot>? subscription;
-  bool demo = true, connected = true, busy = false, demoHeld = false;
-  String? error;
-  int tab = 0, generation = 0;
+  bool demo = false, connected = false, busy = false;
+  String? demoHeld, error;
+  int generation = 0, resetToken = 0;
+
   @override
   void initState() {
     super.initState();
@@ -60,20 +60,28 @@ class _CompanionState extends State<Companion> with WidgetsBindingObserver {
 
   Future<void> disconnect() async {
     generation++;
+    resetToken++;
     actions?.dispose();
     actions = null;
-    selection?.dispose();
-    selection = null;
-    final previousLease = lease;
+    final previous = recording;
     final previousSubscription = subscription;
     final previousClient = client;
-    lease = null;
+    recording = null;
     subscription = null;
     client = null;
-    await previousLease?.stop();
-    previousLease?.dispose();
+    previous?.removeListener(refresh);
     await previousSubscription?.cancel();
+    await previous?.close();
+    previous?.dispose();
     await previousClient?.close();
+  }
+
+  void showError(String message) {
+    if (!mounted) return;
+    error = message;
+    connected = false;
+    resetToken++;
+    refresh();
   }
 
   Future<void> connect() async {
@@ -103,118 +111,86 @@ class _CompanionState extends State<Companion> with WidgetsBindingObserver {
         },
       )..playingId = initial.playingId;
       actions!.addListener(refresh);
+      recording = DirectHold(
+        commands: remote,
+        selectAgent: remote.selectAgent,
+        setAuto: remote.setAuto,
+        waitForIdle: remote.waitForRecordingIdle,
+        initial: initial,
+        onError: (message) {
+          if (current == generation) showError(message);
+        },
+      )..addListener(refresh);
       demo = false;
       connected = true;
-      void connectionLost([Object? cause]) {
-        if (mounted && current == generation) lost(cause);
-      }
-
-      final connectionLease = PttLease(remote, onFailure: connectionLost)
-        ..addListener(refresh);
-      lease = connectionLease;
-      selection = AgentSelection(
-        stopRecording: connectionLease.stop,
-        request: remote.selectAgent,
-        onConfirmed: (id) {
-          if (mounted && current == generation) applySelection(id);
-        },
-        onFailure: connectionLost,
-      )..addListener(refresh);
       subscription = remote.watch().listen(
         (next) {
           if (!mounted || current != generation) return;
-          if (next.activeId != snapshot.activeId || next.auto || next.muted) {
-            unawaited(lease?.stop());
-          }
           actions?.playingId = next.playingId;
+          recording?.observe(next);
           snapshot = next;
           refresh();
         },
-        onError: (Object cause) => connectionLost(cause),
+        onError: (Object cause) {
+          if (mounted && current == generation) lost(cause);
+        },
         onDone: () {
-          if (connected) connectionLost();
+          if (mounted && current == generation && connected) lost();
         },
       );
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('daemonAddress', address.text.trim());
     } catch (cause) {
       if (!mounted || current != generation) return;
-      error = cause is DaemonAccessException ? cause.toString() : 'Could not connect. Check the address and that your desktop is reachable.';
-      connected = false;
+      showError(
+        cause is DaemonAccessException ? cause.toString() : 'Could not connect. Check the address and that your desktop is reachable.',
+      );
     } finally {
       if (mounted && current == generation) setState(() => busy = false);
     }
   }
 
   void lost([Object? cause]) {
-    actions?.dispose();
-    actions = null;
-    selection?.dispose();
-    selection = null;
-    unawaited(lease?.stop());
-    connected = false;
-    error = cause is DaemonAccessException
+    final message = cause is DaemonAccessException
         ? cause.toString()
         : 'Connection lost. Recording stopped. Reconnect in Settings.';
+    recording?.interrupt(message);
+    showError(message);
+  }
+
+  void updateDemo({String? selected, bool? auto, bool? muted}) {
+    snapshot = Snapshot(
+      agents: snapshot.agents,
+      messages: snapshot.messages,
+      activeId: selected ?? snapshot.activeId,
+      auto: auto ?? snapshot.auto,
+      muted: muted ?? snapshot.muted,
+    );
     refresh();
   }
 
-  Future<bool> command(String path, Map<String, Object> body) async {
-    if (demo) return true;
+  Future<void> pauseAuto() async {
+    if (demo) {
+      updateDemo(muted: !snapshot.muted);
+      return;
+    }
+    if (!connected || client == null || recording == null) return;
     final current = generation;
     try {
-      await client?.post(path, body);
-      return mounted && current == generation;
+      await recording!.finish(discard: true, restore: false);
+      await client!.post('/mute', {'muted': !snapshot.muted});
     } catch (cause) {
-      if (mounted && current == generation) lost(cause);
-      return false;
-    }
-  }
-
-  Future<void> select(Agent agent) async {
-    if (!connected) return;
-    if (demo) {
-      release();
-      applySelection(agent.id);
-    } else {
-      await selection?.select(agent.id);
-    }
-  }
-
-  void applySelection(String? confirmedId) {
-    setState(() {
-      snapshot = Snapshot(
-        agents: snapshot.agents,
-        messages: snapshot.messages,
-        activeId: confirmedId,
-        muted: snapshot.muted,
-        auto: snapshot.auto,
-        recording: snapshot.recording,
-        playingId: snapshot.playingId,
-      );
-      tab = 1;
-    });
-  }
-
-  void release() {
-    demoHeld = false;
-    unawaited(lease?.stop());
-    refresh();
-  }
-
-  void hold() {
-    if (!connected || selection?.pending == true) return;
-    if (demo) {
-      demoHeld = true;
-      refresh();
-    } else {
-      unawaited(lease?.start());
+      if (current == generation) lost(cause);
     }
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    if (state != AppLifecycleState.resumed) release();
+    if (state != AppLifecycleState.resumed) {
+      demoHeld = null;
+      resetToken++;
+      refresh();
+    }
   }
 
   @override
@@ -227,72 +203,71 @@ class _CompanionState extends State<Companion> with WidgetsBindingObserver {
 
   @override
   Widget build(BuildContext context) {
-    final agent = snapshot.agents
-        .where((a) => a.id == snapshot.activeId)
-        .firstOrNull;
     ValueChanged<Message>? handler(MessageAction action) =>
         !demo && connected && actions != null && !actions!.busy
         ? (message) => actions?.perform(action, message)
         : null;
-    final pages = [
-      AgentsView(snapshot: snapshot, onSelect: select),
-      TalkView(
-        snapshot: snapshot,
-        onReplay: handler(MessageAction.replay),
-        onCancel: handler(MessageAction.cancel),
-        pausedId: actions?.pausedId ?? 0,
-        agent: agent,
-        connected: connected && selection?.pending != true,
-        held: demo ? demoHeld : lease?.held == true,
-        onHold: hold,
-        onRelease: release,
-        onToggle: () =>
-            (demo ? demoHeld : lease?.held == true) ? release() : hold(),
-        onAuto: (value) async {
-          release();
-          if (!await command('/settings', {
-            'detection_mode': value ? 'auto' : 'ptt',
-          })) {
-            return;
-          }
-          if (demo) {
-            snapshot = Snapshot(
-              agents: snapshot.agents,
-              messages: snapshot.messages,
-              activeId: snapshot.activeId,
-              muted: snapshot.muted,
-              auto: value,
-            );
-            refresh();
-          }
-        },
-        onMute: () async {
-          release();
-          if (!await command('/mute', {'muted': !snapshot.muted})) return;
-          if (demo) {
-            snapshot = Snapshot(
-              agents: snapshot.agents,
-              messages: snapshot.messages,
-              activeId: snapshot.activeId,
-              auto: snapshot.auto,
-              muted: !snapshot.muted,
-            );
-            refresh();
-          }
-        },
-        onStop: () => actions?.playback(togglePause: false),
-        onPauseSpeech: !demo && connected && actions?.busy == false
-            ? () => actions?.playback(togglePause: true)
-            : null,
-        speechBusy: actions?.busy ?? false,
-      ),
-      MessagesView(
-        messages: snapshot.messages,
-        onReplay: handler(MessageAction.replay),
-        onCancel: handler(MessageAction.cancel),
-        pausedId: actions?.pausedId ?? 0,
-      ),
-      ConnectionSettings(
+    final ready = connected && (demo || recording?.connected == true);
+    return TalkFirstView(
+      agents: snapshot.agents.map(TalkAgent.fromAgent).toList(),
+      messages: snapshot.messages,
+      selectedId: demo ? snapshot.activeId : recording?.displaySelectedId,
+      auto: demo ? snapshot.auto : recording?.displayAuto ?? snapshot.auto,
+      enabled:
+          ready &&
+          (demo || recording?.busy != true && recording?.holding != true) &&
+          !snapshot.muted,
+      recordingId: demo ? demoHeld : recording?.heldAgentId,
+      resetToken: (generation, resetToken, recording?.resetToken),
+      paused: snapshot.muted,
+      onPause: ready && recording?.busy != true && recording?.holding != true
+          ? pauseAuto
+          : null,
+      notice:
+          error ??
+          (demo
+              ? 'Demo · no audio is recorded'
+              : connected
+              ? 'Controls your desktop microphone and speakers'
+              : 'Connect your desktop in Settings'),
+      onSelect: (id) {
+        if (demo) {
+          updateDemo(selected: id);
+        } else {
+          unawaited(recording?.select(id));
+        }
+      },
+      onMode: (value) {
+        if (demo) {
+          updateDemo(auto: value);
+        } else {
+          unawaited(recording?.changeMode(value));
+        }
+      },
+      onHold: (id) {
+        if (demo) {
+          setState(() => demoHeld = id);
+        } else {
+          unawaited(recording?.start(id));
+        }
+      },
+      onFinish: (discard) {
+        if (demo) {
+          setState(() => demoHeld = null);
+        } else {
+          unawaited(recording?.finish(discard: discard));
+        }
+      },
+      onReplay: handler(MessageAction.replay),
+      onRecall: handler(MessageAction.cancel),
+      onPauseSpeech: ready && !demo && actions?.busy == false
+          ? (_) => actions?.playback(togglePause: true)
+          : null,
+      onSkip: ready && !demo && actions?.busy == false
+          ? (_) => actions?.playback(togglePause: false)
+          : null,
+      pausedMessageId: actions?.pausedId ?? 0,
+      settings: ConnectionSettings(
         address: address,
         busy: busy,
         error: error,
@@ -310,58 +285,6 @@ class _CompanionState extends State<Companion> with WidgetsBindingObserver {
             snapshot = fixture();
           });
         },
-      ),
-    ];
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Noisy Studio'),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.all(12),
-            child: Chip(
-              label: Text(
-                demo
-                    ? 'DEMO'
-                    : connected
-                    ? 'CONNECTED'
-                    : 'OFFLINE',
-              ),
-            ),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            if (error != null && tab != 3)
-              MaterialBanner(
-                content: Text(error!),
-                actions: [
-                  TextButton(
-                    onPressed: () => setState(() => tab = 3),
-                    child: const Text('Reconnect'),
-                  ),
-                ],
-              ),
-            Expanded(child: pages[tab]),
-          ],
-        ),
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: tab,
-        onDestinationSelected: (value) {
-          release();
-          setState(() => tab = value);
-        },
-        destinations: const [
-          NavigationDestination(icon: Icon(Icons.grid_view), label: 'Agents'),
-          NavigationDestination(icon: Icon(Icons.mic), label: 'Talk'),
-          NavigationDestination(
-            icon: Icon(Icons.chat_bubble_outline),
-            label: 'Recent',
-          ),
-          NavigationDestination(icon: Icon(Icons.tune), label: 'Settings'),
-        ],
       ),
     );
   }

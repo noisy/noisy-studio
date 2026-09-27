@@ -192,9 +192,10 @@ class MessageCard extends StatelessWidget {
     this.onSkip,
     this.onCancel,
     this.paused = false,
+    this.embedded = false,
   });
   final Message message;
-  final bool paused;
+  final bool paused, embedded;
   final ValueChanged<Message>? onReplay, onPause, onSkip, onCancel;
   @override
   Widget build(BuildContext context) {
@@ -207,11 +208,16 @@ class MessageCard extends StatelessWidget {
     final chip = messageChip(message.role, message.status);
     final state = messageState(message.role, message.status);
     return Container(
-      decoration: BoxDecoration(
-        color: Color.alphaBlend(color.withValues(alpha: .04), scheme.surface),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: color.withValues(alpha: .3)),
-      ),
+      decoration: embedded
+          ? null
+          : BoxDecoration(
+              color: Color.alphaBlend(
+                color.withValues(alpha: .04),
+                scheme.surface,
+              ),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: color.withValues(alpha: .3)),
+            ),
       padding: const EdgeInsets.all(12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -278,7 +284,11 @@ class MessageCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 9),
-          Text(message.text, style: const TextStyle(fontSize: 14, height: 1.5)),
+          Text(
+            message.text,
+            key: ValueKey('body-${message.id}'),
+            style: const TextStyle(fontSize: 14, height: 1.5),
+          ),
           if (message.status.isNotEmpty)
             Padding(
               padding: const EdgeInsets.only(top: 10),

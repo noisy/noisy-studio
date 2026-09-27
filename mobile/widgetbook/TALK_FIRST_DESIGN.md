@@ -1,6 +1,12 @@
-# Talk-first mobile refinements
+# Approved talk-first mobile views
 
-These Widgetbook-only proposals use the real mobile theme, portraits and MessageCard for existing message surfaces. The Recent agent-bubble prototype mirrors that styling with a dedicated footer. No microphone, transport or persisted settings are involved.
+The app and these stories share `lib/ui/talk_first.dart` and `hold_control.dart`.
+Stories supply synthetic agents/messages and callbacks; production supplies the
+confirmed daemon state and serialized recording controller. No story calls the
+daemon or requests microphone permission. The 6043 preview remains design-only.
+
+
+The shared views use the mobile theme, portraits and MessageCard, with a reserved Reply footer in Recent. Widgetbook adds no microphone, transport or persisted settings.
 
 The approved portrait direction now has one card interaction: tap opens the conversation and selects its Auto recipient; hold talks directly without opening anything. The Details buttons and compact roster proposal were removed. Existing functional component stories remain.
 
@@ -10,7 +16,7 @@ The large detail talk surface is pinned immediately above bottom navigation. A c
 
 Recent retains the original chronological message-card feed, including user messages and repeated messages from the same agent, with newest messages at the bottom. Each agent bubble reserves a footer for status and a compact microphone/Reply control, flush to its bottom and right edges. Reply rounds only its top-left corner; the bubble supplies the outer bottom-right clip, including while held. Cancel uses the same top-left-only rounding and flat baseline. Holding it targets that message's agent, regardless of the selected Auto recipient. User messages have no reply microphone. Recording state stays inside the held portrait; start, send and cancel never insert a crew banner.
 
-Checks protect the risky interactions: hold release never opens detail, only releasing over Cancel cancels, scrolling does not start recording, and Recent reply routing does not use an unrelated selected agent. Live integration still requires design approval and a separate recording transport/accessibility specification.
+Checks protect the risky interactions: hold release never opens detail, only releasing over Cancel cancels, scrolling does not start recording, and Recent reply routing does not use an unrelated selected agent. Production integration uses the daemon recording controller described in `mobile/README.md`; gestures remain shared with these synthetic stories.
 
 ## Visible cancellation targets
 
