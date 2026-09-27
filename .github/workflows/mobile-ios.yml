@@ -1,7 +1,12 @@
 name: Mobile iOS signed artifact
-# Explicit manual invocation only; never upload to TestFlight in this interface ticket.
+# Manual signing, with an explicit opt-in to upload to TestFlight.
 on:
   workflow_dispatch:
+    inputs:
+      upload_testflight:
+        description: Upload the signed build to TestFlight
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -41,9 +46,12 @@ jobs:
       - run: flutter pub get
       - run: scripts/check.sh
       - name: Prepare Flutter project
-        run: flutter build ios --release --config-only --build-number "$GITHUB_RUN_NUMBER"
+        run: flutter build ios --release --no-codesign --config-only --build-number "$GITHUB_RUN_NUMBER"
       - name: Archive and export
         run: scripts/ci/export_ios.sh
+      - name: Upload to TestFlight
+        if: ${{ inputs.upload_testflight }}
+        run: scripts/ci/upload_testflight.sh
       - uses: actions/upload-artifact@v4
         with:
           name: noisy-studio-mobile-ipa

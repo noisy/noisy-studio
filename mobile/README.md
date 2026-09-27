@@ -66,7 +66,9 @@ is deliberately not implied by a debug build and will need a separate app key
 before distribution.
 
 The manual-only `.github/workflows/mobile-ios.yml` archives and cloud-signs an IPA;
-it **never submits to a store or TestFlight**. In `noisy/noisy-studio`, create the
+it uploads to TestFlight only when the manual `upload_testflight` input is enabled.
+It never submits an App Store release for review. Apple processing and tester
+availability are separate from a successful upload. In `noisy/noisy-studio`, create the
 `mobile-ios` environment with these secret names (never paste their values into
 issues/chat):
 
