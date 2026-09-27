@@ -148,27 +148,31 @@ class _TalkFirstPreviewState extends State<TalkFirstPreview> {
         : tab == 2
         ? const Center(child: Text('Connection and preferences'))
         : _agents(),
-    bottomNavigationBar: AbsorbPointer(
-      absorbing: held != null,
-      child: NavigationBar(
-        key: _navigationKey,
-        selectedIndex: tab,
-        onDestinationSelected: (value) => setState(() {
-          tab = value;
-          detail = null;
-          held = null;
-        }),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.people_outline),
-            label: 'Agents',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.forum_outlined),
-            label: 'Recent',
-          ),
-          NavigationDestination(icon: Icon(Icons.tune), label: 'Settings'),
-        ],
+    bottomNavigationBar: Opacity(
+      key: const ValueKey('nav-visibility'),
+      opacity: held != null && detail != null ? 0 : 1,
+      child: AbsorbPointer(
+        absorbing: held != null,
+        child: NavigationBar(
+          key: _navigationKey,
+          selectedIndex: tab,
+          onDestinationSelected: (value) => setState(() {
+            tab = value;
+            detail = null;
+            held = null;
+          }),
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.people_outline),
+              label: 'Agents',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.forum_outlined),
+              label: 'Recent',
+            ),
+            NavigationDestination(icon: Icon(Icons.tune), label: 'Settings'),
+          ],
+        ),
       ),
     ),
   );
@@ -701,9 +705,11 @@ class _PreviewHoldState extends State<PreviewHold>
     final nav = widget.cancelArea?.call();
     return nav == null
         ? null
-        : Rect.fromPoints(
-            targetBox.globalToLocal(nav.topLeft),
-            targetBox.globalToLocal(nav.bottomRight),
+        : Rect.fromLTRB(
+            0,
+            targetBox.globalToLocal(nav.topLeft).dy,
+            targetBox.size.width,
+            targetBox.globalToLocal(nav.bottomRight).dy,
           );
   }
 

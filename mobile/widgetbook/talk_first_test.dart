@@ -53,7 +53,7 @@ void main() {
   );
 
   testWidgets(
-    'scaled phone cancel sheet covers transformed navigation bounds',
+    'scaled detail cancel sheet aligns with talk width and reaches navigation bottom',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(800, 900));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -86,8 +86,9 @@ void main() {
 
       final red = transformedRect(find.byKey(const ValueKey('cancel-sheet')));
       final navigation = transformedRect(find.byType(NavigationBar));
-      expect(red.left, closeTo(navigation.left, .01));
-      expect(red.right, closeTo(navigation.right, .01));
+      final talk = transformedRect(find.byKey(const ValueKey('talk-0')));
+      expect(red.left, closeTo(talk.left, .01));
+      expect(red.right, closeTo(talk.right, .01));
       expect(red.bottom, closeTo(navigation.bottom, .01));
       expect(red.top, lessThan(navigation.top));
     },
@@ -128,7 +129,7 @@ void main() {
   );
 
   testWidgets(
-    'detail cancel sheet covers navigation and release cancels without navigating',
+    'detail cancel matches talk width and hides navigation until release',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(360, 740));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -146,8 +147,14 @@ void main() {
       await tester.pump(const Duration(milliseconds: 200));
       final red = tester.getRect(find.byKey(const ValueKey('cancel-sheet')));
       final navigation = tester.getRect(find.byType(NavigationBar));
-      expect(red.left, lessThanOrEqualTo(navigation.left));
-      expect(red.right, greaterThanOrEqualTo(navigation.right));
+      expect(red.left, before.left);
+      expect(red.right, before.right);
+      expect(
+        tester
+            .widget<Opacity>(find.byKey(const ValueKey('nav-visibility')))
+            .opacity,
+        0,
+      );
       expect(red.top, lessThanOrEqualTo(navigation.top));
       expect(red.bottom, greaterThanOrEqualTo(navigation.bottom));
       final cancel = tester.getCenter(find.text('Cancel'));
@@ -162,6 +169,12 @@ void main() {
       await hold.up();
       await tester.pumpAndSettle();
       expect(find.text('Recording preview cancelled'), findsOneWidget);
+      expect(
+        tester
+            .widget<Opacity>(find.byKey(const ValueKey('nav-visibility')))
+            .opacity,
+        1,
+      );
       expect(find.byKey(const ValueKey('talk-0')), findsOneWidget);
     },
   );

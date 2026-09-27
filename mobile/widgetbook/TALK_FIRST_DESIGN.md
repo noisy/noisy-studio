@@ -20,7 +20,7 @@ Recent Reply is a small filled/bordered button. In Auto, tapping a bubble select
 
 ## Motion and navigation coverage
 
-Red sheets slide out over 180 ms with ease-out cubic motion. Clipping prevents hidden red regions from showing through the main control. Release hit regions follow only the currently exposed red area; invisible portions cannot cancel. System reduced-motion settings skip the animation. In detail, the sheet expands across the entire bottom navigation rectangle, including labels and safe-area space supplied by NavigationBar. Navigation is also disabled during any active hold.
+Red sheets slide out over 180 ms with ease-out cubic motion. Clipping prevents hidden red regions from showing through the main control. Release hit regions follow only the currently exposed red area; invisible portions cannot cancel. System reduced-motion settings skip the animation. In detail, the sheet has exactly the talk surface width and extends to the bottom of navigation, including its safe-area extent. The navigation is hidden during a detail hold while preserving its layout space, so no labels peek through the side margins. Navigation is disabled during any active hold and restored after release.
 
 ## Portrait-led crew
 
