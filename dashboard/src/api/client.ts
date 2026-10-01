@@ -297,7 +297,7 @@ export async function getTaskProgress(signal?: AbortSignal): Promise<import('../
   if (!body || typeof body.threads !== 'object' || body.threads === null) throw new Error('Task reporting is not supported by this daemon');
   return body;
 }
-export async function reviewTask(agent:string, task_id:string, revision:number, action:'opened'|'approve'|'undo'):Promise<void> {
+export async function reviewTask(agent:string, task_id:string, revision:number, action:'opened'|'approve'|'reject'|'undo'):Promise<void> {
   const response = await fetch('/task-review',{method:'POST',body:JSON.stringify({agent,task_id,revision,action})});
   const body = await response.json();
   if (!response.ok || body.error) throw new Error(body.error || 'Review could not be saved');

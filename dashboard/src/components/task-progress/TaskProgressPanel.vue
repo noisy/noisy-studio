@@ -4,10 +4,9 @@ import type { DaemonStatus, Utterance } from "../../types";
 import { conversationLabel } from "../../conversationLabel";
 import { orderAgents } from "../agentOrder";
 import { useTaskProgress } from "../../composables/useTaskProgress";
-import { reviewPageUrl } from "./reviewPage";
 import { readyForReview } from "./types";
 import ThreadProgress from "./ThreadProgress.vue";
-import TaskTitle from "./TaskTitle.vue";
+import ReviewItem from "./ReviewItem.vue";
 const props = defineProps<{
   agent?: string;
   status: DaemonStatus | null;
@@ -49,17 +48,10 @@ const ready = computed(() =>
       No results waiting for review.
     </p>
     <div class="ready-list">
-      <article
-        v-for="result in ready"
-        :key="result.thread.agent + result.task.report.task_id"
-      >
-        <div>
-          <TaskTitle :text="result.task.report.title" /><small v-if="!agent">{{
-            result.thread.label
-          }}</small>
-        </div>
-        <a :href="reviewPageUrl(result.thread.agent, result.task.report.task_id, result.task.report.revision)" target="_blank" rel="noopener noreferrer" :aria-label="result.task.report.review?.label">Review ↗</a>
-      </article>
+      <ReviewItem v-for="result in ready"
+        :key="JSON.stringify([result.thread.agent, result.task.report.task_id, result.task.report.revision])"
+        :agent="result.thread.agent" :task="result.task" :offline="offline"
+        :thread-label="agent ? undefined : result.thread.label" @reviewed="refresh" />
     </div>
     <ThreadProgress v-if="agent" :tasks="Object.values(snapshot.threads[agent] ?? {})" />
   </section>
@@ -110,21 +102,6 @@ small {
 .ready-list {
   max-height: 180px;
   overflow: auto;
-}
-.ready-list article {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 7px 0;
-  border-top: 1px solid #77839b22;
-}
-.ready-list article > div {
-  min-width: 0;
-  flex: 1;
-}
-.ready-list small {
-  display: block;
-  margin-top: 3px;
 }
 .scoped {
   padding:0 0 12px;

@@ -103,9 +103,10 @@ export async function restoreSpeechSettings(_revision:string) { speechSettingsEr
 
 export function setTaskProgressFixture(value: import('../components/task-progress/types').TaskSnapshot) { taskSnapshot=clone(value); }
 export async function getTaskProgress() { return clone(taskSnapshot); }
-export async function reviewTask(agent:string, task_id:string, revision:number, action:'opened'|'approve'|'undo') {
+export async function reviewTask(agent:string, task_id:string, revision:number, action:'opened'|'approve'|'reject'|'undo') {
   const task=taskSnapshot.threads[agent]?.[task_id];
   if(!task || task.report.revision!==revision)throw new Error('Task changed; reopen the current result.');
   if(action==='approve')task.review_state='approved';
-  else if(action==='undo'||task.review_state!=='approved')task.review_state='opened';
+  else if(action==='reject')task.review_state='rejected';
+  else if(action==='undo'||!['approved','rejected'].includes(task.review_state))task.review_state='opened';
 }

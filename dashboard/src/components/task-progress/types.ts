@@ -8,13 +8,13 @@ export interface TaskReport {
   participant: string | null;
   role: string | null;
   model: string | null;
-  review: { label: string; url: string } | null;
+  review: { label: string; url: string; direct?: boolean } | null;
 }
 export interface ReportedTask {
   report: TaskReport;
   updated_at: number;
   started_at?: number | null;
-  review_state: "unopened" | "opened" | "approved";
+  review_state: "unopened" | "opened" | "approved" | "rejected";
   stale: boolean;
 }
 export interface TaskSnapshot {
@@ -40,7 +40,7 @@ export function reviewUrl(task: ReportedTask): string | null {
 export function readyForReview(task: ReportedTask): boolean {
   return (
     task.report.state === "done" &&
-    task.review_state !== "approved" &&
+    !["approved", "rejected"].includes(task.review_state) &&
     reviewUrl(task) !== null
   );
 }

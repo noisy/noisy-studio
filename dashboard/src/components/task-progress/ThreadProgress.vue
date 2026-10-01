@@ -5,7 +5,8 @@ import { readyForReview } from "./types";
 import TaskTitle from "./TaskTitle.vue";
 const props = defineProps<{ tasks: ReportedTask[] }>();
 const active = computed(() => props.tasks.filter(task => task.report.state !== "done"));
-const completed = computed(() => props.tasks.filter(task => task.report.state === "done" && !readyForReview(task)).length);
+const completed = computed(() => props.tasks.filter(task => task.report.state === "done" && task.review_state !== "rejected" && !readyForReview(task)).length);
+const rejected = computed(() => props.tasks.filter(task => task.review_state === "rejected").length);
 const now = ref(Date.now() / 1000);
 let clock: ReturnType<typeof setInterval> | undefined;
 onMounted(() => { clock = setInterval(() => now.value = Date.now() / 1000, 1000); });
@@ -38,6 +39,7 @@ function percentage(task: ReportedTask) {
         <span v-if="percentage(task) !== null" class="percentage">{{ percentage(task) }}%</span>
       </div>
     </article>
+    <p v-if="rejected" class="quiet">{{ rejected }} rejected · awaiting changes</p>
     <p v-if="completed" class="quiet">{{ completed }} completed · no review pending</p>
   </section>
 </template>
