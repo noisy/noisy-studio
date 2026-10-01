@@ -21,9 +21,11 @@ The main conversation can report several delegated work items, each with a stabl
 
 ## Ready for review
 
-When a task is done and there is an artifact the user should inspect, include `review: {label, url}` with a descriptive action label and the exact absolute HTTP(S) URL. Local preview URLs are fine; filesystem paths and guessed links are not supported. If there is no artifact, omit review rather than inventing one.
+When a task is done and there is an artifact the user should inspect, include `review: {label, url, direct?}` with a descriptive action label and the exact absolute HTTP(S) URL. Local preview URLs are fine; filesystem paths and guessed links are not supported. If there is no artifact, omit review rather than inventing one.
 
 Example: `report_task(task_id="audio-settings", revision=3, title="Compact audio settings", state="done", completed=3, total=3, role="Dashboard agent", review={"label":"Review settings preview","url":"http://localhost:6038/?path=/story/lab-audio--compact"})`.
+
+Set `review.direct: true` for destinations that refuse iframe embedding, such as GitLab. Omit it or use false for the Noisy Studio review wrapper. The whole review item opens the link; only after opening does it reveal Approve and Reject. Human rejection is stored as `review_state: "rejected"`; read it with `list_tasks`, address the feedback, and report a new revision for fresh review. Never approve or reject on the user’s behalf.
 
 Task completion, opening a review, and human approval are separate. No MCP tool approves work on the user's behalf. A changed report revision requires fresh review even if the URL is unchanged. Read approval state through `list_tasks`; do not infer it from silence or a visited link.
 

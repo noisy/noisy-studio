@@ -288,7 +288,9 @@ async def report_task(task_id: str, title: str, state: str, revision: int = 1,
 
     Reuse a stable task_id and increment revision for changed reports. State is
     pending/working/blocked/done. Counts describe steps, not time; omit unknown
-    counts/model. Review is {label, url}, an explicit HTTP(S) artifact to inspect.
+    counts/model. Review is {label, url, direct?}, an explicit HTTP(S) artifact to inspect.
+    Set review.direct=true to open the artifact directly without the review iframe
+    (for example GitLab); omitted/false keeps the Noisy Studio review wrapper.
     Parent agents may label delegated work with participant and role. Hooks own
     agent_id/reporter_id: leave both unset. Read list_tasks after a revision conflict.
     """

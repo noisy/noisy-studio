@@ -73,8 +73,11 @@ def validate_report(report: dict) -> dict:
             raise ValueError("done tasks must have all reported steps complete")
     review = report.get("review")
     if review is not None:
-        if not isinstance(review, dict) or set(review) != {"label", "url"}:
-            raise ValueError("review requires only label and url")
+        if not isinstance(review, dict) or (set(review) - {"label", "url", "direct"} or not {"label", "url"} <= set(review)):
+            raise ValueError("review requires label and url, with optional direct boolean")
+        if "direct" in review and type(review["direct"]) is not bool:
+            raise ValueError("review direct must be a boolean")
+        direct = review.get("direct")
         label = _text(review["label"], "review label", 100)
         url = _text(review["url"], "review URL", 2048)
         try:
@@ -93,6 +96,8 @@ def validate_report(report: dict) -> dict:
                 "review URL must be an absolute HTTP(S) URL without credentials"
             )
         review = {"label": label, "url": url}
+        if direct is not None:
+            review["direct"] = direct
     return {
         "task_id": task_id,
         "revision": revision,
@@ -151,6 +156,7 @@ class TaskProgressStore:
                             "unopened",
                             "opened",
                             "approved",
+                            "rejected",
                         }:
                             raise ValueError("Invalid review state")
                 self._threads = data["threads"]
@@ -222,7 +228,7 @@ class TaskProgressStore:
             return deepcopy(entry)
 
     def review(self, thread: str, task_id: str, revision: int, action: str) -> dict:
-        if action not in {"opened", "approve", "undo"}:
+        if action not in {"opened", "approve", "reject", "undo"}:
             raise ValueError("Invalid human review action")
         with self._lock:
             entry = self._threads.get(thread, {}).get(task_id)
@@ -238,7 +244,11 @@ class TaskProgressStore:
             target = updated[thread][task_id]
             if action == "approve":
                 target["review_state"] = "approved"
-            elif action == "undo" or target["review_state"] != "approved":
+            elif action == "reject":
+                if target["review_state"] == "unopened":
+                    raise ValueError("Open the review before rejecting it")
+                target["review_state"] = "rejected"
+            elif action == "undo" or target["review_state"] not in {"approved", "rejected"}:
                 target["review_state"] = "opened"
             self._persist(updated)
             return deepcopy(target)

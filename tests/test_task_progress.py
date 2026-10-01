@@ -194,3 +194,34 @@ def test_invalid_persisted_task_start_preserves_original_file(tmp_path, report, 
     store = TaskProgressStore(path)
 
     assert {"error": bool(store.load_error), "preserved": path.read_text() == original} == {"error": True, "preserved": True}
+
+
+@pytest.mark.parametrize('direct', [True, False])
+def test_direct_review_and_rejection_survive_restart(tmp_path, report, direct):
+    path = tmp_path / 'tasks.json'
+    store = TaskProgressStore(path)
+    store.report('thread-1', {**report, 'review': {**report['review'], 'direct': direct}})
+    store.review('thread-1', 'task-1', 1, 'opened')
+    store.review('thread-1', 'task-1', 1, 'reject')
+
+    recovered = TaskProgressStore(path).snapshot('thread-1')['threads']['thread-1']['task-1']
+    assert (recovered['report']['review']['direct'], recovered['review_state']) == (direct, 'rejected')
+    assert store.review('thread-1', 'task-1', 1, 'opened')['review_state'] == 'rejected'
+    assert store.report('thread-1', {**report, 'revision': 2})['review_state'] == 'unopened'
+
+
+@pytest.mark.parametrize('direct', ['true', 1, None])
+def test_direct_review_requires_boolean(report, direct):
+    with pytest.raises(ValueError, match='boolean'):
+        validate_report({**report, 'review': {**report['review'], 'direct': direct}})
+
+
+def test_reject_requires_opened_current_revision(tmp_path, report):
+    store = TaskProgressStore(tmp_path / 'tasks.json')
+    store.report('thread-1', report)
+    with pytest.raises(ValueError, match='Open the review'):
+        store.review('thread-1', 'task-1', 1, 'reject')
+    store.review('thread-1', 'task-1', 1, 'opened')
+    store.report('thread-1', {**report, 'revision': 2})
+    with pytest.raises(ValueError, match='task changed'):
+        store.review('thread-1', 'task-1', 1, 'reject')
