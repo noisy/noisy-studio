@@ -20,9 +20,9 @@ it('opens the whole item directly and reveals decisions only after saving the vi
  expect(reviewTask).toHaveBeenLastCalledWith('thread-1','task-1',2,'reject');
  expect(wrapper.findAll('button')).toHaveLength(0);
 });
-it('keeps wrapper navigation for existing reports', () => {
- const wrapper=mount(ReviewItem,{props:{agent:'thread-1',task:{...task,report:{...task.report,review:{...task.report.review!,direct:undefined}}},offline:false}});
- expect(wrapper.get('a').attributes('href')).toContain('review_revision=2');
+it.each([undefined, false])('opens existing reports directly with direct=%s while embedding is disabled', direct => {
+ const wrapper=mount(ReviewItem,{props:{agent:'thread-1',task:{...task,report:{...task.report,review:{...task.report.review!,direct}}},offline:false}});
+ expect(wrapper.get('a').attributes('href')).toBe(task.report.review!.url);
 });
 it('does not reveal decisions when saving the visit fails', async () => {
  vi.mocked(reviewTask).mockRejectedValue(new Error('Task changed'));

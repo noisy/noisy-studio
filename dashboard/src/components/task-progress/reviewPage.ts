@@ -1,3 +1,18 @@
+import { reviewUrl, type ReportedTask } from './types';
+
+// Set true to restore the review wrapper; explicit review.direct still wins.
+export const REVIEW_IFRAMES_ENABLED = false;
+
+export function canEmbedReview(task: ReportedTask): boolean {
+  return REVIEW_IFRAMES_ENABLED && task.report.review?.direct !== true;
+}
+
+export function reviewTargetUrl(agent: string, task: ReportedTask): string {
+  return canEmbedReview(task)
+    ? reviewPageUrl(agent, task.report.task_id, task.report.revision)
+    : reviewUrl(task) ?? '';
+}
+
 export function reviewPageUrl(agent: string, taskId: string, revision: number, base = window.location.href): string {
   const url = new URL(base);
   url.search = '';

@@ -25,7 +25,7 @@ When a task is done and there is an artifact the user should inspect, include `r
 
 Example: `report_task(task_id="audio-settings", revision=3, title="Compact audio settings", state="done", completed=3, total=3, role="Dashboard agent", review={"label":"Review settings preview","url":"http://localhost:6038/?path=/story/lab-audio--compact"})`.
 
-Set `review.direct: true` for destinations that refuse iframe embedding, such as GitLab. Omit it or use false for the Noisy Studio review wrapper. The whole review item opens the link; only after opening does it reveal Approve and Reject. Human rejection is stored as `review_state: "rejected"`; read it with `list_tasks`, address the feedback, and report a new revision for fresh review. Never approve or reject on the user’s behalf.
+Set `review.direct: true` for destinations that refuse iframe embedding, such as GitLab. The dashboard currently opens all reviews directly. The wrapper is retained behind `REVIEW_IFRAMES_ENABLED` in `dashboard/src/components/task-progress/reviewPage.ts`; when enabled, omitted/false uses the wrapper and true still opens directly. The whole review item opens the link; only after opening does it reveal Approve and Reject. Human rejection is stored as `review_state: "rejected"`; read it with `list_tasks`, address the feedback, and report a new revision for fresh review. Never approve or reject on the user’s behalf.
 
 Task completion, opening a review, and human approval are separate. No MCP tool approves work on the user's behalf. A changed report revision requires fresh review even if the URL is unchanged. Read approval state through `list_tasks`; do not infer it from silence or a visited link.
 

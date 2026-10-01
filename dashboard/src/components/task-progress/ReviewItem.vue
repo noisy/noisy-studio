@@ -1,17 +1,15 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { reviewTask } from '../../api/client';
-import { reviewPageUrl } from './reviewPage';
-import { reviewUrl, type ReportedTask } from './types';
+import { reviewTargetUrl } from './reviewPage';
+import type { ReportedTask } from './types';
 import TaskTitle from './TaskTitle.vue';
 const props = defineProps<{ agent: string; task: ReportedTask; threadLabel?: string; offline: boolean }>();
 const emit = defineEmits<{ reviewed: [] }>();
 const busy = ref(false), error = ref('');
 const savedState = ref<ReportedTask['review_state']>();
 const state = computed(() => savedState.value ?? props.task.review_state);
-const href = computed(() => props.task.report.review?.direct
-  ? reviewUrl(props.task)!
-  : reviewPageUrl(props.agent, props.task.report.task_id, props.task.report.revision));
+const href = computed(() => reviewTargetUrl(props.agent, props.task));
 async function save(action: 'opened' | 'approve' | 'reject') {
   busy.value = true;
   error.value = '';
