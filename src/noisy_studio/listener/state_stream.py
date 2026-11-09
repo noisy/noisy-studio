@@ -62,7 +62,10 @@ class StateStream:
             meaningful = digest != last_digest
             volatile_due = now - last_sent_at >= STATE_VOLATILE_INTERVAL_SECONDS
             if meaningful or volatile_due:
-                ws.send(payload)
+                try:
+                    ws.send(payload)
+                except Exception:  # the dashboard went away mid-send
+                    return
                 last_digest = digest
                 last_sent_at = now
             try:
