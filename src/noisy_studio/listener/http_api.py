@@ -1527,9 +1527,19 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
     return Handler
 
 
+class _HTTPServer(ThreadingHTTPServer):
+    def handle_error(self, request, client_address) -> None:
+        # A hook or dashboard that gives up on a long poll closes its socket
+        # before we answer. That is routine, not a daemon failure: printing a
+        # 30-line traceback per hang-up buried the real logs.
+        if isinstance(sys.exc_info()[1], (BrokenPipeError, ConnectionResetError, ConnectionAbortedError)):
+            return
+        super().handle_error(request, client_address)
+
+
 def start_http_api(state: ListenerState, port: int) -> ThreadingHTTPServer:
     host = os.environ.get(BIND_ENV_VAR, "127.0.0.1")
-    server = ThreadingHTTPServer((host, port), _handler_class(state))
+    server = _HTTPServer((host, port), _handler_class(state))
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     return server

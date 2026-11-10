@@ -19,6 +19,7 @@ import sounddevice as sd
 from noisy_studio.config_dir import CONFIG_DIR
 from noisy_studio import providers
 from noisy_studio.listener import speech, stt
+from noisy_studio.listener.audio_guard import AudioCallGuard, stall_retry_seconds
 import json
 
 from noisy_studio.listener.http_api import (
@@ -387,6 +388,17 @@ def _open_selected_input_stream(
     return input_stream, selected
 
 
+def _close_input_stream(stream: "sd.InputStream | None") -> None:
+    if stream is not None:
+        stream.stop()
+        stream.close()
+
+
+def _reinitialize_portaudio() -> None:
+    sd._terminate()
+    sd._initialize()
+
+
 def load_saved_characters(state: ListenerState) -> None:
     """Restore legacy or per-session characters and persist their canonical shape."""
     try:
@@ -583,6 +595,8 @@ def run(config: VadConfig | None = None) -> None:
     active_input, active_device = _open_input_stream(state, config, on_audio, history=microphone_history)
     wanted_device = state.input_device  # the pick we last acted on
     last_pick_retry = time.monotonic()
+    audio_calls = AudioCallGuard(_log)
+    stall_streak = 0  # consecutive reopens that never produced a frame
     try:
         try:
             current_utterance_id = 0
@@ -611,9 +625,12 @@ def run(config: VadConfig | None = None) -> None:
                     stream = None
                 segmenter = UtteranceSegmenter(config)
                 state.set_recording(False)
+                released = True
                 if active_input is not None:  # No stream while native hardware is unavailable
-                    active_input.stop()
-                    active_input.close()
+                    old_input, active_input = active_input, None
+                    released, _ = audio_calls.run(
+                        "closing the old input stream", lambda: _close_input_stream(old_input)
+                    )
                 # PortAudio enumerates devices ONCE per initialization, so a
                 # microphone plugged in after daemon start is invisible to
                 # this process even though /devices (a fresh subprocess)
@@ -622,13 +639,27 @@ def run(config: VadConfig | None = None) -> None:
                 # refreshes the device table, so the reopen below can find
                 # the newcomer. A concurrent TTS playback stream would make
                 # the reinit throw - then we keep the old instance and log.
-                try:
-                    sd._terminate()
-                    sd._initialize()
-                    _log("[mic] PortAudio reinitialized - device table refreshed")
-                except Exception as error:  # noqa: BLE001 - keep the old instance
-                    _log(f"[mic] PortAudio reinit skipped: {error}")
-                active_input, active_device = _open_input_stream(state, config, on_audio, history=microphone_history)
+                # Never terminate PortAudio under a call still stuck in it.
+                if released:
+                    try:
+                        if audio_calls.run("PortAudio reinit", _reinitialize_portaudio)[0]:
+                            _log("[mic] PortAudio reinitialized - device table refreshed")
+                    except Exception as error:  # noqa: BLE001 - keep the old instance
+                        _log(f"[mic] PortAudio reinit skipped: {error}")
+                opened, result = audio_calls.run(
+                    "opening the input stream",
+                    lambda: _open_input_stream(state, config, on_audio, history=microphone_history),
+                    on_late_result=lambda late: _close_input_stream(late[0]),
+                )
+                if opened and result is not None:
+                    active_input, active_device = result
+                else:
+                    active_input, active_device = None, ""
+                    state.add_event(
+                        "mic_error",
+                        "The audio system is not responding; Noisy Studio keeps retrying. "
+                        "Restart the app if the microphone does not come back.",
+                    )
                 wanted_device = state.input_device
                 last_pick_retry = time.monotonic()
                 last_frame_at = time.monotonic()
@@ -668,12 +699,20 @@ def run(config: VadConfig | None = None) -> None:
                     frame = frames.get(timeout=FRAME_WAIT_SECONDS)
                 except queue.Empty:
                     if state.input_device != wanted_device:
+                        stall_streak = 0
                         reopen_input("input device switched")
-                    elif active_device != state.input_device and time.monotonic() - last_pick_retry >= PICK_RETRY_SECONDS:
-                        reopen_input("retrying the preferred microphone")
-                    elif active_input is not None or time.monotonic() - last_pick_retry >= PICK_RETRY_SECONDS:
-                        reopen_input("no audio frames (stream stalled)", kind="mic_error")
+                    elif time.monotonic() - last_pick_retry >= stall_retry_seconds(
+                        stall_streak, FRAME_WAIT_SECONDS if active_input is not None else PICK_RETRY_SECONDS
+                    ):
+                        # No frames at all - the fallback is as dead as the
+                        # pick. Every reopen also retries the pick, so one
+                        # branch covers both, backing off while nothing works.
+                        stall_streak += 1
+                        reason = "no audio frames (stream stalled)" if active_input is not None else "no input stream"
+                        suffix = f", attempt {stall_streak}" if stall_streak > 1 else ""
+                        reopen_input(f"{reason}{suffix}", kind="mic_error")
                     continue
+                stall_streak = 0
                 now = time.monotonic()
                 frame_gap = now - last_frame_at
                 last_frame_at = now
@@ -840,8 +879,8 @@ def run(config: VadConfig | None = None) -> None:
             stt_executor.shutdown(wait=False)
             speech.shutdown()
     finally:
-        active_input.stop()
-        active_input.close()
+        if active_input is not None:
+            AudioCallGuard(_log).run("closing the input stream", lambda: _close_input_stream(active_input))
 
 
 def main() -> None:
