@@ -1,5 +1,5 @@
 /** Storybook-only daemon. Never sends network requests or plays real audio. */
-import type { Character, DaemonStatus, SettingsPatch, Utterance } from '../types';
+import type { Character, ConversationHotkeyResult, DaemonStatus, SettingsPatch, Utterance } from '../types';
 import type { DiagnosticChecks, ProvidersInfo } from '../api/client';
 export type Scenario = 'conversation' | 'recording' | 'speaking' | 'queued' | 'muted' | 'offline' | 'error' | 'empty' | 'setup' | 'shutdown' | 'long' | 'no-tabs' | 'local-speech';
 let taskSnapshot: import('../components/task-progress/types').TaskSnapshot = {threads:{},error:null};
@@ -58,6 +58,7 @@ export async function setCharacter(patch:Partial<Character>) { Object.assign(cha
 export async function setAgentMuted(agent:string,muted:boolean) { status.muted_agents=muted ? [...status.muted_agents!,agent] : status.muted_agents!.filter(a=>a!==agent); }
 export async function setActiveAgent(name:string) { status.active_agent=name; }
 export async function dismissAgent(name:string) { delete status.agents[name]; delete status.agent_labels[name]; }
+export async function setConversationHotkey(conversation:string, chord:string|null): Promise<ConversationHotkeyResult> { const meta=status.agents_meta?.[conversation]; if(meta) meta.talk_key=chord||null; return {conversation, talk_key:chord||null, moved_from:null, problem:null}; }
 export async function restoreAgent(name:string) { const settled=status.settled_agents; if(settled){ settled.items=settled.items.filter(item=>item.name!==name); settled.total=Math.max(0,settled.total-1); } }
 export async function reorderAgents(names:string[]) { names.forEach((name,i)=>{status.agents_meta![name].manual_pos=i;}); }
 export async function setPtt(held:boolean) { status.ptt_held=held; status.recording=held; }
