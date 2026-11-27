@@ -7,11 +7,11 @@
  * window goes and tells the page which side of the cursor it is on through
  * the URL hash (#below / #above). */
 import { computed, onMounted, onUnmounted, ref } from "vue";
-import { openStateStream, type StateSnapshot, type StreamHandle } from "../api/stateStream";
+import { openStateStream, type StateUpdate, type StreamHandle } from "../api/stateStream";
 import DictationBubble from "./DictationBubble.vue";
 import { dictationView } from "./dictationOverlay";
 
-const snapshot = ref<StateSnapshot | null>(null);
+const snapshot = ref<StateUpdate | null>(null);
 const view = computed(() => dictationView(snapshot.value?.status ?? null, snapshot.value?.utterances ?? []));
 
 const placementFromHash = () => (window.location.hash === "#above" ? "above" : "below");
