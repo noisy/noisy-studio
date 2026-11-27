@@ -23,6 +23,7 @@ from noisy_studio.listener.dashboard import DASHBOARD_HTML
 from noisy_studio.listener.identity import canonical_identity
 from noisy_studio.listener.state import ListenerState
 from noisy_studio.listener.summary_request import summary_request
+from noisy_studio.listener.settled import settled_conversations
 from noisy_studio.listener.workspace import WorkspaceCache
 
 _PRERELEASE_WORDS = {"a": "alpha", "b": "beta", "rc": "rc"}
@@ -484,6 +485,9 @@ def _stable_agents_meta(state: ListenerState) -> dict:
         workspace = _WORKSPACES.get(conversation.cwd) if conversation.cwd else None
         entry["project"] = workspace.project if workspace else None
         entry["branch"] = workspace.branch if workspace else None
+        # Restored from Settled after its session ended: it stays in its
+        # project as an ended row instead of folding back into Settled.
+        entry["kept"] = state.conversations.kept_in_project(name)
         # Your move since its last event: the tab shows how long it waits.
         entry["waiting_since"] = conversation.last_event_at if status == "idle" else None
     return meta
@@ -500,13 +504,28 @@ def _revive_if_known(state: ListenerState, presented: str) -> str:
     """
     key = state.conversations.resolve(presented) or presented
     conversation = state.conversations.get(key)
-    if conversation is None:
-        return key
-    if conversation.hidden or key not in state.agents:
-        state.conversations.unhide(key)
-        state.register_agent(key, conversation.label())
+    if conversation is not None and _return_to_list(state, key):
         state.add_event("agent", f"'{conversation.label()}' is back (its session spoke)")
     return key
+
+
+def _restore(state: ListenerState, key: str) -> None:
+    """The user restored a conversation from Settled: back in its project,
+    an ended one as an ended row (it does not fold straight back)."""
+    state.conversations.keep_in_project(key)
+    _return_to_list(state, key)
+    state.add_event("agent", f"'{state.conversations.get(key).label()}' restored")
+
+
+def _return_to_list(state: ListenerState, key: str) -> bool:
+    """Unhide a known conversation and put it back in the agents table, as
+    itself. Returns False when it was already listed (nothing to do)."""
+    conversation = state.conversations.get(key)
+    if conversation is None or not (conversation.hidden or key not in state.agents):
+        return False
+    state.conversations.unhide(key)
+    state.register_agent(key, conversation.label())
+    return True
 
 
 def status_payload(state: ListenerState) -> dict:
@@ -594,6 +613,9 @@ def status_payload(state: ListenerState) -> dict:
                             # The harness-contract view of the tabs (keys,
                             # aliases, live/idle/deaf/ended, listening_until).
                             "conversations": state.conversations.snapshot(),
+                            # What Settled lists beside the ended rows: the
+                            # newest settled (hidden) conversations + a total.
+                            "settled_agents": settled_conversations(state.conversations, _WORKSPACES, state.agents),
                             "provider_usage": state.provider_usage.snapshot(state.conversations.snapshot()),
                         }
 
@@ -878,6 +900,13 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 state.conversations.hide(name)
                 state.add_event("agent", f"'{name}' closed")
                 self._respond({"dismissed": name, "active_agent": state.active_agent})
+            elif self.path == "/restore-agent":
+                key = state.conversations.resolve(str(self._read_json_body().get("name", "")).strip())
+                if key is None:
+                    self._respond({"error": "unknown conversation"}, status=404)
+                    return
+                _restore(state, key)
+                self._respond({"restored": key})
             elif self.path == "/conversation-hotkey":
                 body = self._read_json_body()
                 presented = str(body.get("conversation", "")).strip()

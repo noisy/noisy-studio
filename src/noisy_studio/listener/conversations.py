@@ -89,6 +89,10 @@ class ConversationRegistry:
         # reason as usage providers: an older daemon rejects a row with a
         # field it does not know and would drop the whole conversation.
         self._talk_keys: dict[str, str] = {}
+        # Ended conversations the user restored from Settled: they stay in
+        # their project as ended rows instead of folding away. Beside the
+        # rows for the same rollback reason as talk keys.
+        self._kept: set[str] = set()
         if path is not None:
             self._load()
             self.providers.restore_connections()
@@ -157,6 +161,7 @@ class ConversationRegistry:
             conversation.last_event_kind = event.kind
             if event.kind == "session_started":
                 conversation.ended = False
+                self._kept.discard(conversation.key)
                 conversation.hidden = False
                 if title := conversation_title(event.title, conversation.key, conversation.short_id, *conversation.aliases):
                     conversation.title = title
@@ -167,6 +172,7 @@ class ConversationRegistry:
             elif event.kind == "turn_started":
                 conversation.turn_open = True
                 conversation.ended = False
+                self._kept.discard(conversation.key)
                 conversation.hidden = False  # the user is talking there again
             elif event.kind == "turn_ended":
                 conversation.turn_open = False
@@ -281,6 +287,7 @@ class ConversationRegistry:
         if conversation is None:
             return False
         conversation.hidden = True
+        self._kept.discard(key)
         self._save()
         return True
 
@@ -292,6 +299,23 @@ class ConversationRegistry:
         conversation.position = self._next_position()
         self._save()
         return True
+
+    def settled_keys(self) -> list[str]:
+        """Hidden (settled) conversations, most recently active first."""
+        hidden = [c for c in self._by_key.values() if c.hidden]
+        return [c.key for c in sorted(hidden, key=lambda c: c.last_event_at, reverse=True)]
+
+    def keep_in_project(self, key: str) -> None:
+        """The user restored this conversation: if its session has ended it
+        stays in its project as an ended row, until the session starts again
+        (then it folds normally when it next ends) or the user settles it."""
+        conversation = self._require(key)
+        if conversation.ended:
+            self._kept.add(key)
+            self._save()
+
+    def kept_in_project(self, key: str) -> bool:
+        return key in self._kept
 
     # -- talk keys ----------------------------------------------------
 
@@ -368,6 +392,7 @@ class ConversationRegistry:
             ],
             "usage_providers": dict(self._usage_providers),
             "talk_keys": dict(self._talk_keys),
+            "kept": sorted(self._kept),
             "capabilities": {name: asdict(caps) for name, caps in self._capabilities.items()},
         }
         try:
@@ -424,6 +449,8 @@ class ConversationRegistry:
             if key in self._by_key and provider in ("claude", "codex", "grok")
         } if isinstance(data.get("usage_providers", {}), dict) else {}
         self._talk_keys = self._restored_talk_keys(data.get("talk_keys"))
+        kept = data.get("kept")
+        self._kept = {key for key in (self.resolve(str(k)) for k in (kept if isinstance(kept, list) else [])) if key}
         for name, caps in data.get("capabilities", {}).items():
             try:
                 self._capabilities[provider_name(name)] = Capabilities(**caps)
