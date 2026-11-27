@@ -131,6 +131,11 @@ export function restoreAgent(name: string): Promise<void> {
   return post("/restore-agent", { name });
 }
 
+/** Settle a conversation until `until` (epoch s); null cancels the snooze. */
+export function snoozeAgent(name: string, until: number | null): Promise<void> {
+  return post("/snooze-agent", { name, until });
+}
+
 export function reorderAgents(order: string[]): Promise<void> {
   return post("/reorder-agents", { order });
 }

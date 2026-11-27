@@ -3,7 +3,7 @@
 
 import { onMounted, onUnmounted, ref, type Ref } from "vue";
 import {
-  getEvents, getStatus, getUtterances, setActiveAgent, dismissAgent as apiDismissAgent, restoreAgent as apiRestoreAgent, reorderAgents as apiReorderAgents, type DaemonEvent,
+  getEvents, getStatus, getUtterances, setActiveAgent, dismissAgent as apiDismissAgent, restoreAgent as apiRestoreAgent, snoozeAgent as apiSnoozeAgent, reorderAgents as apiReorderAgents, type DaemonEvent,
 } from "../api/client";
 import { openStateStream, type StateUpdate, type StreamHandle } from "../api/stateStream";
 import { validStatusChange } from "../machines/chat";
@@ -34,6 +34,7 @@ export interface DaemonState {
   selectAgent: (name: string) => void;
   dismissAgent: (name: string) => void;
   restoreAgent: (name: string) => void;
+  snoozeAgent: (name: string, until: number) => void;
   reorderAgents: (order: string[]) => void;
 }
 
@@ -265,6 +266,19 @@ function createDaemonState(pollMs: number): SharedDaemonState {
       .finally(() => tick());
   }
 
+  function snoozeAgent(name: string, until: number) {
+    if (viewedAgent.value === name) viewedAgent.value = null;
+    apiSnoozeAgent(name, until)
+      .catch((error: unknown) => {
+        errors.value = [
+          ...errors.value,
+          { seq: 0, ts: Date.now() / 1000, kind: "tab_snooze_failed",
+            detail: `Could not snooze '${status.value?.agent_labels?.[name] ?? name}': ${(error as Error)?.message ?? error}` },
+        ].slice(-ERROR_LOG_SIZE);
+      })
+      .finally(() => tick());
+  }
+
   function subscribe() {
     if (subscribers++ === 0) {
       tick();
@@ -282,7 +296,7 @@ function createDaemonState(pollMs: number): SharedDaemonState {
     }
   }
 
-  return { status, utterances, utterancesFor, allUtterances, character, characterPending, characterError, changeCharacter, offline, viewedAgent, errors, clearErrors, selectAgent, dismissAgent, restoreAgent, reorderAgents, subscribe, unsubscribe };
+  return { status, utterances, utterancesFor, allUtterances, character, characterPending, characterError, changeCharacter, offline, viewedAgent, errors, clearErrors, selectAgent, dismissAgent, restoreAgent, snoozeAgent, reorderAgents, subscribe, unsubscribe };
 }
 
 /* ONE state per window, not one per component.

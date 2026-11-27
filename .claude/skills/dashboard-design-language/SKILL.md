@@ -68,6 +68,11 @@ action is Restore (/restore-agent): back to its project, an ended one as an
 ended row (`kept`) until its session starts again or you settle it. There is
 no Remove - a removed row would only reappear as a settled one. A settled
 row is not in the agents table, so clicking it does nothing: restore first.
+Snooze (the clock beside Settle) settles a conversation until 1/3/6 hours,
+Tomorrow or Next week (09:00 local, no custom time); it comes back to its
+project by itself then (/snooze-agent; the daemon checks every 30 s), or
+earlier when its session speaks or you Restore it. A snoozed row's second
+line says "snoozed until 15:30" (another day: "Mon 09:00").
 A folded section never hides the viewed or mic row, nor one with messages
 for you. The mic
 row carries a green bar in the row's inset (no "Mic" word: the bar says it).
@@ -106,7 +111,7 @@ was one system, chosen on `Lab/ConversationListDesign` (variant A, Ledger):
 - **States never fight**: hover = a dim opaque surface; selected = the full
   `--surface-hover` surface (no border); mic = a 3px green bar inside the
   inset, clear of the rounded corners, so it combines with either.
-- **Hover actions are ONE cluster** (key cap + Settle/Restore) on the title
+- **Hover actions are ONE cluster** (key cap + snooze clock + Settle/Restore) on the title
   line, ending on the wait time's right edge, laid over the title with a
   fade from the row surface. Settle is TEXT with an icon ("✓ Settle"), not a
   button box: the wait time's font and size, `--muted` at rest, `--cyan` when

@@ -5,6 +5,8 @@ import { computed, onBeforeUnmount, ref } from "vue";
 import { conversationLabel } from "../conversationLabel";
 import { chordLabel, projectHue, waitLabel } from "./tabDetails";
 import { useKeyCapture } from "../composables/useKeyCapture";
+import SnoozeMenu from "./SnoozeMenu.vue";
+import { wakeLabel } from "./snoozeTimes";
 
 export interface AgentMeta {
   label: string;
@@ -74,6 +76,7 @@ const emit = defineEmits<{
   select: [name: string];
   settle: [name: string]; // hide it from the list (the daemon's /dismiss-agent)
   restore: [name: string]; // bring a Settled one back to its project (/restore-agent)
+  snooze: [name: string, until: number]; // settle it until `until` (epoch s), then it comes back
   reorder: [names: string[]];
 }>();
 
@@ -144,6 +147,11 @@ const whereLine = (tab: Tab) => {
   const where = tab.hidden ?? props.meta?.[tab.name];
   return (tab.settled ? [where?.project, where?.branch] : [where?.branch]).filter(Boolean).join(" · ");
 };
+// A snoozed row says when it comes back, ahead of where it runs.
+const nowSeconds = () => props.now ?? Date.now() / 1000;
+const snoozedText = (tab: Tab) =>
+  tab.hidden?.snoozed_until ? `snoozed until ${wakeLabel(tab.hidden.snoozed_until, new Date(nowSeconds() * 1000))}` : "";
+const secondLine = (tab: Tab) => [snoozedText(tab), whereLine(tab)].filter(Boolean).join(" · ");
 // A settled (hidden) conversation is not in the list the daemon serves, so
 // it cannot be opened: Restore brings it back first.
 function onRowClick(tab: Tab) {
@@ -155,7 +163,7 @@ function rowAction(tab: Tab) {
   else emit("settle", tab.name);
 }
 const statusText = ({ name, online, hidden }: Tab) =>
-  !online ? "Ended" : hidden ? "Settled" : props.muted.includes(name) ? "Muted" : props.speaking.includes(name) ? "Speaking"
+  hidden?.snoozed_until ? "Snoozed" : !online ? "Ended" : hidden ? "Settled" : props.muted.includes(name) ? "Muted" : props.speaking.includes(name) ? "Speaking"
     : props.thinking.includes(name) ? "Working" : "Ready";
 // The hover actions cover the wait time, so the tooltip carries it.
 const rowTitle = (tab: Tab) => [
@@ -199,6 +207,25 @@ async function applyTalkKey(name: string, chord: string) {
   if (problem && keyMenu.value?.name === name) keyMenu.value = { ...keyMenu.value, problem };
   else if (!problem) keyMenu.value = null;
 }
+// The clock opens the snooze menu, right-aligned under the pointer so it
+// stays inside the column.
+const SNOOZE_MENU_PX = 180;
+const snoozeMenu = ref<{ name: string; x: number; y: number; now: number } | null>(null);
+function openSnoozeMenu(name: string, event: MouseEvent | KeyboardEvent) {
+  const target = event.currentTarget as HTMLElement;
+  const nav = target.closest("nav")!.getBoundingClientRect();
+  const anchor = target.getBoundingClientRect();
+  snoozeMenu.value = {
+    name,
+    x: Math.max(0, Math.min(anchor.right - nav.left, nav.width) - SNOOZE_MENU_PX),
+    y: anchor.bottom - nav.top + 4,
+    now: nowSeconds(),
+  };
+}
+function pickSnooze(until: number) {
+  if (snoozeMenu.value) emit("snooze", snoozeMenu.value.name, until);
+  snoozeMenu.value = null;
+}
 const capture = useKeyCapture((name, result) => {
   if (result.kind === "chord") void applyTalkKey(name, result.chord);
   else if (result.kind === "clear") void applyTalkKey(name, "");
@@ -239,7 +266,7 @@ const capture = useKeyCapture((name, result) => {
           speaking: speaking.includes(item.tab.name),
           offline: !item.tab.online,
           dragging: item.tab.name === dragging,
-          single: !whereLine(item.tab),
+          single: !secondLine(item.tab),
           hidden: !!item.tab.hidden,
         }"
         @click="onRowClick(item.tab)"
@@ -270,9 +297,10 @@ const capture = useKeyCapture((name, result) => {
         </span>
         <span class="tab-label">{{ item.tab.label }}</span>
         <span class="meta waited">{{ waited(item.tab.name) }}</span>
-        <span v-if="whereLine(item.tab)" class="where">
-          <svg class="branch-icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="4.5" cy="3.5" r="1.6" /><circle cx="4.5" cy="12.5" r="1.6" /><circle cx="11.5" cy="5.5" r="1.6" /><path d="M4.5 5.1v5.8M11.5 7.1c0 2.4-2.2 3-5.4 4" /></svg>
-          <span class="clip">{{ whereLine(item.tab) }}</span>
+        <span v-if="secondLine(item.tab)" class="where">
+          <svg v-if="snoozedText(item.tab)" class="branch-icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6" /><path d="M8 4.8V8l2.2 1.6" /></svg>
+          <svg v-else class="branch-icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="4.5" cy="3.5" r="1.6" /><circle cx="4.5" cy="12.5" r="1.6" /><circle cx="11.5" cy="5.5" r="1.6" /><path d="M4.5 5.1v5.8M11.5 7.1c0 2.4-2.2 3-5.4 4" /></svg>
+          <span class="clip">{{ secondLine(item.tab) }}</span>
         </span>
         <!-- Hover/focus actions, one cluster on the title line, ending on
              the wait time's right edge: the Tab hotkey as a key cap with the
@@ -287,6 +315,11 @@ const capture = useKeyCapture((name, result) => {
              back as a settled one). -->
         <span class="actions">
           <kbd class="shortcut" :class="{ none: !rowKey(item.tab) }" :title="rowKey(item.tab) ? `Hotkey ${rowKey(item.tab)} talks to this conversation · right-click to change` : 'Right-click to give it a talk key'">{{ rowKey(item.tab) }}</kbd>
+          <!-- Snooze: settle it until a chosen time, then it comes back. -->
+          <span
+            v-if="!item.tab.settled" class="snooze" role="button" tabindex="0" aria-haspopup="menu" title="Snooze: settle it until a set time"
+            @click.stop="openSnoozeMenu(item.tab.name, $event)" @keydown.enter.stop.prevent="openSnoozeMenu(item.tab.name, $event)" @keydown.space.stop.prevent="openSnoozeMenu(item.tab.name, $event)"
+          ><svg class="action-icon" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.5" /><path d="M6 3.6V6l1.7 1.1" /></svg></span>
           <span
             class="settle"
             role="button" tabindex="0" @keydown.enter.stop.prevent="rowAction(item.tab)" @keydown.space.stop.prevent="rowAction(item.tab)"
@@ -296,6 +329,11 @@ const capture = useKeyCapture((name, result) => {
         </span>
       </button>
     </template>
+    <div v-if="snoozeMenu" class="keymenu-scrim" @click="snoozeMenu = null" @contextmenu.prevent="snoozeMenu = null" @keydown.esc="snoozeMenu = null" />
+    <SnoozeMenu
+      v-if="snoozeMenu" class="snooze-pop" :style="{ left: snoozeMenu.x + 'px', top: snoozeMenu.y + 'px', width: SNOOZE_MENU_PX + 'px' }" :now="snoozeMenu.now"
+      @pick="pickSnooze" @keydown.esc="snoozeMenu = null"
+    />
     <div v-if="keyMenu" class="keymenu-scrim" @click="closeKeyMenu" @contextmenu.prevent="closeKeyMenu" />
     <div v-if="keyMenu" class="keymenu" role="menu" aria-label="Talk key" :style="{ left: keyMenu.x + 'px', top: keyMenu.y + 'px' }" >
       <p class="keymenu-title">Talk key</p>
@@ -382,6 +420,11 @@ const capture = useKeyCapture((name, result) => {
 .settle { display:inline-flex; align-items:center; gap:3px; font-size:11px; line-height:18px; color:var(--muted); white-space:nowrap; cursor:pointer; }
 .settle:hover, .settle:focus-visible { color:var(--cyan); }
 .settle:focus-visible { outline:1px solid var(--cyan); outline-offset:1px; border-radius:2px; }
+.snooze { display:inline-flex; align-items:center; height:18px; color:var(--muted); cursor:pointer; }
+.snooze:hover, .snooze:focus-visible { color:var(--cyan); }
+.snooze:focus-visible { outline:1px solid var(--cyan); outline-offset:1px; border-radius:2px; }
+.snooze .action-icon { width:12px; height:12px; }
+.snooze-pop { position:absolute; z-index:10; box-sizing:border-box; }
 .action-icon { width:11px; height:11px; fill:none; stroke:currentColor; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
 
 /* Right-click: assign a Tab key. */

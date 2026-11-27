@@ -10,6 +10,7 @@ export interface SettledAgent {
   last_active_at: number; // epoch s
   ended: boolean;
   talk_key: string | null;
+  snoozed_until?: number | null; // epoch s: it comes back by itself then
 }
 /** The daemon sends only the newest settled conversations, plus the total. */
 export interface SettledAgents {

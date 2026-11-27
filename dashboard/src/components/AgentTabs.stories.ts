@@ -161,8 +161,8 @@ export const SettleOnFocus: StoryObj<typeof AgentTabs> = {
     canvasElement.querySelector<HTMLElement>('button.tab.mic .settle')?.focus();
   },
 };
-/** Settled, opened: the ended sessions and the conversations you settled,
- *  newest first. The heading counts all of them; the daemon sends only the
+/** Settled, opened: the ended sessions and the conversations you settled
+ *  (one snoozed, with its wake time on the second line), newest first. The heading counts all of them; the daemon sends only the
  *  newest settled ones, so the rest is "+N older". Every Settled row offers
  *  Restore (focused here), which puts it back in its project - an ended one
  *  as an ended row. A settled row opens only once restored. */
@@ -171,6 +171,18 @@ export const SettledWithRestore: StoryObj<typeof AgentTabs> = {
   decorators: [() => ({ template: '<div style="width:268px"><story /></div>' })],
   play: async ({ canvasElement }) => {
     canvasElement.querySelector<HTMLElement>('button.tab.hidden .settle')?.focus();
+  },
+};
+/** The clock beside Settle opens the snooze menu: 1, 3 or 6 hours,
+ *  Tomorrow or Next week (09:00 local), each with the time it comes back.
+ *  Snoozing settles the conversation; it returns to its project at that
+ *  time, or earlier when its session speaks. In Settled, a snoozed row says
+ *  "snoozed until ..." (see SettledWithRestore). */
+export const SnoozeMenuOpen: StoryObj<typeof AgentTabs> = {
+  args: projectArgs(false),
+  decorators: [() => ({ template: '<div style="width:268px;padding-bottom:180px"><story /></div>' })],
+  play: async ({ canvasElement }) => {
+    canvasElement.querySelector<HTMLElement>('button.tab.mic .snooze')?.click();
   },
 };
 /** The viewed row (highlighted surface) is not the mic row (green bar in

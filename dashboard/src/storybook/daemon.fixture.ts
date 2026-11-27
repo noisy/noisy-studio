@@ -59,6 +59,7 @@ export async function setAgentMuted(agent:string,muted:boolean) { status.muted_a
 export async function setActiveAgent(name:string) { status.active_agent=name; }
 export async function dismissAgent(name:string) { delete status.agents[name]; delete status.agent_labels[name]; }
 export async function setConversationHotkey(conversation:string, chord:string|null): Promise<ConversationHotkeyResult> { const meta=status.agents_meta?.[conversation]; if(meta) meta.talk_key=chord||null; return {conversation, talk_key:chord||null, moved_from:null, problem:null}; }
+export async function snoozeAgent(name:string, until:number|null) { if(until!==null) await dismissAgent(name); }
 export async function restoreAgent(name:string) { const settled=status.settled_agents; if(settled){ settled.items=settled.items.filter(item=>item.name!==name); settled.total=Math.max(0,settled.total-1); } }
 export async function reorderAgents(names:string[]) { names.forEach((name,i)=>{status.agents_meta![name].manual_pos=i;}); }
 export async function setPtt(held:boolean) { status.ptt_held=held; status.recording=held; }

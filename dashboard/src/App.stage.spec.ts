@@ -16,7 +16,7 @@ beforeEach(async () => {
   vi.useFakeTimers();
   resetScenario('shutdown');
   const status = await getStatus();
-  daemon = { status: ref(status), utterances: ref([]), allUtterances: ref(await getUtterances()), utterancesFor: ref('codex'), character: ref({ voice:'lux' }), characterPending: ref(false), characterError: ref(''), offline: ref(false), viewedAgent: ref('codex'), errors: ref([]), changeCharacter: vi.fn(), selectAgent: vi.fn(), dismissAgent: vi.fn(), restoreAgent: vi.fn(), reorderAgents: vi.fn(), clearErrors: vi.fn() };
+  daemon = { status: ref(status), utterances: ref([]), allUtterances: ref(await getUtterances()), utterancesFor: ref('codex'), character: ref({ voice:'lux' }), characterPending: ref(false), characterError: ref(''), offline: ref(false), viewedAgent: ref('codex'), errors: ref([]), changeCharacter: vi.fn(), selectAgent: vi.fn(), dismissAgent: vi.fn(), restoreAgent: vi.fn(), snoozeAgent: vi.fn(), reorderAgents: vi.fn(), clearErrors: vi.fn() };
   vi.mocked(setPtt).mockClear();
 });
 afterEach(() => vi.useRealTimers());

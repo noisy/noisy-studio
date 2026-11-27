@@ -23,12 +23,13 @@ const WORKSPACE: Record<string, { project: string; branch: string | null }> = {
 const WAITING_SINCE: Record<string, number> = { dash: NOW - 30, bucky: NOW - 4 * 60, qa: NOW - 2 * 3600 };
 
 /** Conversations the user settled (hidden), as the daemon's settled_agents
- *  sends them: the newest few, and the total for "+N older". */
+ *  sends them: the newest few, and the total for "+N older". One is
+ *  snoozed: it comes back by itself three hours after NOW. */
 export const SETTLED_AGENTS = {
   total: 34,
   items: [
     { name: 'spike', label: 'audio spike', project: 'noisy-studio', branch: 'spike/aec', last_active_at: 99, ended: true, talk_key: null },
-    { name: 'pricing', label: 'pricing page copy', project: 'website', branch: 'copy/pricing', last_active_at: 97, ended: false, talk_key: 'F18' },
+    { name: 'pricing', label: 'pricing page copy', project: 'website', branch: 'copy/pricing', last_active_at: 97, ended: false, talk_key: 'F18', snoozed_until: NOW + 3 * 3600 },
     { name: 'notes', label: 'meeting notes', project: null, branch: null, last_active_at: 90, ended: true, talk_key: null },
   ],
 };

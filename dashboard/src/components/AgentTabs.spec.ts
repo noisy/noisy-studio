@@ -352,6 +352,32 @@ describe("AgentTabs", () => {
     localStorage.removeItem("noisy.tabs.settledOpen");
   });
 
+  it("snoozes a row from the clock's menu and shows when a snoozed one comes back", async () => {
+    const now = Math.floor(new Date(2026, 10, 25, 14, 30).getTime() / 1000);
+    const back = Math.floor(new Date(2026, 10, 30, 9).getTime() / 1000);
+    const wrapper = mount(AgentTabs, {
+      attachTo: document.body,
+      props: {
+        agents: { live: "Release notes" },
+        meta: { live: { label: "Release notes", online: true, activated_at: 1, offline_since: null } },
+        settledAgents: { total: 1, items: [
+          { name: "nap", label: "Pricing copy", project: "website", branch: null, last_active_at: 90, ended: false, talk_key: null, snoozed_until: back },
+        ] },
+        active: "live", viewed: "live", speaking: [], settledOpen: true, now,
+      },
+    });
+    const [live, snoozed] = wrapper.findAll("button.tab");
+    expect([snoozed.get(".where").text(), snoozed.find(".snooze").exists()]).toEqual(["snoozed until Mon 09:00 · website", false]);
+
+    await live.get(".snooze").trigger("click");
+    const options = wrapper.findAll("button.snooze-item");
+    expect(options.map((option) => option.get("span").text())).toEqual(["1 hour", "3 hours", "6 hours", "Tomorrow", "Next week"]);
+    await options[4].trigger("click");
+    expect([wrapper.emitted("snooze"), wrapper.emitted("select"), wrapper.find(".snooze-menu").exists()])
+      .toEqual([[["live", back]], undefined, false]);
+    wrapper.unmount();
+  });
+
   it("opens Settled when this browser remembered it open", () => {
     localStorage.setItem("noisy.tabs.settledOpen", "1");
     const wrapper = mount(AgentTabs, {
