@@ -18,14 +18,6 @@
 /* Compact desktop controls retain their labels and native hit areas. */
 .hud .col-left > .panel { padding:8px 12px; margin-bottom:6px; }
 .hud .col-left .ptitle { margin-bottom:8px; }
-.hud .col-left .strip { gap:8px; }
-.hud .col-left .bigstate { gap:8px; }
-.hud .col-left .det { margin-top:0; }
-.hud .col-left .costs { display:flex; align-items:center; justify-content:space-between; gap:8px; text-align:left; }
-.hud .col-left .total { font-size:18px; }
-.hud .col-left .split { margin:0; gap:10px; }
-.hud .col-left .split small { margin:0; font-size:9px; }
-.hud .col-left .fuelbar { height:6px; }
 .hud .convo-rail .persona { gap:8px; }
 .hud .convo-rail .gauges { gap:6px; }
 .hud .convo-rail .gauge, .hud .convo-rail .charline { line-height:1.4; }

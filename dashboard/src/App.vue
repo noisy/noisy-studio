@@ -18,10 +18,8 @@ import SpeechSettings from "./components/SpeechSettings.vue";
 import HudPanel from "./components/HudPanel.vue";
 import Oscilloscope from "./components/Oscilloscope.vue";
 import TurnHistory from "./components/TurnHistory.vue";
-import ProviderLimits from "./components/ProviderLimits.vue";
 import AudioControls from "./components/AudioControls.vue";
 import { AUDIO_PANEL_WIDTH, type AudioChange } from "./components/audioControls";
-import { useAudioControlVisibility } from "./composables/useAudioControlVisibility";
 import StageLive from "./components/StageLive.vue";
 import TaskProgressPanel from "./components/task-progress/TaskProgressPanel.vue";
 import TaskReviewPage from "./components/task-progress/TaskReviewPage.vue";
@@ -37,7 +35,6 @@ import SettingsView from "./components/SettingsView.vue";
 import ShutdownBanner from "./components/ShutdownBanner.vue";
 import { useTabStatus } from "./composables/useTabStatus";
 import SpectrumBars from "./components/SpectrumBars.vue";
-import StatusStrip from "./components/StatusStrip.vue";
 import CompanionFloat from "./components/CompanionFloat.vue";
 import VersionBadge from "./components/VersionBadge.vue";
 import type { CueName } from "./composables/cueEvents";
@@ -333,13 +330,6 @@ const grantHotkeys = () => requestHotkeyPermission().catch(swallow);
 // next snapshot carries the stored map plus any problem to show (#104).
 const setHotkey = (action: string, chord: string) => setSettings({ hotkeys: { [action]: chord } }).catch(swallow);
 
-const visibleAudioControls = useAudioControlVisibility();
-const settingsView = ref<InstanceType<typeof SettingsView> | null>(null);
-async function openAudioSettings() {
-  showSettings.value = true;
-  await nextTick();
-  await settingsView.value?.openAudioControls();
-}
 function changeAudio({id,value}: AudioChange) {
   if (id === 'cues') { cuesEnabled.value = value === 'on'; return; }
   if (id === 'recognition') { setMode(value as 'batch' | 'live').catch(swallow); return; }
@@ -507,16 +497,7 @@ function changeAudio({id,value}: AudioChange) {
         <HudPanel index="02" title="Audio spectrum" class="spectrum-panel">
           <SpectrumBars :level="level" />
         </HudPanel>
-        <HudPanel index="03" :class="{ locked: unconfigured }">
-          <AudioControls :status="status" :devices="devices" :cues-enabled="cuesEnabled" :visible="visibleAudioControls" @change="changeAudio" @refresh-devices="loadDevices" @open-settings="openAudioSettings" />
-        </HudPanel>
-        <!-- Global, machine-wide cost/state: deliberately OUTSIDE the
-             conversation frame — the daemon meters all conversations. -->
-        <ProviderLimits :providers="status?.provider_usage ?? []" :offline="offline" />
         <TaskProgressPanel :status="status" :offline="offline" :utterances="allUtterances" @review-open="taskReviewOpen = $event" @start-ptt="startPtt" @stop-ptt="stopPtt" />
-        <HudPanel index="05" title="Session usage">
-          <StatusStrip :status="status" :offline="offline" />
-        </HudPanel>
       </div>
 
       <div class="col-mid" :class="{ locked: unconfigured }">
@@ -524,7 +505,6 @@ function changeAudio({id,value}: AudioChange) {
         <HudPanel v-if="showSettings" index="08" title="Settings">
           <button class="settings-x" title="Close settings" @click="showSettings = false">✕</button>
           <SettingsView
-            ref="settingsView"
             :api-key-hint="status?.api_key_hint ?? ''"
             :devices="devices"
             :selected-device="status?.input_device ?? ''"
@@ -541,7 +521,7 @@ function changeAudio({id,value}: AudioChange) {
             @set-hum="setHum"
             @run-checks="runChecks"
           >
-            <template #audio-controls><AudioControls settings :status="status" :devices="devices" :cues-enabled="cuesEnabled" :visible="visibleAudioControls" @change="changeAudio" @refresh-devices="loadDevices" @visibility="visibleAudioControls = $event" /></template>
+            <template #audio-controls><AudioControls :status="status" :devices="devices" :cues-enabled="cuesEnabled" @change="changeAudio" @refresh-devices="loadDevices" /></template>
           </SettingsView>
         </HudPanel>
         <!-- Tabs live OUTSIDE the conversation frame, protruding above it

@@ -1,5 +1,7 @@
 # Agent provider plan limits
 
+> The main dashboard no longer shows these limits (removed from the left column on 2026-11-27). The daemon still collects them and reports `provider_usage` in `/status`; the compact panel described below is gone.
+
 The dashboard reads `provider_usage` from this daemon's `/status`. Only providers with a visible, non-ended conversation registered in this instance appear. Installed tools and speech-engine catalog entries do not count. Visible registered sessions that are currently idle/deaf remain included: this scope means registered in this instance, not actively speaking or recently online. Closed/ended sessions are excluded. Legacy provider metadata is stored separately and never changes voice-routing transport. Unknown or unsupported reports have no invented percentage. The compact panel has no Details view or historical statistics.
 
 Quota samples expire after five minutes and independently when their reset timestamp passes. Stale values remain visibly historical; missing windows in a new report are removed rather than interpreted as zero. Reports are memory-only, so a restarted daemon waits for fresh readings.
