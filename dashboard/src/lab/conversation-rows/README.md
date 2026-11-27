@@ -1,7 +1,9 @@
 # Org tree · conversation list, project first
 
-Storybook: `Lab/OrgTree` (`OrgTree.stories.ts`). Lab only; production
-`AgentTabs` is untouched. This is the second iteration of direction C, which
+Storybook: `Lab/OrgTree` (`OrgTree.stories.ts`). Lab only. Production
+`AgentTabs` took the lighter part that needs no new daemon data (v3: project
+groups, no Working section, Settle on hover); everything below that needs
+new `/status` fields stays here. This is the second iteration of direction C, which
 the product owner picked over A (calm rows) and B (manager desk); the A/B/C
 option boards are deleted.
 
