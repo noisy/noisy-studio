@@ -253,3 +253,25 @@ def test_stream_mic_serves_sse_frames_with_level_and_recording():
         connection.close()
     finally:
         server.shutdown()
+
+
+def test_blocking_speak_answers_held_for_user_while_the_user_is_speaking(monkeypatch):
+    from concurrent.futures import Future
+
+    from noisy_studio.listener import http_api as http_api_module
+
+    monkeypatch.setattr(http_api_module.speech, "submit", lambda *_a, **_k: Future())
+    state = ListenerState()
+    state.set_recording(True)
+    server = start_http_api(state, 0)
+    port = server.server_address[1]
+    try:
+        connection = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+        body = json.dumps({"text": "reply", "wait": True})
+        connection.request("POST", "/speak", body=body, headers={"Content-Length": str(len(body))})
+        answer = json.loads(connection.getresponse().read())
+        connection.close()
+    finally:
+        server.shutdown()
+
+    assert answer == {"queued": True, "held_for_user": True}

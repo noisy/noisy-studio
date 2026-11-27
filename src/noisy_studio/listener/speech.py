@@ -12,6 +12,7 @@ a card reuses the bytes instead of paying Grok for the same clip again.
 """
 
 import asyncio
+import concurrent.futures
 import itertools
 import os
 import re
@@ -37,6 +38,8 @@ ECHO_TAIL_SECONDS = 0.25
 # take the speaker. Counts from the actual end of recording, so speech long
 # after silence starts instantly.
 POST_TURN_GRACE_SECONDS = 1.5
+# How often a blocking speak re-checks whether the user has taken the floor.
+FLOOR_CHECK_SECONDS = 0.25
 
 
 EMPHASIS_PATTERN = re.compile(r"\*\*(.+?)\*\*")
@@ -238,6 +241,24 @@ def submit(
     if canonical_id:
         future.add_done_callback(lambda _f: _discard_pending_card(canonical_id))
     return future
+
+
+def wait_until_spoken(state: ListenerState, future: Future) -> str | None:
+    """Block a speak caller until its utterance has played, but never through
+    the user's own turn.
+
+    The voice is returned once played. While the user holds the floor
+    (recording, or a held push-to-talk key) None comes back instead: the
+    utterance stays queued and plays once, after they finish. A dictation
+    can run for minutes; the agent must not sit blocked on it.
+    """
+    while True:
+        try:
+            return future.result(timeout=FLOOR_CHECK_SECONDS)
+        except concurrent.futures.TimeoutError:
+            turn = state.user_turn_status()
+            if turn["recording"] or turn["ptt_held"]:
+                return None
 
 
 def replay_in_flight(source_id: int) -> bool:

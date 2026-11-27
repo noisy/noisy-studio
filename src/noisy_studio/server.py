@@ -26,6 +26,10 @@ DAEMON_DOWN_MESSAGE = (
     "Deliver the message in writing instead."
 )
 
+HELD_FOR_USER_MESSAGE = (
+    "The user is speaking right now. Your message is queued and will be spoken once, "
+    "after they finish; do not send it again."
+)
 UNCONFIRMED_MESSAGE = (
     "The voice daemon accepted the message but did not confirm playback in time. "
     "It stays queued and will be spoken once; do not send it again."
@@ -139,8 +143,9 @@ async def speak(text: str, interrupt: bool = False, speaker: str = "", agent_id:
     voice, call change_voice.
 
     Concurrent speech is serialized: by default a new call WAITS for the
-    current utterance to finish (queued), and for the user to finish
-    speaking. Set interrupt=True to cut the current utterance off and speak
+    current utterance to finish (queued). It never waits on the user: if
+    they are speaking, the call returns at once and your message plays
+    after they finish. Set interrupt=True to cut the current utterance off and speak
     immediately — use it only when your previous words are now stale (e.g.
     the user corrected you mid-answer).
 
@@ -166,6 +171,8 @@ async def speak(text: str, interrupt: bool = False, speaker: str = "", agent_id:
     failure = _speak_result_message(result)
     if failure:
         return failure
+    if result.get("held_for_user"):
+        return HELD_FOR_USER_MESSAGE
     return f"Spoke the message aloud with voice '{result.get('voice', '?')}'."
 
 

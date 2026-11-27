@@ -1462,7 +1462,9 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
             # Body: {text, voice_id?, language?, speed?, interrupt?, agent?,
             # wait?}. wait=true (default) blocks until the utterance has
             # played — that's the `speak` tool's "wait until it's said"
-            # semantics; wait=false is `announce` (fire-and-forget).
+            # semantics — unless the user is speaking: then it answers
+            # held_for_user at once and the clip plays after their turn.
+            # wait=false is `announce` (fire-and-forget).
             body = self._read_json_body()
             text = str(body.get("text", "")).strip()
             if not text:
@@ -1512,9 +1514,12 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 self._respond({"queued": True})
                 return
             try:
-                voice = future.result()
+                voice = speech.wait_until_spoken(state, future)
             except Exception as error:  # surface synth/playback failure to caller
                 self._respond({"error": str(error)[:300]}, status=500)
+                return
+            if voice is None:
+                self._respond({"queued": True, "held_for_user": True})
                 return
             self._respond({"voice": voice})
 

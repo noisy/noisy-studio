@@ -152,3 +152,15 @@ async def test_speak_resends_once_when_the_daemon_was_not_reachable(monkeypatch)
     result = await server.speak("reply", agent_id="session-1")
 
     assert (len(route.calls), respawns, result) == (2, [1], "Spoke the message aloud with voice 'eve'.")
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_speak_reports_a_reply_held_for_the_speaking_user(monkeypatch):
+    monkeypatch.setenv("NOISY_STUDIO_LISTENER_PORT", "12345")
+    respx.post("http://127.0.0.1:12345/speak").mock(
+        return_value=httpx.Response(200, json={"queued": True, "held_for_user": True}))
+
+    result = await server.speak("reply", agent_id="session-1")
+
+    assert result == server.HELD_FOR_USER_MESSAGE

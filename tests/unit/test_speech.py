@@ -806,3 +806,34 @@ def test_other_agents_interrupted_playback_resumes_only_if_not_dismissed(monkeyp
     assert (plays, state.utterances()[0]["status"]) == (
         (["a2"], "skipped — dismissed by you") if dismiss_before_resume else (["a2", "a2"], "played")
     )
+
+
+def test_speak_during_a_long_dictation_returns_at_once_and_plays_once_after_it(monkeypatch, batch_pipeline):
+    # Incident: a reply arrived 1.5 s into a 278 s dictation. The agent's
+    # speak sat blocked on the user's turn until its client gave up and
+    # resent; the reply then played twice.
+    state = ListenerState()
+    state.set_recording(True)
+    intervals = []
+    _install_fake_synth(monkeypatch, [])
+    _install_fake_play(monkeypatch, intervals)
+    monkeypatch.setattr(speech, "POST_TURN_GRACE_SECONDS", 0)
+    future = speech.submit(state, "reply")
+    try:
+        assert speech.wait_until_spoken(state, future) is None
+        assert intervals == []  # held for the user, not played over them
+    finally:
+        state.set_recording(False)
+    future.result(timeout=5)
+
+    assert len(intervals) == 1
+
+
+def test_speak_while_the_user_is_silent_waits_until_played(monkeypatch, batch_pipeline):
+    state = ListenerState()
+    _install_fake_synth(monkeypatch, [])
+    _install_fake_play(monkeypatch, [], delay_s=0.3)
+
+    voice = speech.wait_until_spoken(state, speech.submit(state, "reply", agent="a"))
+
+    assert voice == speech.resolve_options(state, "a")[0]
