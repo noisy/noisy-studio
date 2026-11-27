@@ -15,7 +15,7 @@ describe("AgentTabs", () => {
       },
     });
 
-    const tab = wrapper.get("button");
+    const tab = wrapper.get("button.tab");
     expect(tab.get(".tab-label").text()).toBe("New conversation");
     expect(tab.attributes("title")).not.toContain("/private/");
     await tab.trigger("click");
@@ -27,7 +27,7 @@ describe("AgentTabs", () => {
       props: { agents, active: "id-a", viewed: "id-a", speaking: [] },
     });
 
-    const labels = wrapper.findAll("button").map((b) => b.find(".tab-label").text());
+    const labels = wrapper.findAll("button.tab").map((b) => b.find(".tab-label").text());
     expect(labels).toEqual(["noisy-studio-stabilization", "personal"]);
   });
 
@@ -36,7 +36,7 @@ describe("AgentTabs", () => {
       props: { agents, active: "id-a", viewed: "id-a", speaking: [] },
     });
 
-    await wrapper.findAll("button")[1].trigger("click");
+    await wrapper.findAll("button.tab")[1].trigger("click");
 
     expect(wrapper.emitted("select")).toEqual([["id-b"]]);
   });
@@ -52,7 +52,7 @@ describe("AgentTabs", () => {
       },
     });
 
-    const [a, b] = wrapper.findAll("button");
+    const [a, b] = wrapper.findAll("button.tab");
     expect(a.classes()).toContain("viewing");
     expect(a.find(".mic-recipient").attributes("aria-hidden")).toBe("true");
     expect(b.find(".mic-recipient").attributes("aria-hidden")).toBe("false");
@@ -77,7 +77,7 @@ describe("AgentTabs", () => {
       },
     });
 
-    const [a, b] = wrapper.findAll("button");
+    const [a, b] = wrapper.findAll("button.tab");
     expect(a.find(".waitcount").text()).toBe("3"); // queued outranks working
     expect(a.find(".dot.think").exists()).toBe(false);
     expect(b.find(".waitcount").exists()).toBe(false); // speaking still hides it
@@ -96,7 +96,7 @@ describe("AgentTabs", () => {
       },
     });
 
-    const [a, b] = wrapper.findAll("button");
+    const [a, b] = wrapper.findAll("button.tab");
     expect(a.find(".mutespk").exists()).toBe(true); // muted, empty queue → red speaker
     expect(a.find(".eq").exists()).toBe(false); // mute beats speaking
     expect(b.find(".mutecount").text()).toBe("7"); // muted with backlog
@@ -124,10 +124,11 @@ describe("AgentTabs", () => {
         active: "old",
         viewed: "old",
         speaking: [],
+        settledOpen: true,
       },
     });
 
-    const labels = wrapper.findAll("button").map((b) => b.find(".tab-label").text());
+    const labels = wrapper.findAll("button.tab").map((b) => b.find(".tab-label").text());
     expect(labels).toEqual(["old title", "young title", "dead2 title", "dead1 title"]);
   });
 
@@ -143,10 +144,11 @@ describe("AgentTabs", () => {
         active: "live",
         viewed: "live",
         speaking: [],
+        settledOpen: true,
       },
     });
 
-    const [live, other, gone] = wrapper.findAll("button");
+    const [live, other, gone] = wrapper.findAll("button.tab");
     expect(live.classes()).not.toContain("offline");
     // Every tab closes like a browser tab, including the one receiving the
     // mic (the daemon hands the mic on and says where it went).
@@ -175,11 +177,11 @@ describe("AgentTabs", () => {
       },
     });
 
-    const labels = wrapper.findAll("button").map((b) => b.find(".tab-label").text());
+    const labels = wrapper.findAll("button.tab").map((b) => b.find(".tab-label").text());
     expect(labels).toEqual(["c title", "b title", "a title"]);
   });
 
-  it("emits the group's new order after a drag within the group", async () => {
+  it("emits the section's new order after a drag within the section", async () => {
     const wrapper = mount(AgentTabs, {
       props: {
         agents: { a: "a", b: "b", dead: "dead" },
@@ -191,15 +193,16 @@ describe("AgentTabs", () => {
         active: "a",
         viewed: "a",
         speaking: [],
+        settledOpen: true,
       },
     });
 
-    const [a, b, dead] = wrapper.findAll("button");
+    const [a, b, dead] = wrapper.findAll("button.tab");
     await a.trigger("dragstart");
     await b.trigger("drop");
     expect(wrapper.emitted("reorder")).toEqual([[["b", "a"]]]);
 
-    // Dropping an active tab onto the offline group is ignored.
+    // Dropping an active tab onto the Settled section is ignored.
     await a.trigger("dragstart");
     await dead.trigger("drop");
     expect(wrapper.emitted("reorder")).toHaveLength(1);
@@ -210,7 +213,41 @@ describe("AgentTabs", () => {
       props: { agents, active: "id-a", viewed: "id-a", speaking: [] },
     });
 
-    const tabs = wrapper.findAll("button");
+    const tabs = wrapper.findAll("button.tab");
     expect(tabs.every((t) => !t.classes().includes("offline"))).toBe(true);
+  });
+
+  it("splits the list into your turn, Working and a collapsed Settled section", async () => {
+    localStorage.removeItem("noisy.tabs.settledOpen");
+    const wrapper = mount(AgentTabs, {
+      props: {
+        agents: { mine: "Release notes", busy: "Bug fixing", gone: "Old spike" },
+        meta: {
+          mine: { label: "Release notes", online: true, activated_at: 1, offline_since: null },
+          busy: { label: "Bug fixing", online: true, activated_at: 2, offline_since: null },
+          gone: { label: "Old spike", online: false, activated_at: 0, offline_since: 5 },
+        },
+        active: "mine", viewed: "mine", speaking: [],
+        thinking: ["busy"], working: ["busy"], activity: { busy: "Bash · pytest" },
+      },
+    });
+    const labels = () => wrapper.findAll("button.tab").map((b) => b.find(".tab-label").text());
+    expect(labels()).toEqual(["Release notes", "Bug fixing"]);
+    expect(wrapper.find(".section").text()).toBe("Working 1");
+    expect(wrapper.findAll("button.tab")[1].find(".activity").text()).toBe("Bash · pytest");
+
+    const settled = wrapper.get("button.toggle");
+    expect(settled.attributes("aria-expanded")).toBe("false");
+    await settled.trigger("click");
+    expect(labels()).toEqual(["Release notes", "Bug fixing", "Old spike"]);
+    expect(localStorage.getItem("noisy.tabs.settledOpen")).toBe("1");
+  });
+
+  it("brings a working conversation back to the top when it has something for you", () => {
+    const wrapper = mount(AgentTabs, {
+      props: { agents, active: "id-a", viewed: "id-a", speaking: [], thinking: ["id-a", "id-b"], working: ["id-a", "id-b"], queued: { "id-b": 1 } },
+    });
+    const labels = wrapper.findAll("button.tab").map((b) => b.find(".tab-label").text());
+    expect(labels).toEqual(["personal", "noisy-studio-stabilization"]);
   });
 });

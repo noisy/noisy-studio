@@ -42,3 +42,38 @@ export function orderAgents(
     ...group(offline, (a, b) => (of(b).offline_since ?? 0) - (of(a).offline_since ?? 0)),
   ];
 }
+
+/** The dashboard's conversation list, split T3-style: what needs you stays
+ * on top, sessions that are busy or over move down and out of the way.
+ *
+ * - yourTurn: online and it is your move - speaking, messages waiting, or
+ *   idle after finishing its turn.
+ * - working: online, working for a while (the caller decides how long, see
+ *   useSustainedWork) and nothing waiting for you.
+ * - settled: the session ended.
+ *
+ * Each section keeps the orderAgents order, so drag-and-drop and arrival
+ * order still hold inside it.
+ */
+export interface ConversationSections {
+  yourTurn: string[];
+  working: string[];
+  settled: string[];
+}
+
+export function sectionAgents(
+  names: string[],
+  meta: Record<string, AgentMetaLike> = {},
+  live: { working?: string[]; speaking?: string[]; queued?: Record<string, number> } = {},
+): ConversationSections {
+  const working = new Set(live.working ?? []);
+  const speaking = new Set(live.speaking ?? []);
+  const waitsForYou = (n: string) => speaking.has(n) || (live.queued?.[n] ?? 0) > 0;
+  const sections: ConversationSections = { yourTurn: [], working: [], settled: [] };
+  for (const name of orderAgents(names, meta)) {
+    if (!(meta[name]?.online ?? true)) sections.settled.push(name);
+    else if (working.has(name) && !waitsForYou(name)) sections.working.push(name);
+    else sections.yourTurn.push(name);
+  }
+  return sections;
+}

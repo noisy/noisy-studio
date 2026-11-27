@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { orderAgents } from "./agentOrder";
+import { sectionAgents } from "./agentOrder";
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { interpolateRecipientWeights } from "./recipientTransition";
 import { conversationLabel } from "../conversationLabel";
@@ -20,11 +20,17 @@ const props = withDefaults(
     viewed: string | null; // the tab being displayed
     speaking: string[]; // agents currently playing audio
     thinking?: string[]; // agents currently working (live activity line)
+    working?: string[]; // agents working long enough to leave the top section
+    activity?: Record<string, string>; // live activity text per agent
     queued?: Record<string, number>; // waiting messages per agent
     muted?: string[]; // per-conversation mute (future daemon feature)
+    settledOpen?: boolean; // initial Settled state; omit for the remembered one
   }>(),
-  { thinking: () => [], queued: () => ({}), muted: () => [], meta: null },
+  { thinking: () => [], working: () => [], activity: () => ({}), queued: () => ({}), muted: () => [], meta: null, settledOpen: undefined },
 );
+
+// Geometry knob: one row height for every state, so nothing shifts.
+const ROW_PX = 34;
 
 // One clock redistributes the existing Mic space, including interrupted moves.
 const tabStrip = ref<HTMLElement | null>(null);
@@ -55,45 +61,59 @@ const emit = defineEmits<{
   reorder: [names: string[]];
 }>();
 
-interface Tab {
-  name: string;
-  label: string;
-  online: boolean;
-  activatedAt: number;
-  offlineSince: number;
-  manualPos: number | null;
+// Settled starts collapsed; the reader's choice is remembered per browser.
+const SETTLED_OPEN_KEY = "noisy.tabs.settledOpen";
+function storedSettledOpen(): boolean {
+  try { return localStorage.getItem(SETTLED_OPEN_KEY) === "1"; } catch { return false; }
+}
+const settledOpen = ref(props.settledOpen ?? storedSettledOpen());
+function toggleSettled() {
+  settledOpen.value = !settledOpen.value;
+  try { localStorage.setItem(SETTLED_OPEN_KEY, settledOpen.value ? "1" : "0"); } catch { /* session only */ }
 }
 
-// Ordering lives in agentOrder.ts so the widget's avatars come out in the
-// SAME order as these tabs - two surfaces the user sees at once must not
-// disagree about which conversation is third.
-const tabs = computed<Tab[]>(() => {
-  const meta = props.meta ?? {};
-  return orderAgents(Object.keys(props.agents), meta).map((name) => ({
-    name,
-      label: conversationLabel(meta[name]?.label ?? props.agents[name], name),
-    online: meta[name]?.online ?? true,
-    activatedAt: meta[name]?.activated_at ?? 0,
-    offlineSince: meta[name]?.offline_since ?? 0,
-    manualPos: meta[name]?.manual_pos ?? null,
-  }));
-});
-const groups = computed(() => ({
-  actives: tabs.value.filter((t) => t.online),
-  offline: tabs.value.filter((t) => !t.online),
-}));
+type Section = "yourTurn" | "working" | "settled";
+interface Tab { name: string; label: string; online: boolean; section: Section }
+type Item =
+  | { kind: "tab"; key: string; tab: Tab }
+  | { kind: "heading"; key: string; section: "working" | "settled"; count: number };
 
-// Drag & drop within a group only: dropping an active tab onto an offline
-// one (or vice versa) is ignored — group membership is liveness, not choice.
+// Ordering and sectioning live in agentOrder.ts, next to the order the
+// widget uses, so the two rules cannot drift apart unnoticed.
+const sections = computed(() =>
+  sectionAgents(Object.keys(props.agents), props.meta ?? {}, {
+    working: props.working, speaking: props.speaking, queued: props.queued,
+  }),
+);
+const tabOf = (name: string, section: Section): Tab => ({
+  name,
+  label: conversationLabel(props.meta?.[name]?.label ?? props.agents[name], name),
+  online: props.meta?.[name]?.online ?? true,
+  section,
+});
+const tabCount = computed(() => Object.keys(props.agents).length);
+const items = computed<Item[]>(() => {
+  const { yourTurn, working, settled } = sections.value;
+  const rows = (names: string[], section: Section): Item[] =>
+    names.map((name) => ({ kind: "tab", key: name, tab: tabOf(name, section) }));
+  return [
+    ...rows(yourTurn, "yourTurn"),
+    ...(working.length ? [{ kind: "heading", key: "h-working", section: "working", count: working.length } as Item] : []),
+    ...rows(working, "working"),
+    ...(settled.length ? [{ kind: "heading", key: "h-settled", section: "settled", count: settled.length } as Item] : []),
+    ...(settledOpen.value ? rows(settled, "settled") : []),
+  ];
+});
+
+// Drag & drop within a section only: a section is state, not a choice.
 const dragging = ref<string | null>(null);
 function onDrop(target: Tab) {
   const name = dragging.value;
   dragging.value = null;
   if (!name || name === target.name) return;
-  const group = target.online ? groups.value.actives : groups.value.offline;
-  const names = group.map((t) => t.name);
+  const names = [...sections.value[target.section]];
   const from = names.indexOf(name);
-  if (from === -1) return; // cross-group drop
+  if (from === -1) return; // cross-section drop
   names.splice(from, 1);
   names.splice(names.indexOf(target.name) + (from <= names.indexOf(target.name) ? 1 : 0), 0, name);
   emit("reorder", names);
@@ -101,79 +121,92 @@ function onDrop(target: Tab) {
 </script>
 
 <template>
-  <nav v-if="tabs.length" ref="tabStrip" class="tabs" aria-label="Conversations">
-    <button
-      v-for="tab in tabs"
-      :key="tab.name"
-      draggable="true"
-      :aria-pressed="tab.name === viewed"
-      :title="[tab.label, tab.name === active ? 'Receiving your speech' : '', !tab.online ? 'Offline' : muted.includes(tab.name) ? 'Muted' : speaking.includes(tab.name) ? 'Speaking' : thinking.includes(tab.name) ? 'Working' : 'Ready'].filter(Boolean).join(' · ')"
-      :class="{
-        viewing: tab.name === viewed,
-        speaking: speaking.includes(tab.name),
-        offline: !tab.online,
-        dragging: tab.name === dragging,
-      }"
-      @click="$emit('select', tab.name)"
-      @dragstart="dragging = tab.name"
-      @dragend="dragging = null"
-      @dragover.prevent
-      @drop.prevent="onDrop(tab)"
-    >
-      <!-- ONE status glyph, fixed slot, priority ladder (option B):
-           MUTE (with or without a count) > SPEAKING (green equalizer) >
-           WAIT count (amber — messages waiting to be heard beat the mere
-           "working" pulse) > WORKING (violet) > idle dot. "Who gets the
-           mic" needs no glyph — that's the selected (fused, taller) tab. -->
-      <span class="statusslot">
-        <template v-if="muted.includes(tab.name)">
-          <span v-if="(queued[tab.name] ?? 0) > 0" class="mutecount" :title="`Muted — ${queued[tab.name]} waiting`">
-            {{ queued[tab.name] }}
-          </span>
-          <svg v-else class="mutespk" viewBox="0 0 14 14" title="Muted" aria-label="muted">
-            <path d="M2 5.2 L5 5.2 L8.2 2.6 L8.2 11.4 L5 8.8 L2 8.8 Z" fill="currentColor" />
-            <line x1="10" y1="5" x2="13" y2="9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
-            <line x1="13" y1="5" x2="10" y2="9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
-          </svg>
-        </template>
-        <span v-else-if="speaking.includes(tab.name)" class="eq" aria-label="speaking">
-          <i /><i /><i />
-        </span>
-        <span v-else-if="(queued[tab.name] ?? 0) > 0" class="waitcount" :title="`${queued[tab.name]} waiting`">
-          {{ queued[tab.name] }}
-        </span>
-        <span v-else-if="thinking.includes(tab.name)" class="dot think" title="Working" />
-        <span v-else class="dot" />
-      </span>
-      <span class="tab-label">{{ tab.label }}</span>
-      <span class="mic-recipient" :style="{ '--mic-weight': recipientWeights[tab.name] ?? 0 }" :aria-hidden="tab.name !== active" title="Receiving your speech">Mic</span>
-      <!-- Close, on every tab, like a browser: it hides the conversation,
-           it does not end the session. Closing the mic's tab hands the mic
-           to the next one (the daemon decides and says so). A real flex
-           slot at the end, always present, so it can never sit on top of
-           the Mic badge and the tab's width never shifts on hover. -->
-      <span
-        class="dismiss"
-        role="button" tabindex="0" @keydown.enter.stop.prevent="$emit('dismiss', tab.name)" @keydown.space.stop.prevent="$emit('dismiss', tab.name)"
-        title="Close this conversation"
-        @click.stop="$emit('dismiss', tab.name)"
-        >✕</span
+  <nav v-if="tabCount" ref="tabStrip" class="tabs" aria-label="Conversations" :style="{ '--tab-row': ROW_PX + 'px' }">
+    <template v-for="item in items" :key="item.key">
+      <div v-if="item.kind === 'heading' && item.section === 'working'" class="section">Working <b>{{ item.count }}</b></div>
+      <button
+        v-else-if="item.kind === 'heading'"
+        type="button" class="section toggle" :aria-expanded="settledOpen" @click="toggleSettled"
+      ><span class="chev" :class="{ open: settledOpen }" aria-hidden="true">▸</span> Settled <b>{{ item.count }}</b></button>
+      <button
+        v-else
+        class="tab"
+        draggable="true"
+        :aria-pressed="item.tab.name === viewed"
+        :title="[item.tab.label, item.tab.name === active ? 'Receiving your speech' : '', !item.tab.online ? 'Offline' : muted.includes(item.tab.name) ? 'Muted' : speaking.includes(item.tab.name) ? 'Speaking' : thinking.includes(item.tab.name) ? 'Working' : 'Ready', activity[item.tab.name] ?? ''].filter(Boolean).join(' · ')"
+        :class="{
+          viewing: item.tab.name === viewed,
+          speaking: speaking.includes(item.tab.name),
+          offline: !item.tab.online,
+          working: item.tab.section === 'working',
+          dragging: item.tab.name === dragging,
+        }"
+        @click="$emit('select', item.tab.name)"
+        @dragstart="dragging = item.tab.name"
+        @dragend="dragging = null"
+        @dragover.prevent
+        @drop.prevent="onDrop(item.tab)"
       >
-    </button>
+        <!-- ONE status glyph, fixed slot, priority ladder (option B):
+             MUTE (with or without a count) > SPEAKING (green equalizer) >
+             WAIT count (amber - messages waiting to be heard beat the mere
+             "working" pulse) > WORKING (violet) > idle dot. "Who gets the
+             mic" needs no glyph - that's the Mic badge. -->
+        <span class="statusslot">
+          <template v-if="muted.includes(item.tab.name)">
+            <span v-if="(queued[item.tab.name] ?? 0) > 0" class="mutecount" :title="`Muted — ${queued[item.tab.name]} waiting`">
+              {{ queued[item.tab.name] }}
+            </span>
+            <svg v-else class="mutespk" viewBox="0 0 14 14" title="Muted" aria-label="muted">
+              <path d="M2 5.2 L5 5.2 L8.2 2.6 L8.2 11.4 L5 8.8 L2 8.8 Z" fill="currentColor" />
+              <line x1="10" y1="5" x2="13" y2="9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+              <line x1="13" y1="5" x2="10" y2="9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+            </svg>
+          </template>
+          <span v-else-if="speaking.includes(item.tab.name)" class="eq" aria-label="speaking">
+            <i /><i /><i />
+          </span>
+          <span v-else-if="(queued[item.tab.name] ?? 0) > 0" class="waitcount" :title="`${queued[item.tab.name]} waiting`">
+            {{ queued[item.tab.name] }}
+          </span>
+          <span v-else-if="thinking.includes(item.tab.name)" class="dot think" title="Working" />
+          <span v-else class="dot" />
+        </span>
+        <span class="tab-label">{{ item.tab.label }}</span>
+        <span v-if="item.tab.section === 'working' && activity[item.tab.name]" class="activity">{{ activity[item.tab.name] }}</span>
+        <span class="mic-recipient" :style="{ '--mic-weight': recipientWeights[item.tab.name] ?? 0 }" :aria-hidden="item.tab.name !== active" title="Receiving your speech">Mic</span>
+        <!-- Close, on every row, like a browser tab: it hides the
+             conversation, it does not end the session. Closing the mic's
+             row hands the mic to the next one (the daemon decides and says
+             so). A real flex slot, always reserved, revealed on hover or
+             focus - the row never shifts. -->
+        <span
+          class="dismiss"
+          role="button" tabindex="0" @keydown.enter.stop.prevent="$emit('dismiss', item.tab.name)" @keydown.space.stop.prevent="$emit('dismiss', item.tab.name)"
+          title="Close this conversation"
+          @click.stop="$emit('dismiss', item.tab.name)"
+          >✕</span
+        >
+      </button>
+    </template>
   </nav>
 </template>
 
 <style scoped>
 
-.tabs { display:flex; flex-wrap:wrap; gap:6px; }
-button { position:relative; display:inline-flex; align-items:center; gap:8px; font:13px var(--sans); color:var(--muted); border:1px solid transparent; background:transparent; padding:9px 12px; min-width:0; max-width:100%; }
+.tabs { display:flex; flex-direction:column; gap:2px; padding:2px; }
+.tab { position:relative; flex:none; display:flex; align-items:center; gap:8px; width:100%; height:var(--tab-row); padding:0 10px; font:13px var(--sans); text-align:left; color:var(--muted); border:1px solid transparent; border-radius:8px; background:transparent; min-width:0; }
+.tab:hover { color:var(--ink); background:var(--surface-hover); }
+.tab.viewing { background:var(--surface-hover); border-color:var(--line-strong); color:var(--ink); }
+.tab.offline { border-style:dashed; }
+.tab.offline .tab-label { opacity:.7; }
+.tab.working:not(.viewing) .tab-label { color:color-mix(in srgb, var(--muted) 85%, transparent); }
+.tab.dragging { opacity:.5; }
+.tab:focus-visible { outline-offset:-2px; }
 /* Explicit, complementary widths avoid max-width's content-size plateau. */
 .mic-recipient { font-size:10px; color:var(--green); flex:none; width:calc(3ch * var(--mic-weight)); margin-left:calc(-8px * (1 - var(--mic-weight))); overflow:hidden; white-space:nowrap; opacity:var(--mic-weight); }
-.tab-label { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:220px; }
-button:hover { color:var(--ink); background:var(--surface-hover); }
-button.viewing { background:var(--surface-hover); border-color:var(--line-strong); color:var(--ink); }
-button.offline { border-style:dashed; }
-button.dragging { opacity:.5; }
+.tab-label { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.activity { flex:none; max-width:84px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; color:var(--violet-dim); }
 .statusslot { display:inline-flex; justify-content:center; align-items:center; width:13px; height:13px; flex:none; }
 .dot { width:6px; height:6px; background:var(--muted); border-radius:50%; }
 .think { background:var(--violet); }
@@ -183,8 +216,15 @@ button.dragging { opacity:.5; }
 .waitcount { color:var(--amber); font-size:11px; }
 .mutecount, .mutespk { color:var(--red); }
 .mutespk { width:14px; height:14px; }
-.dismiss { flex:none; width:16px; margin-left:2px; text-align:center; padding:2px 0; color:var(--muted); line-height:1; }
+.dismiss { flex:none; width:16px; text-align:center; padding:2px 0; color:var(--muted); line-height:1; opacity:0; }
+.tab:hover .dismiss, .tab:focus-within .dismiss, .tab.viewing .dismiss { opacity:1; }
 .dismiss:hover, .dismiss:focus-visible { color:var(--red); }
+.section { display:flex; align-items:center; gap:6px; margin:14px 10px 4px; padding:0; border:0; background:none; font:10px var(--sans); letter-spacing:.08em; text-transform:uppercase; color:var(--muted); text-align:left; }
+.section b { font-weight:500; color:var(--ink); letter-spacing:0; }
+.toggle { cursor:pointer; }
+.toggle:hover { color:var(--ink); }
+.chev { display:inline-block; font-size:12px; transition:transform .12s; }
+.chev.open { transform:rotate(90deg); }
 @keyframes eq { 50% { transform:scaleY(.5); } }
 
 </style>

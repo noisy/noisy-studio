@@ -19,7 +19,8 @@ import HudPanel from "./components/HudPanel.vue";
 import Oscilloscope from "./components/Oscilloscope.vue";
 import TurnHistory from "./components/TurnHistory.vue";
 import AudioControls from "./components/AudioControls.vue";
-import { AUDIO_PANEL_WIDTH, type AudioChange } from "./components/audioControls";
+import type { AudioChange } from "./components/audioControls";
+import { useSustainedWork } from "./composables/useSustainedWork";
 import StageLive from "./components/StageLive.vue";
 import TaskProgressPanel from "./components/task-progress/TaskProgressPanel.vue";
 import TaskReviewPage from "./components/task-progress/TaskReviewPage.vue";
@@ -55,6 +56,14 @@ const thinkingAgents = computed(() => {
     .filter(([, a]) => a?.text && now - a.at < THINKING_FRESH_S)
     .map(([name]) => name);
 });
+// The conversation list moves an agent into "Working" only after sustained
+// work, and shows what it is doing there.
+const sustainedWork = useSustainedWork(thinkingAgents);
+const activityText = computed(() =>
+  Object.fromEntries(thinkingAgents.value.map((name) => [name, status.value?.activity?.[name]?.text ?? ""])),
+);
+// Left column: the conversation list and machine-global controls.
+const LEFT_COLUMN_PX = 268;
 
 const lastError = computed(() => errors.value[errors.value.length - 1] ?? null);
 const errorCount = computed(() => errors.value.length);
@@ -457,7 +466,7 @@ function changeAudio({id,value}: AudioChange) {
             </button>
           </div>
         </header>
-    <div class="cols" :style="{ '--audio-panel-width': AUDIO_PANEL_WIDTH + 'px' }">
+    <div class="cols" :style="{ '--left-column-width': LEFT_COLUMN_PX + 'px' }">
       <div class="col-left">
         <div class="microphone-actions" :class="{ 'with-ptt': status?.detection_mode === 'ptt' }">
           <!-- Panic-sized mute: quick muting must not require aiming at a
@@ -498,6 +507,24 @@ function changeAudio({id,value}: AudioChange) {
         <HudPanel index="02" title="Audio spectrum" class="spectrum-panel">
           <SpectrumBars :level="level" />
         </HudPanel>
+        <!-- The conversations, T3-style: what needs you on top, working and
+             ended sessions in their own sections below. -->
+        <AgentTabs
+          class="convo-list"
+          :agents="status?.agent_labels ?? {}"
+          :meta="status?.agents_meta ?? null"
+          :active="status?.active_agent ?? null"
+          :viewed="viewedAgent"
+          :speaking="status?.speaking_agents ?? []"
+          :thinking="thinkingAgents"
+          :working="sustainedWork"
+          :activity="activityText"
+          :queued="status?.queued_by_agent ?? {}"
+          :muted="status?.muted_agents ?? []"
+          @select="selectAgent"
+          @dismiss="dismissAgent"
+          @reorder="reorderAgents"
+        />
         <TaskProgressPanel :status="status" :offline="offline" :utterances="allUtterances" @review-open="taskReviewOpen = $event" @start-ptt="startPtt" @stop-ptt="stopPtt" />
       </div>
 
@@ -526,24 +553,6 @@ function changeAudio({id,value}: AudioChange) {
             <template #audio-controls><AudioControls :status="status" :devices="devices" :cues-enabled="cuesEnabled" @change="changeAudio" @refresh-devices="loadDevices" /></template>
           </SettingsView>
         </HudPanel>
-        <!-- Tabs live OUTSIDE the conversation frame, protruding above it
-             like folder tabs — the frame reads as "the selected tab's
-             window", and everything inside starts one line higher. -->
-        <div v-if="!showSettings" class="tabsbar">
-          <AgentTabs
-            :agents="status?.agent_labels ?? {}"
-            :meta="status?.agents_meta ?? null"
-            :active="status?.active_agent ?? null"
-            :viewed="viewedAgent"
-            :speaking="status?.speaking_agents ?? []"
-            :thinking="thinkingAgents"
-            :queued="status?.queued_by_agent ?? {}"
-            :muted="status?.muted_agents ?? []"
-            @select="selectAgent"
-            @dismiss="dismissAgent"
-            @reorder="reorderAgents"
-          />
-        </div>
         <HudPanel v-if="!showSettings" class="convo-panel" :aria-label="status?.agent_labels?.[viewedAgent ?? ''] ?? 'Conversation'">
           <p v-if="offline" class="conversation-connection" role="status">Reconnecting to the voice service…</p>
           <p v-else-if="noTabs" class="conversation-connection convo-empty" role="status">

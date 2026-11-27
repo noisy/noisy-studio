@@ -46,10 +46,15 @@ backdrop (`--panel-solid`) + shadow so it reads as a layer.
 
 Conversation-scoped things (log, telemetry strip, catch-up button,
 persona rail: portrait + character + session ring) live INSIDE the
-conversation frame, below the folder tabs. Machine-global things (mic
-controls, spectrum, system state, settings, mute-all) live in the left
-column or the header. The telemetry/catch-up width = the bubbles column
-only, never under the rail.
+conversation frame. Machine-global things (mic controls, settings,
+mute-all) live in the header or the left column. The telemetry/catch-up
+width = the bubbles column only, never under the rail.
+
+The conversations are a vertical list in the left column, T3-style (2026-11-27):
+what needs you stays on top with no heading; "Working" (sustained work,
+10 s, nothing waiting) and "Settled" (ended, collapsed by default) sit
+below. The selected row is highlighted, NOT fused with the frame - fusing
+breaks as soon as the list scrolls. Sectioning lives in `agentOrder.ts`.
 
 ## Geometry as script constants
 

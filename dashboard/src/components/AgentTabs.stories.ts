@@ -20,17 +20,18 @@ export const UnsafeSavedNames: StoryObj<typeof AgentTabs> = {
     },
     active: "session-2", viewed: "session-2", speaking: [],
   },
+  decorators: [() => ({ template: '<div style="width:268px"><story /></div>' })],
 };
 
 /** The canonical tab-state matrix, rendered by the REAL component.
  *
- *  Rows: is this the selected tab (your voice goes here — taller, fused
- *  with the frame) or a background one. Columns: the single status glyph,
+ *  Rows: is this the selected row (highlighted) or a background one. Columns: the single status glyph,
  *  option-B priority ladder: MUTE (with or without a waiting count) >
  *  SPEAKING (green equalizer) > WORKING (violet pulse) > WAIT count
  *  (amber) > idle dot. WORK+3 / SPEAK+3 prove the count stays hidden
  *  while the agent is busy; ENDED shows the greyed tab of a session that
- *  ended. Every tab carries a close ✕, the SELECTED one too - closing the
+ *  ended (it lives in the Settled section, opened here). Every row carries
+ *  a close ✕ (shown on hover/focus), the SELECTED one too - closing the
  *  mic's tab hands the mic to the next conversation. Liveness comes from
  *  the daemon's conversation registry, not heartbeats.
  */
@@ -53,7 +54,8 @@ export const StateMatrix: StoryObj<typeof AgentTabs> = {
     ] as const;
 
     const cell = (row: (typeof ROWS)[number], col: (typeof COLUMNS)[number]) => {
-      const name = `${row.key}-${col.key}`;
+      // Not ending in the label: an id-shaped label reads as "New conversation".
+      const name = `${row.key}-${col.key}-cell`;
       const label = col.label.toLowerCase().replace(" + 3", "");
       return h(AgentTabs, {
         agents: { [name]: label },
@@ -71,6 +73,7 @@ export const StateMatrix: StoryObj<typeof AgentTabs> = {
         thinking: col.key.startsWith("work") ? [name] : [],
         muted: col.key.startsWith("mute") ? [name] : [],
         queued: ["wait", "work3", "speak3", "mute3"].includes(col.key) ? { [name]: 3 } : {},
+        settledOpen: true,
       });
     };
 
@@ -81,7 +84,7 @@ export const StateMatrix: StoryObj<typeof AgentTabs> = {
         "div",
         {
           style:
-            "display: grid; grid-template-columns: 100px repeat(9, auto); gap: 10px 12px; align-items: end; background: #04101a; padding: 20px; justify-content: start;",
+            "display: grid; grid-template-columns: 100px repeat(9, 150px); gap: 10px 12px; align-items: end; background: #04101a; padding: 20px; justify-content: start;",
         },
         [
           h("div"),
@@ -95,8 +98,9 @@ export const StateMatrix: StoryObj<typeof AgentTabs> = {
   },
 };
 
-/** Interactive tab strip using the dashboard's production layout styles. */
-export const TabsOnWindow: StoryObj<typeof AgentTabs> = {
+/** The list in the dashboard's left column, beside the conversation frame,
+ *  with the production layout styles. Click a row to move the microphone. */
+export const ListBesideWindow: StoryObj<typeof AgentTabs> = {
   render: () => ({
     components: { AgentTabs, HudPanel },
     setup() {
@@ -105,18 +109,48 @@ export const TabsOnWindow: StoryObj<typeof AgentTabs> = {
       return { active, agents };
     },
     template: `<main class="hud" style="height:420px;min-height:0;padding:24px">
-      <div class="col-mid">
-        <div class="tabsbar"><AgentTabs :agents="agents" :active="active" :viewed="active" :speaking="[]" @select="active = $event" /></div>
-        <HudPanel class="convo-panel" style="min-height:220px">
-          <p>Switch conversations to move the microphone recipient.</p>
-        </HudPanel>
+      <div class="cols" style="--left-column-width:268px">
+        <div class="col-left"><AgentTabs class="convo-list" :agents="agents" :active="active" :viewed="active" :speaking="[]" @select="active = $event" /></div>
+        <div class="col-mid">
+          <HudPanel class="convo-panel" style="min-height:220px">
+            <p>Switch conversations to move the microphone recipient.</p>
+          </HudPanel>
+        </div>
       </div>
     </main>`,
   }),
 };
 
-/** Slow motion makes conservation of total tab width easy to inspect. */
+/** Slow motion makes conservation of the row's width easy to inspect. */
 export const SlowMicrophoneTransfer: StoryObj<typeof AgentTabs> = {
-  ...TabsOnWindow,
+  ...ListBesideWindow,
   decorators: [() => ({ template: '<div style="--mic-transition-duration-ms:1800"><story /></div>' })],
+};
+
+/** The sections, T3-style: your turn on top (no heading), Working below
+ *  (after 10 s of sustained work, with what the agent is doing), Settled
+ *  (ended sessions) collapsed at the bottom. */
+const SECTION_AGENTS: Record<string, string> = {
+  dash: 'noisy-studio · dashboard', bucky: 'Bucky', qa: 'QA docs', diet: 'fitatu',
+  bugs: 'Bug fixing', release: 'release 3.0.0', mobile: 'mobile TestFlight',
+  cta: 'website CTA', grok: 'grok harness', deck: 'presentation', i152: 'issue 152 live', i172: 'issue 172 review',
+};
+const ENDED = ['cta', 'grok', 'deck', 'i152', 'i172'];
+const sectionsArgs = (settledOpen: boolean) => ({
+  agents: SECTION_AGENTS,
+  meta: Object.fromEntries(Object.entries(SECTION_AGENTS).map(([id, label], i) => [id, {
+    label, online: !ENDED.includes(id), activated_at: i, offline_since: ENDED.includes(id) ? 100 - i : null,
+  }])),
+  active: 'dash', viewed: 'dash', speaking: ['qa'], queued: { bucky: 2 },
+  thinking: ['bugs', 'release', 'mobile'], working: ['bugs', 'release', 'mobile'],
+  activity: { bugs: 'Bash · pytest', release: 'Thinking…', mobile: 'Edit · App.swift' },
+  settledOpen,
+});
+export const Sections: StoryObj<typeof AgentTabs> = {
+  args: sectionsArgs(false),
+  decorators: [() => ({ template: '<div style="width:268px"><story /></div>' })],
+};
+export const SectionsSettledOpen: StoryObj<typeof AgentTabs> = {
+  args: sectionsArgs(true),
+  decorators: [() => ({ template: '<div style="width:268px"><story /></div>' })],
 };

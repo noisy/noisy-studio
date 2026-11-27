@@ -1,5 +1,4 @@
 import type { DaemonStatus, InputDevice } from '../types';
-export const AUDIO_PANEL_WIDTH = 268;
 export const AUDIO_CONTROL_IDS = ['microphone', 'language', 'turn', 'agent', 'recognition', 'cues', 'length', 'silence', 'sensitivity', 'smart'] as const;
 export type AudioControlId = typeof AUDIO_CONTROL_IDS[number];
 export type AudioChange = { id: AudioControlId; value: string };
