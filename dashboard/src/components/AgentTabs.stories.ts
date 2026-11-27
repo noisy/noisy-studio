@@ -31,7 +31,7 @@ export const UnsafeSavedNames: StoryObj<typeof AgentTabs> = {
  *  count) > SPEAKING (green equalizer) > WAIT count (amber) > WORKING
  *  (violet) > idle dot. WORK+3 shows the count outranking work, SPEAK+3 the
  *  count hidden while it speaks; ENDED shows the greyed row of a session
- *  that ended (it lives in Settled, opened here, and has no action). Every
+ *  that ended (it lives in Settled, opened here; hover offers Remove). Every
  *  live row offers Settle on hover/focus, the mic's too - settling the
  *  mic's row hands the mic to the next conversation. Liveness comes from
  *  the daemon's conversation registry, not heartbeats.
@@ -182,8 +182,8 @@ export const EndedButViewed: StoryObj<typeof AgentTabs> = {
 };
 /** Settle, shown on hover or keyboard focus over the end of the branch
  *  line: the title, wait time, Mic and number stay where they are. Here
- *  the mic row is focused. Settled rows have no action (no Restore: the
- *  daemon cannot un-hide a conversation on request yet). */
+ *  the mic row is focused. Settled rows offer Remove instead (no Restore:
+ *  the daemon cannot un-hide a conversation on request yet). */
 export const SettleOnFocus: StoryObj<typeof AgentTabs> = {
   args: projectArgs(true),
   decorators: [() => ({ template: '<div style="width:268px"><story /></div>' })],

@@ -221,15 +221,15 @@ function onDrop(target: Tab) {
              it comes back when its session speaks. Settling the mic's row
              hands the mic to the next one (the daemon decides and says so).
              Shown on hover or focus, laid over the end of line 2, so the
-             title, wait time, Mic and number never move. Settled rows have
-             no action: the daemon cannot bring a hidden one back yet. -->
+             title, wait time, Mic and number never move. On a Settled
+             (ended) row the same action removes it from the list; the daemon
+             cannot restore a hidden one on request yet. -->
         <span
-          v-if="!item.tab.settled"
           class="settle"
           role="button" tabindex="0" @keydown.enter.stop.prevent="$emit('settle', item.tab.name)" @keydown.space.stop.prevent="$emit('settle', item.tab.name)"
-          title="Settle: hide it until its session speaks again"
+          :title="item.tab.settled ? 'Remove: drop this ended conversation from the list' : 'Settle: hide it until its session speaks again'"
           @click.stop="$emit('settle', item.tab.name)"
-          >Settle</span
+          >{{ item.tab.settled ? 'Remove' : 'Settle' }}</span
         >
       </button>
     </template>
