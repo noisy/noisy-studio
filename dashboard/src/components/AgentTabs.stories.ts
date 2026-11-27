@@ -122,12 +122,6 @@ export const ListBesideWindow: StoryObj<typeof AgentTabs> = {
   }),
 };
 
-/** Slow motion makes conservation of the row's width easy to inspect. */
-export const SlowMicrophoneTransfer: StoryObj<typeof AgentTabs> = {
-  ...ListBesideWindow,
-  decorators: [() => ({ template: '<div style="--mic-transition-duration-ms:1800"><story /></div>' })],
-};
-
 /** The list grouped by project, as the daemon derives it from each
  *  session's repository (worktrees fold into the main repo). Projects keep
  *  their order whatever their conversations do; the amber number in a
@@ -168,6 +162,8 @@ const projectArgs = (settledOpen: boolean) => ({
   // The rows show the real hotkey; unbound ones fall back to "Tab N".
   tabKeys: { 1: 'F16', 2: 'F17', 3: 'ctrl+alt+3' },
 });
+/** Hover a row to see its talk key; right-click it to give it another one
+ *  (F16-F19 here). Idle rows have an empty status slot. */
 export const Projects: StoryObj<typeof AgentTabs> = {
   args: projectArgs(false),
   decorators: [() => ({ template: '<div style="width:268px"><story /></div>' })],

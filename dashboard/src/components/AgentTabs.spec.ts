@@ -333,4 +333,27 @@ describe("AgentTabs", () => {
 
     expect(wrapper.findAll(".shortcut").map((k) => k.text())).toEqual(["F16", "Tab 2"]);
   });
+
+  it("right-click gives a conversation a Tab key by swapping it with the holder", async () => {
+    const base = { online: true, offline_since: null };
+    const wrapper = mount(AgentTabs, {
+      props: {
+        agents: { a: "A", b: "B" },
+        meta: { a: { ...base, label: "A", activated_at: 1, manual_pos: 0, shortcut: 1 }, b: { ...base, label: "B", activated_at: 2, manual_pos: 1, shortcut: 2 } },
+        active: null, viewed: null, speaking: [], tabKeys: { 1: "F16", 2: "F17" },
+      },
+      attachTo: document.body,
+    });
+
+    await wrapper.findAll("button.tab")[1].trigger("contextmenu");
+    const items = wrapper.findAll(".keymenu-item");
+    const labels = items.map((i) => [i.find("kbd").text(), i.attributes("disabled") !== undefined]);
+    await items[0].trigger("click");
+
+    expect([labels, wrapper.emitted("reorder"), wrapper.find(".keymenu").exists()]).toEqual([
+      [["F16", false], ["F17", true], ["Tab 3", true], ["Tab 4", true]], [[["b", "a"]]], false,
+    ]);
+    wrapper.unmount();
+  });
 });
+

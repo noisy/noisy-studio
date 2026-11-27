@@ -63,7 +63,10 @@ is no "Working" section: projects are always busy, so working is a row
 glyph. "Settled" (ended; folded by default) sits below. A folded section
 never hides the viewed or mic row, nor one with messages for you. The mic
 row carries an inset green edge (no "Mic" word: the edge says it). The Tab
-hotkey is drawn as a key ("Tab 2"), never a bare number that reads as a count. The selected row
+hotkey is drawn as a key with the real chord ("F17"), never a bare number that
+reads as a count; on rows it shows on hover/focus only (the user knows their
+keys), and right-click assigns one (a position swap: the daemon numbers by
+position). An idle row has an EMPTY status slot - a grey dot read as a bullet. The selected row
 is highlighted, NOT fused with the frame - fusing breaks as soon as the
 list scrolls. Grouping and order live in `agentOrder.ts` (the widget uses
 the same order); drag-and-drop reorders within a project only.

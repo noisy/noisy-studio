@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { groupAgents, moveWithinProject, type ProjectGroup } from "./agentOrder";
+import { assignShortcut, groupAgents, moveWithinProject, type ProjectGroup } from "./agentOrder";
 import { computed, onBeforeUnmount, ref } from "vue";
 import { conversationLabel } from "../conversationLabel";
 import { chordLabel, projectHue, waitLabel } from "./tabDetails";
@@ -126,6 +126,22 @@ function onDrop(target: Tab) {
   const order = moveWithinProject(Object.keys(props.agents), props.meta ?? {}, name, target.name);
   if (order) emit("reorder", order);
 }
+
+// Right-click a row: give it one of the Tab hotkeys. The daemon numbers
+// conversations by position, so this is a reorder (swap with the holder).
+const TAB_SLOTS = [1, 2, 3, 4];
+const keyMenu = ref<{ name: string; x: number; y: number } | null>(null);
+function openKeyMenu(name: string, event: MouseEvent) {
+  const nav = (event.currentTarget as HTMLElement).closest("nav")!.getBoundingClientRect();
+  keyMenu.value = { name, x: event.clientX - nav.left, y: event.clientY - nav.top };
+}
+function assignKey(slot: number) {
+  const menu = keyMenu.value;
+  keyMenu.value = null;
+  if (!menu) return;
+  const order = assignShortcut(Object.keys(props.agents), props.meta ?? {}, menu.name, slot);
+  if (order) emit("reorder", order);
+}
 </script>
 
 <template>
@@ -160,6 +176,7 @@ function onDrop(target: Tab) {
         @dragend="dragging = null"
         @dragover.prevent
         @drop.prevent="onDrop(item.tab)"
+        @contextmenu.prevent="!item.tab.settled && openKeyMenu(item.tab.name, $event)"
       >
         <!-- ONE status glyph, fixed slot, priority ladder (option B):
              MUTE (with or without a count) > SPEAKING (green equalizer) >
@@ -184,7 +201,7 @@ function onDrop(target: Tab) {
             {{ queued[item.tab.name] }}
           </span>
           <span v-else-if="thinking.includes(item.tab.name)" class="dot think" title="Working" />
-          <span v-else class="dot" />
+          <!-- Idle: an empty slot. A grey dot read like a bullet point. -->
         </span>
         <span class="lines">
           <span class="line main">
@@ -215,6 +232,16 @@ function onDrop(target: Tab) {
         >
       </button>
     </template>
+    <div v-if="keyMenu" class="keymenu-scrim" @click="keyMenu = null" @contextmenu.prevent="keyMenu = null" />
+    <div v-if="keyMenu" class="keymenu" role="menu" aria-label="Talk key" :style="{ left: keyMenu.x + 'px', top: keyMenu.y + 'px' }" @keydown.escape="keyMenu = null">
+      <p class="keymenu-title">Talk to it with</p>
+      <button
+        v-for="slot in TAB_SLOTS" :key="slot" type="button" role="menuitem" class="keymenu-item"
+        :aria-checked="meta?.[keyMenu.name]?.shortcut === slot"
+        :disabled="!assignShortcut(Object.keys(agents), meta ?? {}, keyMenu.name, slot)"
+        @click="assignKey(slot)"
+      ><kbd class="shortcut">{{ keyCap(slot) }}</kbd><span v-if="meta?.[keyMenu.name]?.shortcut === slot">current</span></button>
+    </div>
   </nav>
 </template>
 
@@ -240,6 +267,17 @@ function onDrop(target: Tab) {
 .tab-label { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .shortcut { flex:none; min-width:38px; height:16px; padding:0 4px; box-sizing:border-box; font:9px/14px var(--mono, monospace); color:var(--muted); text-align:center; background:var(--panel-solid); border:1px solid var(--line-strong); border-bottom-width:2px; border-radius:4px; }
 .shortcut.none { visibility:hidden; }
+/* Row keys show on hover/focus only: the user set them and knows them. */
+.tab .shortcut { opacity:0; }
+.tab:hover .shortcut, .tab:focus-within .shortcut { opacity:1; }
+.tabs { position:relative; }
+.keymenu-scrim { position:fixed; inset:0; z-index:9; }
+.keymenu { position:absolute; z-index:10; min-width:150px; padding:6px; display:flex; flex-direction:column; gap:2px; background:var(--panel-solid); border:1px solid var(--line-strong); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.35); }
+.keymenu-title { margin:2px 6px 4px; font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+.keymenu-item { display:flex; align-items:center; gap:8px; padding:4px 6px; border:0; border-radius:6px; background:none; color:var(--ink); font:11px var(--sans); text-align:left; }
+.keymenu-item:hover:not(:disabled), .keymenu-item:focus-visible { background:var(--surface-hover); }
+.keymenu-item:disabled { opacity:.45; }
+.keymenu-item span { color:var(--muted); }
 .branch-icon { flex:none; width:11px; height:11px; fill:none; stroke:currentColor; stroke-width:1.4; stroke-linecap:round; }
 .statusslot { display:inline-flex; justify-content:center; align-items:center; width:13px; height:13px; flex:none; align-self:flex-start; margin-top:6px; }
 .dot { width:6px; height:6px; background:var(--muted); border-radius:50%; }
