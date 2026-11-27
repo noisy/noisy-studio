@@ -24,6 +24,7 @@ from noisy_studio.listener.dashboard import DASHBOARD_HTML
 from noisy_studio.listener.identity import canonical_identity
 from noisy_studio.listener.state import ListenerState
 from noisy_studio.listener.summary_request import summary_request
+from noisy_studio.listener.workspace import WorkspaceCache
 
 _PRERELEASE_WORDS = {"a": "alpha", "b": "beta", "rc": "rc"}
 
@@ -404,6 +405,9 @@ def _named_agent_labels(state: ListenerState) -> dict:
     return labels
 
 
+_WORKSPACES = WorkspaceCache()
+
+
 def _stable_agents_meta(state: ListenerState) -> dict:
     """Tab metadata driven by the conversation registry, not by heartbeats.
 
@@ -432,6 +436,11 @@ def _stable_agents_meta(state: ListenerState) -> dict:
         entry["status"] = status
         entry["activated_at"] = conversation.created_at
         entry["offline_since"] = conversation.last_event_at if status == "ended" else None
+        workspace = _WORKSPACES.get(conversation.cwd) if conversation.cwd else None
+        entry["project"] = workspace.project if workspace else None
+        entry["branch"] = workspace.branch if workspace else None
+        # Your move since its last event: the tab shows how long it waits.
+        entry["waiting_since"] = conversation.last_event_at if status == "idle" else None
     return meta
 
 

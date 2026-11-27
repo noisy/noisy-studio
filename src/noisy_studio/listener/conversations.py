@@ -59,6 +59,7 @@ class Conversation:
     participants: dict[str, float] = field(default_factory=dict)
     listener: Listener | None = None
     deaf_reason: str = ""
+    cwd: str = ""  # where the session runs; project and branch come from it
 
     # What a tab is called before its session has any name of its own. A
     # tab never shows an id or a path (Krzysztof, 2026-09-13): the newest
@@ -139,6 +140,8 @@ class ConversationRegistry:
         conversation.harness = harness
         if result.short_id and not conversation.short_id:
             conversation.short_id = result.short_id
+        if result.cwd:
+            conversation.cwd = result.cwd
         for event in result.events:
             for alias in event.aliases:
                 if alias and alias != conversation.key:

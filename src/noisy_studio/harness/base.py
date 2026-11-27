@@ -84,6 +84,9 @@ class Observation:
     events: tuple[Event, ...] = ()
     short_id: str = ""
     participant: str | None = None
+    # The directory the session runs in, when the host tells us. The
+    # dashboard derives the project and branch from it.
+    cwd: str = ""
 
 
 # Compatibility imports for older adapters. New core code uses Observation and

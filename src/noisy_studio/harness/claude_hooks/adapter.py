@@ -152,6 +152,7 @@ class ClaudeHooks:
             listener=listener,
             short_id=session_id[:8] if session_id else key[-8:],
             participant=participant,
+            cwd=str(payload.get("cwd") or "").strip(),
         )
 
     def deliver(self, messages: list[str], moment: Moment) -> Delivery:
