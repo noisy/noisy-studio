@@ -29,6 +29,14 @@ describe("HeaderVoiceControls", () => {
     expect(mic(w).text()).toBe("◉ On air");
   });
 
+  it("ends the hold on release even when the mic got muted mid-hold", async () => {
+    const w = mount(HeaderVoiceControls, { props: { status: status({ detection_mode: "ptt" }), offline: false, level: 0.4 }, global });
+    await mic(w).trigger("pointerdown");
+    await w.setProps({ status: status({ detection_mode: "ptt", muted: true }) });
+    await mic(w).trigger("pointerup");
+    expect(w.emitted("pttStop")).toHaveLength(1);
+  });
+
   it("offers an unmute when a mute is left over from Auto, instead of a dead hold button", async () => {
     const w = mount(HeaderVoiceControls, { props: { status: status({ detection_mode: "ptt", muted: true }), offline: false, level: 0.4 }, global });
     expect(mic(w).text()).toBe("Mic muted");

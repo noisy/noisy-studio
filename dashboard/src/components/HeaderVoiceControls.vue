@@ -53,8 +53,11 @@ function onPointerDown(event: PointerEvent) {
   (event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId);
   emit("pttStart");
 }
+// Release ALWAYS ends a hold, even if the slot changed under the finger
+// (mic muted, mode switched): a swallowed release would leave the mic open
+// while the parent keeps renewing the hold. Stopping is idempotent.
 function onPointerUp() {
-  if (holds.value) emit("pttStop");
+  emit("pttStop");
 }
 </script>
 
@@ -69,7 +72,6 @@ function onPointerUp() {
         :class="slot"
         :disabled="offline"
         :aria-pressed="slot === 'muted' || slot === 'held'"
-        :aria-label="micHint"
         :title="micHint"
         @click="onClick"
         @pointerdown="onPointerDown"
@@ -111,4 +113,7 @@ legend { padding:0 4px; font-size:9px; letter-spacing:.08em; text-transform:uppe
 .talk, .held { touch-action:none; user-select:none; }
 @keyframes mute-blink { 50% { opacity:.55; } }
 @media (max-width:760px) { .meter { display:none; } }
+/* Phone width: the groups share the row and the buttons fill them. Widths
+   still never depend on state, so nothing moves on a mute. */
+@media (max-width:600px) { .voice { flex:1 1 100%; } .group { flex:1; } .slot { width:100%; } }
 </style>
