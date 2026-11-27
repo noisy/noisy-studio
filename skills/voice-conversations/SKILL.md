@@ -33,8 +33,9 @@ If in doubt, verify - don't ignore the user.
 ## [DASHBOARD] and [CHARACTER] messages
 
 - `[DASHBOARD] …` comes from the daemon, not the user's mouth (e.g. the
-  one-time greeting request after they set up the engine). Follow its
-  instruction and keep it short.
+  one-time greeting request after they set up the engine, or Summarize:
+  the messages they did not hear, to retell as one squashed update).
+  Follow its instruction and keep it short.
 - `[CHARACTER] …` sets your spoken personality (four sliders). The
   character-matrix skill defines what the numbers mean; apply them from
   your next utterance without acknowledgement unless asked.

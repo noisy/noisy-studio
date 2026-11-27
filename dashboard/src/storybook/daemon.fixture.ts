@@ -66,6 +66,7 @@ export const interruptPlayback=stopPlayback;
 let paused=false;
 export async function togglePlaybackPause() { paused=!paused; return {paused}; }
 export async function skipUnheard() { const parked=messages.filter(m=>m.status==='unheard'); parked.forEach(m=>m.status='skipped — dismissed by you'); return {skipped:parked.length}; }
+export async function summarizeUnheard() { const parked=messages.filter(m=>m.status==='unheard'); parked.forEach(m=>m.status='skipped — summarized for you'); return {summarized:parked.length}; }
 export async function scheduleShutdown(seconds=300) { status.shutdown_at=Date.now()/1000+seconds; return {shutdown_at:status.shutdown_at}; }
 export async function cancelShutdown() { status.shutdown_at=0; }
 export async function postponeShutdown(seconds=60) { status.shutdown_at=(status.shutdown_at || Date.now()/1000)+seconds; }

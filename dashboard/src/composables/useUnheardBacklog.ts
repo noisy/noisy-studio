@@ -1,5 +1,5 @@
 import { computed, type Ref } from "vue";
-import { setAgentMuted, setVoiceMuted, skipUnheard, speakText } from "../api/client";
+import { setAgentMuted, setVoiceMuted, skipUnheard, speakText, summarizeUnheard } from "../api/client";
 import { replaySpeechText } from "../components/bubbleStatus";
 import type { DaemonStatus, Utterance } from "../types";
 
@@ -51,5 +51,20 @@ export function useUnheardBacklog(
     await listenLive(agent);
   }
 
-  return { unheard, catchUp, skipAll };
+  // Summarize: the daemon settles the backlog and asks the agent for ONE
+  // squashed retelling, then we unmute so that retelling is heard. A
+  // refusal (session offline) leaves the backlog and the mutes untouched.
+  async function summarize() {
+    const agent = viewedAgent.value;
+    const asked = await summarizeUnheard(agent ?? undefined).then(() => true, () => false);
+    if (asked) await listenLive(agent);
+  }
+
+  // Only a live session can retell anything.
+  const canSummarize = computed(() => {
+    const agent = viewedAgent.value;
+    return !agent || status.value?.agents_meta?.[agent]?.online !== false;
+  });
+
+  return { unheard, catchUp, skipAll, summarize, canSummarize };
 }

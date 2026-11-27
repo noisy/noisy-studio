@@ -7,6 +7,7 @@ import { replaySpeechText } from "./components/bubbleStatus";
 import type { Character, Utterance } from "./types";
 import ActivityLine from "./components/ActivityLine.vue";
 import AgentTabs from "./components/AgentTabs.vue";
+import CatchUpBar from "./components/CatchUpBar.vue";
 import VoicePersona from "./components/VoicePersona.vue";
 import { provideTaskProgress } from "./composables/useTaskProgress";
 provideTaskProgress();
@@ -112,7 +113,7 @@ const replay = (utterance: Utterance) => {
 const cancel = (utterance: Utterance) => cancelTranscript(utterance.id).catch(swallow);
 
 const toggleVoiceMute = () => setVoiceMuted(!status.value?.voice_muted).catch(swallow);
-const { unheard, catchUp, skipAll } = useUnheardBacklog(status, utterances, viewedAgent);
+const { unheard, catchUp, skipAll, summarize, canSummarize } = useUnheardBacklog(status, utterances, viewedAgent);
 
 // Push-to-talk: while the button (or the space bar) is physically held we
 // renew the daemon's hold lease (it expires by itself if we die mid-hold).
@@ -532,14 +533,7 @@ function changeAudio({id,value}: AudioChange) {
             <div class="convo-main">
               <!-- Catch-up spans the bubbles column only, like telemetry —
                    never the rail. -->
-              <div v-if="unheard.length" class="catchup-row">
-                <button class="ctl catchup" @click="catchUp">
-                  ▶ Catch up ({{ unheard.length }} unheard)
-                </button>
-                <button class="ctl skipall" title="Dismiss all unheard messages without playing them" @click="skipAll">
-                  Skip all
-                </button>
-              </div>
+              <CatchUpBar :count="unheard.length" :can-summarize="canSummarize" @catch-up="catchUp" @summarize="summarize" @skip="skipAll" />
               <ConversationLog
                 :utterances="utterances"
                 :history-trimmed="(status?.history_trimmed?.[viewedAgent ?? ''] ?? 0) > 0"

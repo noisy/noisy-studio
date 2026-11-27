@@ -3,11 +3,17 @@ import { ref } from "vue";
 import type { DaemonStatus, Utterance } from "../types";
 
 const calls: string[] = [];
+let offline = false;
 vi.mock("../api/client", () => ({
   setVoiceMuted: vi.fn(async (muted: boolean) => { calls.push(`voice-muted ${muted}`); }),
   setAgentMuted: vi.fn(async (agent: string, muted: boolean) => { calls.push(`agent-muted ${agent} ${muted}`); }),
   skipUnheard: vi.fn(async (agent?: string) => { calls.push(`skip ${agent}`); return { skipped: 2 }; }),
   speakText: vi.fn(async (_text: string, id: number) => { calls.push(`replay #${id}`); }),
+  summarizeUnheard: vi.fn(async (agent?: string) => {
+    calls.push(`summarize ${agent}`);
+    if (offline) throw new Error("POST /summarize-unheard → HTTP 409");
+    return { summarized: 2 };
+  }),
 }));
 
 import { useUnheardBacklog } from "./useUnheardBacklog";
@@ -31,6 +37,7 @@ function backlog(mutedAgents: string[]) {
 
 beforeEach(() => {
   calls.length = 0;
+  offline = false;
 });
 
 describe("useUnheardBacklog", () => {
@@ -44,5 +51,19 @@ describe("useUnheardBacklog", () => {
     await backlog(["alpha"]).skipAll();
 
     expect(calls).toEqual(["skip alpha", "voice-muted false", "agent-muted alpha false"]);
+  });
+
+  it("asks for a summary, then unmutes so the retelling is heard", async () => {
+    await backlog(["alpha"]).summarize();
+
+    expect(calls).toEqual(["summarize alpha", "voice-muted false", "agent-muted alpha false"]);
+  });
+
+  it("keeps the mutes when an offline session refuses to summarize", async () => {
+    offline = true;
+
+    await backlog(["alpha"]).summarize();
+
+    expect(calls).toEqual(["summarize alpha"]);
   });
 });
