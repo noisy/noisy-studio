@@ -70,8 +70,9 @@ the same capture as Settings; the daemon refuses one another action uses and
 the menu says why). A conversation's own key replaces its positional Tab N. An idle row has an EMPTY status slot - a grey dot read
 as a bullet. The selected row is highlighted, NOT fused with the frame -
 fusing breaks as soon as the list scrolls. Grouping and order live in
-`agentOrder.ts` (the widget uses the same order); drag-and-drop reorders
-within a project only.
+`agentOrder.ts` (the widget uses the same order); a row drags within its
+project only; a project heading drags the whole project onto another heading
+(moveProject: the projects are laid out whole in the new sequence).
 
 ### Conversation list grid (visual design pass, 2026-11-27)
 

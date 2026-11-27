@@ -92,6 +92,26 @@ export function groupAgents(
   return { projects, settled: ordered.filter((n) => !keepsItsPlace(n)) };
 }
 
+/** Drag a whole project onto another project's heading. The project order
+ *  is the position of each project's first conversation, so the new order
+ *  lays the projects out whole, in the new sequence, each keeping its own
+ *  inner order. Returns the FULL order for the daemon, or null for a no-op. */
+export function moveProject(
+  names: string[],
+  meta: Record<string, AgentMetaLike>,
+  dragged: ProjectKey,
+  target: ProjectKey,
+): string[] | null {
+  const sequence = projectOrder(names, meta);
+  const from = sequence.indexOf(dragged);
+  const to = sequence.indexOf(target);
+  if (dragged === target || from === -1 || to === -1) return null;
+  sequence.splice(from, 1);
+  sequence.splice(to, 0, dragged);
+  const all = byPosition(names, meta);
+  return sequence.flatMap((project) => all.filter((n) => projectOf(n, meta) === project));
+}
+
 /** Drag-and-drop: `dragged` dropped onto `target`. Returns the FULL new
  *  order to send to the daemon, or null when the two are in different
  *  projects (a project is where the session runs, not a choice).

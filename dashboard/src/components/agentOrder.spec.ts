@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { groupAgents, moveWithinProject, orderAgents, projectOrder } from "./agentOrder";
+import { groupAgents, moveProject, moveWithinProject, orderAgents, projectOrder } from "./agentOrder";
 
 // Two projects interleaved by arrival, one session without a project, one
 // ended session of the first project.
@@ -84,3 +84,19 @@ describe("moveWithinProject", () => {
   });
 });
 
+
+describe("moveProject", () => {
+  const order = { a1: { manual_pos: 0, project: "a" }, b1: { manual_pos: 1, project: "b" }, a2: { manual_pos: 2, project: "a" }, c1: { manual_pos: 3, project: "c" } };
+  const keys = Object.keys(order);
+
+  it("lays the projects out whole in the new sequence, each keeping its inner order", () => {
+    expect([moveProject(keys, order, "c", "a"), moveProject(keys, order, "a", "c")]).toEqual([
+      ["c1", "a1", "a2", "b1"],
+      ["b1", "c1", "a1", "a2"],
+    ]);
+  });
+
+  it("ignores a drop on itself or an unknown project", () => {
+    expect([moveProject(keys, order, "a", "a"), moveProject(keys, order, "a", "zzz")]).toEqual([null, null]);
+  });
+});

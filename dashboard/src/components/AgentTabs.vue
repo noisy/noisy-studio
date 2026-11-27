@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { groupAgents, moveWithinProject, type ProjectGroup } from "./agentOrder";
+import { groupAgents, moveProject, moveWithinProject, type ProjectGroup } from "./agentOrder";
 import { computed, onBeforeUnmount, ref } from "vue";
 import { conversationLabel } from "../conversationLabel";
 import { chordLabel, projectHue, waitLabel } from "./tabDetails";
@@ -141,6 +141,15 @@ const rowTitle = (tab: Tab) => [
 // Drag & drop within a project only: a project is where the session runs,
 // not a choice. Settled rows do not drag (their order is when they ended).
 const dragging = ref<string | null>(null);
+// A project heading drags its whole project (onto another heading).
+const draggingProject = ref<{ project: string | null } | null>(null);
+function onProjectDrop(target: string | null) {
+  const from = draggingProject.value;
+  draggingProject.value = null;
+  if (!from) return;
+  const order = moveProject(Object.keys(props.agents), props.meta ?? {}, from.project, target);
+  if (order) emit("reorder", order);
+}
 function onDrop(target: Tab) {
   const name = dragging.value;
   dragging.value = null;
@@ -175,8 +184,14 @@ const capture = useKeyCapture((name, result) => {
   <nav v-if="tabCount" class="tabs" aria-label="Conversations" :style="gridVars">
     <template v-for="item in items" :key="item.key">
       <!-- A project heading: badge, name, and how many messages wait for
-           you there (amber, in the meta column). Not a control. -->
-      <div v-if="item.kind === 'project'" class="head project-head" :class="{ unknown: !item.project }">
+           you there (amber, in the meta column). Drag it onto another
+           heading to move the whole project. -->
+      <div
+        v-if="item.kind === 'project'" class="head project-head" :class="{ unknown: !item.project, dragging: draggingProject?.project === item.project }"
+        draggable="true" title="Drag onto another project to move it"
+        @dragstart="draggingProject = { project: item.project }" @dragend="draggingProject = null"
+        @dragover.prevent @drop.prevent="onProjectDrop(item.project)"
+      >
         <span class="lead"><span class="badge" :style="item.project ? { '--hue': projectHue(item.project) } : undefined" aria-hidden="true">{{ item.project ? item.project.charAt(0).toUpperCase() : '?' }}</span></span>
         <span class="project-name clip">{{ item.project ?? 'No project' }}</span>
         <span class="meta project-waiting" :title="item.waiting ? `${item.waiting} waiting for you` : undefined">{{ item.waiting || '' }}</span>
@@ -330,6 +345,8 @@ const capture = useKeyCapture((name, result) => {
 .settle:hover, .settle:focus-visible { border-color:var(--muted); }
 
 /* Right-click: assign a Tab key. */
+.project-head { cursor:grab; }
+.project-head.dragging { opacity:.5; }
 .keymenu-scrim { position:fixed; inset:0; z-index:9; }
 .keymenu { position:absolute; z-index:10; min-width:150px; padding:6px; display:flex; flex-direction:column; gap:2px; background:var(--panel-solid); border:1px solid var(--line-strong); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.35); }
 .keymenu-title { margin:2px 6px 4px; font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }

@@ -376,5 +376,22 @@ describe("AgentTabs", () => {
     expect([keys, calls, problem]).toEqual([["F16", "F13"], [["a", "f"]], "Already used by Hold"]);
     wrapper.unmount();
   });
+
+  it("drags a whole project onto another project's heading", async () => {
+    const base = { online: true, offline_since: null };
+    const wrapper = mount(AgentTabs, {
+      props: {
+        agents: { a1: "A1", b1: "B1" },
+        meta: { a1: { ...base, label: "A1", activated_at: 1, manual_pos: 0, project: "alpha" }, b1: { ...base, label: "B1", activated_at: 2, manual_pos: 1, project: "beta" } },
+        active: null, viewed: null, speaking: [],
+      },
+    });
+    const [alpha, beta] = wrapper.findAll(".project-head");
+
+    await beta.trigger("dragstart");
+    await alpha.trigger("drop");
+
+    expect(wrapper.emitted("reorder")).toEqual([[["b1", "a1"]]]);
+  });
 });
 
