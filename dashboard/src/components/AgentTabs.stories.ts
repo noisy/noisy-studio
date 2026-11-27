@@ -128,7 +128,7 @@ export const SlowMicrophoneTransfer: StoryObj<typeof AgentTabs> = {
 };
 
 /** The sections, T3-style: your turn on top (no heading), Working below
- *  (after 10 s of sustained work, with what the agent is doing), Settled
+ *  (after 10 s of sustained work; the detail is in the tooltip), Settled
  *  (ended sessions) collapsed at the bottom. */
 const SECTION_AGENTS: Record<string, string> = {
   dash: 'noisy-studio · dashboard', bucky: 'Bucky', qa: 'QA docs', diet: 'fitatu',

@@ -201,10 +201,7 @@ function onDrop(target: Tab) {
             <span class="badge" :style="{ '--hue': projectHue(meta[item.tab.name].project!) }" aria-hidden="true">{{ meta[item.tab.name].project!.charAt(0).toUpperCase() }}</span>
             <span class="clip">{{ meta[item.tab.name].project }}</span>
           </span>
-          <span class="line main">
-            <span class="tab-label">{{ item.tab.label }}</span>
-            <span v-if="item.tab.section === 'working' && activity[item.tab.name]" class="activity">{{ activity[item.tab.name] }}</span>
-          </span>
+          <span class="line main"><span class="tab-label">{{ item.tab.label }}</span></span>
           <span v-if="meta?.[item.tab.name]?.branch" class="line branch clip">{{ meta[item.tab.name].branch }}</span>
         </span>
         <span class="waited" :title="waited(item.tab.name) ? 'Waiting for you' : undefined">{{ waited(item.tab.name) }}</span>
@@ -250,7 +247,6 @@ function onDrop(target: Tab) {
 .badge { flex:none; width:12px; height:12px; border-radius:3px; font-size:8px; font-weight:600; line-height:12px; text-align:center; color:#fff; background:hsl(var(--hue) 45% 42%); }
 .waited { flex:none; align-self:flex-start; margin-top:6px; min-width:22px; text-align:right; font-size:10px; color:var(--amber); }
 .tab-label { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.activity { flex:none; max-width:84px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; color:var(--violet-dim); }
 .shortcut { flex:none; width:14px; font:10px var(--mono, monospace); color:var(--muted); text-align:center; background:none; border:0; padding:0; }
 .statusslot { display:inline-flex; justify-content:center; align-items:center; width:13px; height:13px; flex:none; }
 .dot { width:6px; height:6px; background:var(--muted); border-radius:50%; }

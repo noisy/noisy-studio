@@ -275,7 +275,10 @@ describe("AgentTabs", () => {
     expect(labels()).toEqual(["Release notes", "Bug fixing"]);
     expect(wrapper.find(".section").text()).toBe("▸ Working 1");
     expect(wrapper.find(".section").attributes("aria-expanded")).toBe("true");
-    expect(wrapper.findAll("button.tab")[1].find(".activity").text()).toBe("Bash · pytest");
+    // A one-line glimpse of a shell command told nothing: the row says only
+    // that it works; the detail stays in the tooltip.
+    const busyRow = wrapper.findAll("button.tab")[1];
+    expect([busyRow.find(".activity").exists(), busyRow.attributes("title")]).toEqual([false, "Bug fixing · Working · Bash · pytest"]);
 
     const settled = wrapper.findAll("button.toggle")[1];
     expect(settled.attributes("aria-expanded")).toBe("false");
