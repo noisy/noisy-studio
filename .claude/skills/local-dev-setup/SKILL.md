@@ -15,7 +15,10 @@ as visible interruptions.
 
 Run `uv sync`, then `scripts/dev_daemon.sh`. Check the printed config location;
 never let concurrent daemons share a configuration folder. First launch seeds
-provider/tuning settings but not conversation history.
+provider/tuning settings but not conversation history. The launcher also saves
+its output and the daemon's to `~/.config/noisy-studio-dev/logs/` (one file per
+run, `latest.log` is the latest launch): read the daemon's logs there instead of
+asking for terminal output.
 
 Point hooks and MCP at the same explicit dev port. Source MCP should set
 `NOISY_STUDIO_NO_AUTOSPAWN=1`. Do not install duplicate hook sets. Add new API

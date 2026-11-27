@@ -14,6 +14,11 @@ The launcher builds a missing dashboard and, on first use only, seeds provider
 and tuning settings into a separate dev folder. Conversation history stays
 isolated. Set `NOISY_STUDIO_DEV_CONFIG_DIR` for a different dev folder.
 
+Everything the launcher and the daemon print is shown in the terminal and also
+saved to `logs/daemon-<start time>.log` in the dev folder, one file per run;
+`logs/latest.log` points at the latest launch. Old logs are kept. Treat them like
+the rest of the dev folder and do not display them on stream.
+
 ## Dashboard
 
 ```sh
