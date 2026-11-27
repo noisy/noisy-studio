@@ -15,6 +15,7 @@ const path = require("node:path");
 const { loadDesktopIcons } = require("./icons");
 const http = require("node:http");
 const { createDesktopAnalytics, loadAnalyticsConfig } = require('./analytics');
+const { startDictationOverlay } = require("./dictation-overlay");
 let analytics = null;
 
 // V3 uses distinct canonical production and development profiles.
@@ -177,7 +178,7 @@ async function resolveMode() {
   problem = attachedPort ? null : "the bundled daemon did not start";
 }
 
-/* Two windows, one app:
+/* Two windows, one app (plus the dictation bubble, see dictation-overlay.js):
  *   - the DASHBOARD, an ordinary window with the full UI
  *   - the WIDGET, frameless and always on top
  * Both are views of the same bundle served by the daemon, so neither
@@ -194,10 +195,12 @@ const widgetUrl = () =>
     ? `${uiBase}/companion?transparent=1`
     : `${uiBase}/next/companion?transparent=1`;
 const dashboardUrl = () => (uiBase === LOCAL_UI ? `${uiBase}/` : `${uiBase}/next/`);
+const dictateUrl = () => (uiBase === LOCAL_UI ? `${uiBase}/dictate` : `${uiBase}/next/dictate`);
 
 let win = null;
 let dash = null;
 let tray = null;
+let dictationOverlay = null;
 /** Click-through: the widget is visible but the editor beneath stays usable. */
 let ghost = false;
 
@@ -325,6 +328,37 @@ function watchHover(win) {
   win.on("closed", () => clearInterval(timer));
 }
 
+/* The third window: the live dictation bubble next to the text cursor.
+ * A non-activating panel that never takes focus and lets every click
+ * through - the words are being pasted into the app underneath it. */
+function createDictationWindow({ width, height }) {
+  const overlay = new BrowserWindow({
+    width,
+    height,
+    type: "panel",
+    focusable: false,
+    frame: false,
+    transparent: true,
+    backgroundColor: "#00000000",
+    hasShadow: false,
+    resizable: false,
+    movable: false,
+    skipTaskbar: true,
+    show: false,
+    webPreferences: { contextIsolation: true, nodeIntegration: false },
+  });
+  overlay.setAlwaysOnTop(true, "screen-saver");
+  overlay.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  overlay.setIgnoreMouseEvents(true);
+  return overlay;
+}
+
+async function fetchDictation() {
+  if (!base) return null;
+  const res = await fetch(`${base}/dictation`);
+  return res.ok ? res.json() : null;
+}
+
 function setGhost(on) {
   ghost = on;
   analytics?.track(on ? 'click_through_enabled' : 'click_through_disabled');
@@ -340,6 +374,7 @@ function useUi(which) {
   uiBase = which === "vite" ? LOCAL_UI : base;
   win?.loadURL(widgetUrl());
   dash?.loadURL(dashboardUrl());
+  dictationOverlay?.reload();
   buildTray();
 }
 
@@ -511,6 +546,7 @@ app.whenReady().then(async () => {
   app.dock?.show();
 
   createWindow();
+  dictationOverlay = startDictationOverlay({ createWindow: createDictationWindow, screen, fetchDictation, url: dictateUrl });
 
   // A real menu-bar icon. "Template" in the filename tells macOS it is a
   // monochrome mask, so it inverts correctly in light and dark menu bars.
@@ -547,6 +583,7 @@ app.whenReady().then(async () => {
   globalShortcut.register("Control+Alt+R", () => {
     win?.reload();
     dash?.reload();
+    dictationOverlay?.reload();
   });
 
   /* A frameless window has no menu of its own, so the ordinary shortcuts
