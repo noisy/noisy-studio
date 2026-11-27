@@ -149,10 +149,11 @@ export const EndedButViewed: StoryObj<typeof AgentTabs> = {
   args: { ...projectArgs(false), viewed: 'i152', queued: { bucky: 2, release: 1, cta: 1 } },
   decorators: [() => ({ template: '<div style="width:268px"><story /></div>' })],
 };
-/** Settle, shown on hover or keyboard focus beside the key cap, laid over
- *  the row's right end (the wait time it covers stays in the tooltip);
- *  nothing else moves. Here the mic row is focused. Settled rows offer
- *  Restore instead. */
+/** "✓ Settle", shown on hover or keyboard focus beside the key cap: plain
+ *  text in the wait time's own font and slot (title line, right edge), which
+ *  it replaces while shown - the tooltip keeps the wait time; nothing else
+ *  moves. Muted at rest, cyan when pointed at. Here the mic row is focused.
+ *  Settled rows offer "Restore" the same way. */
 export const SettleOnFocus: StoryObj<typeof AgentTabs> = {
   args: projectArgs(true),
   decorators: [() => ({ template: '<div style="width:268px"><story /></div>' })],

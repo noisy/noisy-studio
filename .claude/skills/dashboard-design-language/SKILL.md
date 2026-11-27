@@ -106,10 +106,13 @@ was one system, chosen on `Lab/ConversationListDesign` (variant A, Ledger):
 - **States never fight**: hover = a dim opaque surface; selected = the full
   `--surface-hover` surface (no border); mic = a 3px green bar inside the
   inset, clear of the rounded corners, so it combines with either.
-- **Hover actions are ONE cluster** (key cap + Settle/Restore), vertically
-  centred, laid over the row's right end with a fade from the row surface.
-  Settle always sits at the same x (an unbound key cap keeps its width,
-  invisible). It covers the wait time, so the row tooltip carries it.
+- **Hover actions are ONE cluster** (key cap + Settle/Restore) on the title
+  line, ending on the wait time's right edge, laid over the title with a
+  fade from the row surface. Settle is TEXT with an icon ("✓ Settle"), not a
+  button box: the wait time's font and size, `--muted` at rest, `--cyan` when
+  pointed at; it replaces the wait time while shown (the row tooltip carries
+  it). Settle always sits at the same x (an unbound key cap keeps its width,
+  invisible).
 
 ## Geometry as script constants
 

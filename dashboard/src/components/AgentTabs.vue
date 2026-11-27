@@ -274,9 +274,11 @@ const capture = useKeyCapture((name, result) => {
           <svg class="branch-icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="4.5" cy="3.5" r="1.6" /><circle cx="4.5" cy="12.5" r="1.6" /><circle cx="11.5" cy="5.5" r="1.6" /><path d="M4.5 5.1v5.8M11.5 7.1c0 2.4-2.2 3-5.4 4" /></svg>
           <span class="clip">{{ whereLine(item.tab) }}</span>
         </span>
-        <!-- Hover/focus actions, one cluster laid over the row's right end:
-             the Tab hotkey as a key cap with the real chord (the user knows
-             their keys, so it stays hidden at rest) and Settle. Settle hides
+        <!-- Hover/focus actions, one cluster on the title line, ending on
+             the wait time's right edge: the Tab hotkey as a key cap with the
+             real chord (the user knows their keys, so it stays hidden at
+             rest) and "✓ Settle" - plain text in the wait time's own font,
+             which it replaces while hovered. Settle hides
              the conversation, it does not end the session; it comes back
              when its session speaks. Settling the mic's row hands the mic to
              the next one (the daemon decides and says so). On a Settled row
@@ -290,7 +292,7 @@ const capture = useKeyCapture((name, result) => {
             role="button" tabindex="0" @keydown.enter.stop.prevent="rowAction(item.tab)" @keydown.space.stop.prevent="rowAction(item.tab)"
             :title="item.tab.settled ? 'Restore: back to its project' : 'Settle: hide it until its session speaks again'"
             @click.stop="rowAction(item.tab)"
-            >{{ item.tab.settled ? 'Restore' : 'Settle' }}</span>
+            ><svg class="action-icon" viewBox="0 0 12 12" aria-hidden="true"><path v-if="item.tab.settled" d="M2.5 4.5h5a2.5 2.5 0 0 1 0 5H5M2.5 4.5 4.5 2.5M2.5 4.5l2 2" /><path v-else d="M2.5 6.2 5 8.6l4.5-5" /></svg>{{ item.tab.settled ? 'Restore' : 'Settle' }}</span>
         </span>
       </button>
     </template>
@@ -365,16 +367,22 @@ const capture = useKeyCapture((name, result) => {
 .mutecount, .mutespk { color:var(--red); }
 .mutespk { width:13px; height:13px; }
 
-/* Hover / focus actions: ONE cluster, centred on the row's right end,
-   laid over it on the z-axis (it covers the wait time; the tooltip keeps
-   it). Settle always sits at the same x; the key cap reserves its width. */
-.actions { position:absolute; top:0; bottom:0; right:0; display:flex; align-items:center; gap:6px; padding:0 var(--padX) 0 20px; border-radius:0 6px 6px 0; background:linear-gradient(to right, transparent, var(--row-hover) 18px); opacity:0; pointer-events:none; }
+/* Hover / focus actions: ONE cluster on the title line, laid over its end
+   on the z-axis and ending on the wait time's right edge. The wait time
+   hides while it shows (the tooltip keeps it). Settle always sits at the
+   same x; the key cap reserves its width. */
+.actions { grid-row:1; grid-column:2 / 4; justify-self:end; z-index:1; height:18px; display:flex; align-items:center; gap:8px; padding-left:20px; background:linear-gradient(to right, transparent, var(--row-hover) 18px); opacity:0; pointer-events:none; }
 .tab.viewing .actions { background:linear-gradient(to right, transparent, var(--row-selected) 18px); }
 .tab:hover .actions, .tab:focus-within .actions { opacity:1; pointer-events:auto; }
-.shortcut { flex:none; min-width:34px; height:20px; padding:0 5px; box-sizing:border-box; font:10px/16px var(--mono, monospace); color:var(--muted); text-align:center; background:var(--panel-solid); border:1px solid var(--line-strong); border-bottom-width:2px; border-radius:4px; }
+.tab:hover .waited, .tab:focus-within .waited { visibility:hidden; }
+.shortcut { flex:none; min-width:34px; height:18px; padding:0 5px; box-sizing:border-box; font:10px/14px var(--mono, monospace); color:var(--muted); text-align:center; background:var(--panel-solid); border:1px solid var(--line-strong); border-bottom-width:2px; border-radius:4px; }
 .shortcut.none { visibility:hidden; }
-.settle { height:22px; padding:0 10px; box-sizing:border-box; border:1px solid var(--line-strong); border-radius:6px; background:var(--panel-solid); color:var(--ink); font:11px/20px var(--sans); }
-.settle:hover, .settle:focus-visible { border-color:var(--muted); }
+/* Settle / Restore: text, not a button box - the wait time's font and
+   size, quieter at rest, cyan (the chrome colour) when pointed at. */
+.settle { display:inline-flex; align-items:center; gap:3px; font-size:11px; line-height:18px; color:var(--muted); white-space:nowrap; cursor:pointer; }
+.settle:hover, .settle:focus-visible { color:var(--cyan); }
+.settle:focus-visible { outline:1px solid var(--cyan); outline-offset:1px; border-radius:2px; }
+.action-icon { width:11px; height:11px; fill:none; stroke:currentColor; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
 
 /* Right-click: assign a Tab key. */
 .project-head { cursor:grab; }
