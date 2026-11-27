@@ -80,6 +80,15 @@ def test_talk_to_tab_counts_visible_conversations_left_to_right(tmp_path):
     assert st.talk_to_tab(0) is False
 
 
+def test_tab_shortcuts_number_the_first_four_visible_conversations(tmp_path):
+    st = ListenerState()
+    st.conversations = ConversationRegistry(path=tmp_path / "c.json")
+    for key in ("a", "b", "c", "d", "e", "f"):
+        st.conversations.adopt(key, key.upper(), "fake")
+    st.conversations.hide("b")
+    assert st.tab_shortcuts() == {"a": 1, "c": 2, "d": 3, "e": 4}
+
+
 def test_defaults_fill_untouched_actions_but_never_an_explicit_off():
     from noisy_studio.listener.hotkey import DEFAULT_HOTKEYS
 

@@ -136,10 +136,14 @@ const SECTION_AGENTS: Record<string, string> = {
   cta: 'website CTA', grok: 'grok harness', deck: 'presentation', i152: 'issue 152 live', i172: 'issue 172 review',
 };
 const ENDED = ['cta', 'grok', 'deck', 'i152', 'i172'];
+// Tab N hotkeys come from the daemon's stable order, not the sections:
+// #2 sits in Working, and the numbers stay put while rows change section.
+const SHORTCUTS: Record<string, number> = { dash: 1, bugs: 2, qa: 3, bucky: 4 };
 const sectionsArgs = (settledOpen: boolean) => ({
   agents: SECTION_AGENTS,
   meta: Object.fromEntries(Object.entries(SECTION_AGENTS).map(([id, label], i) => [id, {
     label, online: !ENDED.includes(id), activated_at: i, offline_since: ENDED.includes(id) ? 100 - i : null,
+    shortcut: SHORTCUTS[id] ?? null,
   }])),
   active: 'dash', viewed: 'dash', speaking: ['qa'], queued: { bucky: 2 },
   thinking: ['bugs', 'release', 'mobile'], working: ['bugs', 'release', 'mobile'],

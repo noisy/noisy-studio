@@ -10,6 +10,7 @@ export interface AgentMeta {
   activated_at: number;
   offline_since: number | null;
   manual_pos?: number | null;
+  shortcut?: number | null; // the Tab N hotkey that reaches it (daemon-numbered)
 }
 
 const props = withDefaults(
@@ -186,6 +187,9 @@ function onDrop(target: Tab) {
         <span class="tab-label">{{ item.tab.label }}</span>
         <span v-if="item.tab.section === 'working' && activity[item.tab.name]" class="activity">{{ activity[item.tab.name] }}</span>
         <span class="mic-recipient" :style="{ '--mic-weight': recipientWeights[item.tab.name] ?? 0 }" :aria-hidden="item.tab.name !== active" title="Receiving your speech">Mic</span>
+        <!-- Tab N hotkey number, from the daemon's stable order: sections
+             move rows, never the key. A reserved slot, empty when none. -->
+        <kbd class="shortcut" :title="meta?.[item.tab.name]?.shortcut ? `Tab ${meta[item.tab.name].shortcut} hotkey` : undefined">{{ meta?.[item.tab.name]?.shortcut ?? '' }}</kbd>
         <!-- Close, on every row, like a browser tab: it hides the
              conversation, it does not end the session. Closing the mic's
              row hands the mic to the next one (the daemon decides and says
@@ -218,6 +222,7 @@ function onDrop(target: Tab) {
 .mic-recipient { font-size:10px; color:var(--green); flex:none; width:calc(3ch * var(--mic-weight)); margin-left:calc(-8px * (1 - var(--mic-weight))); overflow:hidden; white-space:nowrap; opacity:var(--mic-weight); }
 .tab-label { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .activity { flex:none; max-width:84px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; color:var(--violet-dim); }
+.shortcut { flex:none; width:14px; font:10px var(--mono, monospace); color:var(--muted); text-align:center; background:none; border:0; padding:0; }
 .statusslot { display:inline-flex; justify-content:center; align-items:center; width:13px; height:13px; flex:none; }
 .dot { width:6px; height:6px; background:var(--muted); border-radius:50%; }
 .think { background:var(--violet); }

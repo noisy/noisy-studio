@@ -52,7 +52,7 @@ const talkPane = computed<HotkeyPane>(() => ({
 }));
 const tabsPane = computed<HotkeyPane>(() => ({
   title: "…to a specific tab",
-  caption: "Toggle aimed at one conversation, counted left to right. Press again to close; another tab's key hands the mic over.",
+  caption: "Toggle aimed at one conversation: the number next to it in the list. Press again to close; another tab's key hands the mic over.",
   bindings: ["tab1", "tab2", "tab3", "tab4"].map(binding),
 }));
 const appPane: HotkeyPane = {

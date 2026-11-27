@@ -19,7 +19,7 @@ const panes = (over: Over = {}) => {
     },
     tabs: {
       title: "…to a specific tab",
-      caption: "Toggle aimed at one conversation, counted left to right. Press again to close; another tab's key hands the mic over.",
+      caption: "Toggle aimed at one conversation: the number next to it in the list. Press again to close; another tab's key hands the mic over.",
       bindings: [k("tab1", "Tab 1", "F1"), k("tab2", "Tab 2", "F2"), k("tab3", "Tab 3", "F3"), k("tab4", "Tab 4", "F4")],
     },
     app: {

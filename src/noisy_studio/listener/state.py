@@ -23,6 +23,7 @@ from noisy_studio.listener.vad import (
 )
 
 EVENT_LOG_SIZE = 300
+TAB_SHORTCUT_COUNT = 4  # the tab1..tab4 hotkeys
 # On the segmented dials values land on 20-point stops, so the defaults sit
 # on a stop too (50 fell between ticks). Sensible starting persona rather than
 # everything mid-scale: a little humour, fairly frank, fairly brief, moderately
@@ -719,14 +720,21 @@ class ListenerState:
         self.set_hotkeys(patch)
         return self.ptt_hold_key, self.ptt_toggle_key, self.ptt_cancel_key
 
-    def talk_to_tab(self, index: int) -> bool:
-        """The tabN hotkey: hand the mic to the index-th visible conversation
-        (1-based, left to right on the strip). False when there is no such tab."""
+    def tab_shortcuts(self) -> dict[str, int]:
+        """Which conversation each tabN hotkey reaches: the visible ones in
+        their stable registry order, numbered from 1. The dashboard shows
+        these numbers, so the list's sections never change what a key does."""
         registry = getattr(self, "conversations", None)
         keys = registry.visible_keys() if registry is not None else []
-        if index < 1 or index > len(keys):
+        return {key: number for number, key in enumerate(keys[:TAB_SHORTCUT_COUNT], start=1)}
+
+    def talk_to_tab(self, index: int) -> bool:
+        """The tabN hotkey: hand the mic to the conversation numbered index.
+        False when there is no such conversation."""
+        key = next((k for k, n in self.tab_shortcuts().items() if n == index), None)
+        if key is None:
             return False
-        return self.set_active_agent(keys[index - 1]) == keys[index - 1]
+        return self.set_active_agent(key) == key
 
     def request_recording_abort(self) -> None:
         with self._lock:

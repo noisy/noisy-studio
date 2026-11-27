@@ -415,7 +415,9 @@ def _stable_agents_meta(state: ListenerState) -> dict:
     position. Tabs the registry does not know keep the legacy shape.
     """
     meta = state.agents_meta
+    shortcuts = state.tab_shortcuts()
     for name, entry in meta.items():
+        entry["shortcut"] = shortcuts.get(name)
         conversation = state.conversations.get(name)
         if conversation is None:
             continue

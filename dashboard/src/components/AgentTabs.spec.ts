@@ -217,6 +217,22 @@ describe("AgentTabs", () => {
     expect(tabs.every((t) => !t.classes().includes("offline"))).toBe(true);
   });
 
+  it("shows each row's Tab hotkey number from the daemon, whatever section it is in", () => {
+    const wrapper = mount(AgentTabs, {
+      props: {
+        agents: { first: "First", second: "Second", extra: "Extra" },
+        meta: {
+          first: { label: "First", online: true, activated_at: 1, offline_since: null, shortcut: 1 },
+          second: { label: "Second", online: true, activated_at: 2, offline_since: null, shortcut: 2 },
+          extra: { label: "Extra", online: true, activated_at: 3, offline_since: null, shortcut: null },
+        },
+        active: null, viewed: null, speaking: [], thinking: ["first"], working: ["first"],
+      },
+    });
+    const rows = wrapper.findAll("button.tab").map((b) => [b.find(".tab-label").text(), b.find(".shortcut").text()]);
+    expect(rows).toEqual([["Second", "2"], ["Extra", ""], ["First", "1"]]);
+  });
+
   it("splits the list into your turn, Working and a collapsed Settled section", async () => {
     localStorage.removeItem("noisy.tabs.settledOpen");
     const wrapper = mount(AgentTabs, {
