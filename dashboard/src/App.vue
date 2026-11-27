@@ -16,7 +16,7 @@ import DiagnosticChecklist from "./components/DiagnosticChecklist.vue";
 import EngineChoice from "./components/EngineChoice.vue";
 import SpeechSettings from "./components/SpeechSettings.vue";
 import HudPanel from "./components/HudPanel.vue";
-import Oscilloscope from "./components/Oscilloscope.vue";
+import HeaderVoiceControls from "./components/HeaderVoiceControls.vue";
 import TurnHistory from "./components/TurnHistory.vue";
 import AudioControls from "./components/AudioControls.vue";
 import type { AudioChange } from "./components/audioControls";
@@ -35,7 +35,6 @@ function leaveReviewPage() {
 import SettingsView from "./components/SettingsView.vue";
 import ShutdownBanner from "./components/ShutdownBanner.vue";
 import { useTabStatus } from "./composables/useTabStatus";
-import SpectrumBars from "./components/SpectrumBars.vue";
 import CompanionFloat from "./components/CompanionFloat.vue";
 import VersionBadge from "./components/VersionBadge.vue";
 import type { CueName } from "./composables/cueEvents";
@@ -67,10 +66,6 @@ function eventTime(ts: number): string {
 }
 const { level } = useMicStream();
 
-const levelPercent = computed(() => `${Math.round(level.value * 100)}%`);
-const levelDb = computed(() =>
-  level.value > 0 ? `${(20 * Math.log10(level.value)).toFixed(1)} dB` : "−∞ dB",
-);
 
 // A dev instance is any daemon serving off the production port. The marker
 // is deliberately confined to the logo block — the rest of the theme stays
@@ -147,10 +142,6 @@ function stopPtt() {
   clearInterval(pttTimer);
   pttTimer = undefined;
   setPtt(false).catch(swallow);
-}
-function pttPress(event: PointerEvent) {
-  (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-  startPtt();
 }
 
 // Space = the talk button, but never while typing into a field.
@@ -365,8 +356,8 @@ function changeAudio({id,value}: AudioChange) {
         <div class="setup-pitch-inner">
           <p class="setup-text">
             Talk to your agent out loud — it hears you, answers through your speakers,
-            and this console shows the whole conversation live. The oscilloscope
-            below is already listening to your mic.
+            and this console shows the whole conversation live. The mic meter
+            at the top is already listening to your mic.
           </p>
           <p class="setup-text">
             All it needs is an xAI API key, and it runs on <b>pennies</b>:
@@ -441,58 +432,18 @@ function changeAudio({id,value}: AudioChange) {
           </div>
 
           <div class="sysstate">
+            <!-- Sound in both directions, machine-wide: YOU · INPUT (meter +
+                 one mic slot) and AGENTS · OUTPUT (mute all). -->
+            <HeaderVoiceControls
+              :status="status" :offline="offline" :level="level"
+              @toggle-mute="toggleMute" @toggle-agents-mute="toggleVoiceMute"
+              @ptt-start="startPtt" @ptt-stop="stopPtt"
+            />
             <button ref="settingsToggle" class="ctl header-action settings-toggle" :aria-pressed="showSettings" @click="showSettings = !showSettings">Settings</button>
-            <button
-              class="ctl header-action header-mute" :disabled="offline" :aria-pressed="!!status?.voice_muted"
-              :title="status?.voice_muted ? 'Resume agent playback' : 'Mute playback and keep replies for later'"
-              :class="{ muted: status?.voice_muted, locked: unconfigured }"
-              @click="toggleVoiceMute"
-            >
-              {{ status?.voice_muted ? "Unmute all agents" : "Mute all agents" }}
-            </button>
           </div>
         </header>
     <div class="cols" :style="{ '--left-column-width': LEFT_COLUMN_PX + 'px' }">
       <div class="col-left">
-        <div class="microphone-actions" :class="{ 'with-ptt': status?.detection_mode === 'ptt' }">
-          <!-- Panic-sized mute: quick muting must not require aiming at a
-               tiny control, so it gets widget-scale real estate up top. -->
-          <button class="bigmute" :disabled="offline" :aria-label="status?.muted ? 'Unmute microphone' : 'Mute microphone'" :aria-pressed="!!status?.muted" :class="{ muted: status?.muted, locked: unconfigured }" @click="toggleMute">
-            <span class="bm-label">{{ offline ? "Microphone unavailable" : status?.muted ? "Microphone muted" : status?.detection_mode === "ptt" ? "Mute mic" : "Mute microphone" }}</span>
-            <span class="bm-sub">{{ offline ? "Waiting for the voice service" : status?.muted ? "Click to unmute" : status?.detection_mode === "ptt" ? "Click to pause" : "Listening · click to pause" }}</span>
-          </button>
-          <!-- Holding while muted records nothing — lock the button and say
-               why instead of silently eating the press. -->
-          <button
-            v-if="status?.detection_mode === 'ptt'"
-            class="bigmute talk"
-            :class="{ held: status?.ptt_held }"
-            :disabled="status?.muted || offline"
-            @pointerdown="pttPress"
-            @pointerup="stopPtt"
-            @pointercancel="stopPtt"
-          >
-            <span class="bm-label">
-              {{ status?.muted ? "⊘ LOCKED" : status?.ptt_held ? "◉ ON AIR" : "Hold to talk" }}
-            </span>
-            <span class="bm-sub">
-              {{ status?.muted ? "MIC MUTED — UNMUTE FIRST"
-                 : status?.ptt_held ? (status?.ptt_toggle_key ? `LIVE — ${status.ptt_toggle_key.toUpperCase()} OR TAP HERE TO END` : "RELEASE TO SEND")
-                 : "or hold Space" }}
-            </span>
-          </button>
-        </div>
-        <HudPanel index="01" title="Microphone" class="flexpanel">
-          <Oscilloscope :level="level" />
-          <div class="dbrow">
-            <span class="lbl">Level</span>
-            <span class="dbbar"><i :style="{ width: levelPercent }" /></span>
-            <span class="val">{{ levelDb }}</span>
-          </div>
-        </HudPanel>
-        <HudPanel index="02" title="Audio spectrum" class="spectrum-panel">
-          <SpectrumBars :level="level" />
-        </HudPanel>
         <!-- The conversations, T3-style: what needs you on top, working and
              ended sessions in their own sections below. -->
         <AgentTabs

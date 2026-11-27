@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/vue3";
 import Oscilloscope from "./Oscilloscope.vue";
-import SpectrumBars from "./SpectrumBars.vue";
 
 const meta: Meta = {
   title: "Dashboard/Oscilloscope",
@@ -17,11 +16,12 @@ export const Wave: StoryObj = {
   }),
 };
 
-export const Spectrum: StoryObj = {
+// The size it is drawn at in the header's YOU · INPUT group.
+export const HeaderMeter: StoryObj = {
   args: { level: 0.6 },
   render: (args) => ({
-    components: { SpectrumBars },
+    components: { Oscilloscope },
     setup: () => ({ args }),
-    template: `<div style="max-width:420px"><SpectrumBars :level="args.level" /></div>`,
+    template: `<div style="width:84px;height:30px"><Oscilloscope :level="args.level" style="height:100%;min-height:0" /></div>`,
   }),
 };

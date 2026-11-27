@@ -13,11 +13,6 @@
 /* The list takes the free height and scrolls on its own, so the panels
    around it stay put. */
 .hud .col-left > .convo-list { flex:1 1 auto; min-height:0; overflow-y:auto; margin:0 -2px 8px; }
-.hud .microphone-actions { margin-bottom:8px; }
-.hud .microphone-actions.with-ptt { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:6px; }
-.hud .microphone-actions .bigmute { margin:0; padding:8px; }
-.hud .microphone-actions.with-ptt .bm-label { font-size:12px; }
-.hud .microphone-actions.with-ptt .bm-sub { font-size:10px; }
 /* Compact desktop controls retain their labels and native hit areas. */
 .hud .col-left > .panel { padding:8px 12px; margin-bottom:6px; }
 .hud .col-left .ptitle { margin-bottom:8px; }
@@ -30,8 +25,6 @@
 .hud .col-mid { display:flex; flex-direction:column; min-width:0; min-height:0; }
 .hud .col-mid > .panel { display:flex; flex-direction:column; flex:1; min-height:0; margin:0; }
 .hud .col-mid > .panel:not(.convo-panel) { overflow-y:auto; }
-.hud .col-left .scope-canvas { height:32px; min-height:32px; }
-.hud .spectrum-panel { display:none; }
 /* The selected tab already identifies focus; PTT keystrokes must not add a clipped outer ring. */
 .hud .conversation-connection { color:var(--muted); font-size:12px; margin-bottom:8px; }
 .hud .convo-empty { flex:1; display:flex; align-items:center; justify-content:center; text-align:center; padding:24px; }
@@ -47,15 +40,9 @@
 .hud .railbox:last-child { border:0; padding-bottom:0; }
 .hud .railtitle { font-size:13px; font-weight:600; margin-bottom:8px; }
 .hud .todo { color:var(--muted); font-size:12px; }
-.hud .bigmute, .hud .voicemute { display:flex; flex-direction:column; justify-content:center; align-items:flex-start; gap:4px; padding:13px 16px; border:1px solid var(--line-strong); background:var(--surface-hover); color:var(--ink); }
-.hud .bigmute { width:100%; margin-bottom:8px; min-height:54px; padding:8px 12px; gap:2px; }
-.hud .bm-label, .hud .vm-label { font-size:14px; font-weight:600; }
-.hud .bm-sub, .hud .vm-sub { font-size:11px; color:var(--muted); }
-.hud .voicemute { padding:9px 14px; }
 .hud .muted { color:var(--red); border-color:var(--red); }
 .hud .talk { touch-action:none; user-select:none; }
 .hud .held { color:var(--amber); border-color:var(--amber); }
-.hud .bigmute:hover, .hud .voicemute:hover { border-color:var(--cyan); }
 .hud .controls { display:grid; grid-template-columns:minmax(0,1fr); gap:4px; }
 .hud .ctlrow { display:flex; gap:6px; align-items:center; }
 .hud .ctlcol { display:grid; grid-template-columns:82px minmax(0,1fr); align-items:center; gap:6px; }
@@ -72,10 +59,6 @@
 .hud select.ctl { appearance:auto; }
 .hud .settingsbtn { width:100%; margin-top:auto; min-height:38px; }
 .hud .settings-x { position:absolute; top:12px; right:14px; background:var(--bg1); border:1px solid var(--line); color:var(--ink); padding:5px 10px; }
-.hud .dbrow { display:flex; align-items:center; gap:8px; }
-.hud .dbrow .lbl, .hud .dbrow .val { font-size:10px; color:var(--muted); }
-.hud .dbbar { flex:1; height:4px; border-radius:2px; background:var(--line); overflow:hidden; }
-.hud .dbbar i { display:block; height:100%; background:var(--cyan); }
 .hud .catchup-row { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
 .hud .catchup { flex:1; border-color:var(--green); color:var(--green); }
 .hud .skipall { color:var(--muted); }
@@ -97,7 +80,7 @@
 .setup-checks, .setup-hint { margin-top:16px; }
 @media (max-width:1100px) { .hud .cols { grid-template-columns:var(--left-column-width, 268px) minmax(0,1fr); gap:16px; } .hud .convo-rail { width:180px; padding-left:14px; } .hud .convo-body { gap:16px; } }
 @media (max-width:900px), (max-height:700px) { .hud .convo-body { flex-direction:column; overflow-y:auto; } .hud .convo-main { flex:none; min-height:450px; } .hud .convo-rail { width:100%; overflow:visible; border-left:0; border-top:1px solid var(--line); padding:20px 0 0; } }
-@media (max-width:760px) { .hud .cols { display:flex; flex-direction:column; flex:none; } .hud .col-left { overflow:visible; } .hud .convo-panel { min-height:650px; } .hud .convo-body { overflow:visible; } .hud .conversation-heading { align-items:flex-start; } .hud .topbar { gap:8px; } .hud .logo svg { width:32px; } .hud .logo .title { font-size:16px; } .hud .logo .sub, .hud .vm-sub { display:none; } .hud .vm-label { font-size:12px; } }
+@media (max-width:760px) { .hud .cols { display:flex; flex-direction:column; flex:none; } .hud .col-left { overflow:visible; } .hud .convo-panel { min-height:650px; } .hud .convo-body { overflow:visible; } .hud .conversation-heading { align-items:flex-start; } .hud .topbar { gap:8px; } .hud .logo svg { width:32px; } .hud .logo .title { font-size:16px; } .hud .logo .sub { display:none; } }
 @media (max-width:600px) { .hud .conversation-heading { flex-direction:column; } .hud .recipient { max-width:100%; } .hud .topbar { flex-wrap:wrap; } .hud .topbar-logobox { width:100%; justify-content:space-between; gap:8px; } .hud .sysstate { width:100%; } .hud .header-action { flex:1; } }
 
 .setup-box.speech-recovery-box { max-width:900px; max-height:90vh; overflow:auto; }

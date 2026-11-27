@@ -46,8 +46,12 @@ backdrop (`--panel-solid`) + shadow so it reads as a layer.
 
 Conversation-scoped things (log, telemetry strip, catch-up button,
 persona rail: portrait + character + session ring) live INSIDE the
-conversation frame. Machine-global things (mic controls, settings,
-mute-all) live in the header or the left column. The telemetry/catch-up
+conversation frame. Machine-global things live in the header: two
+labelled groups, YOU · INPUT (mic meter + one mic slot) and AGENTS ·
+OUTPUT (mute all), then Settings (option C, 2026-11-27). The mic slot's job
+follows the turn mode - Mute mic in Auto, Hold to talk in push to talk
+(muting means nothing there) - and a mute left over from Auto shows as
+"Mic muted" in the same slot, never as a dead button. The telemetry/catch-up
 width = the bubbles column only, never under the rail.
 
 The conversations are a vertical list in the left column, T3-style (2026-11-27):
