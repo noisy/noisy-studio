@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { groupAgents, moveWithinProject, type ProjectGroup } from "./agentOrder";
-import { computed, onBeforeUnmount, ref, watch } from "vue";
-import { interpolateRecipientWeights } from "./recipientTransition";
+import { computed, onBeforeUnmount, ref } from "vue";
 import { conversationLabel } from "../conversationLabel";
 import { projectHue, waitLabel } from "./tabDetails";
 
@@ -36,7 +35,7 @@ const props = withDefaults(
 
 // Geometry knobs: one row height for every state, so nothing shifts. Two
 // lines: the conversation, then where it runs (branch).
-const ROW_PX = 40;
+const ROW_PX = 48;
 const PROJECT_HEAD_PX = 24;
 // Waiting times are shown in whole minutes; a coarse clock is enough.
 const CLOCK_TICK_MS = 30_000;
@@ -45,28 +44,6 @@ const clockTimer = setInterval(() => { clock.value = Date.now() / 1000; }, CLOCK
 onBeforeUnmount(() => clearInterval(clockTimer));
 const waited = (name: string) => waitLabel(props.meta?.[name]?.waiting_since, props.now ?? clock.value);
 
-// One clock redistributes the existing Mic space, including interrupted moves.
-const tabStrip = ref<HTMLElement | null>(null);
-const recipientWeights = ref<Record<string, number>>(props.active ? { [props.active]: 1 } : {});
-let recipientFrame = 0;
-watch(() => props.active, (recipient) => {
-  cancelAnimationFrame(recipientFrame);
-  const from = { ...recipientWeights.value };
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-    recipientWeights.value = recipient ? { [recipient]: 1 } : {};
-    return;
-  }
-  const duration = Number(tabStrip.value && getComputedStyle(tabStrip.value).getPropertyValue('--mic-transition-duration-ms')) || 220;
-  const started = performance.now();
-  const animate = (now: number) => {
-    const progress = Math.min(1, (now - started) / duration);
-    recipientWeights.value = interpolateRecipientWeights(from, recipient, progress);
-    if (progress < 1) recipientFrame = requestAnimationFrame(animate);
-    else recipientWeights.value = recipient ? { [recipient]: 1 } : {};
-  };
-  recipientFrame = requestAnimationFrame(animate);
-});
-onBeforeUnmount(() => cancelAnimationFrame(recipientFrame));
 
 const emit = defineEmits<{
   select: [name: string];
@@ -149,7 +126,7 @@ function onDrop(target: Tab) {
 </script>
 
 <template>
-  <nav v-if="tabCount" ref="tabStrip" class="tabs" aria-label="Conversations" :style="{ '--tab-row': ROW_PX + 'px', '--project-head': PROJECT_HEAD_PX + 'px' }">
+  <nav v-if="tabCount" class="tabs" aria-label="Conversations" :style="{ '--tab-row': ROW_PX + 'px', '--project-head': PROJECT_HEAD_PX + 'px' }">
     <template v-for="item in items" :key="item.key">
       <!-- A project heading: badge, name, and how many messages wait for
            you there (amber, reserved slot). Not a control. -->
@@ -210,12 +187,14 @@ function onDrop(target: Tab) {
           <span class="line main">
             <span class="tab-label">{{ item.tab.label }}</span>
             <span class="waited" :title="waited(item.tab.name) ? 'Waiting for you' : undefined">{{ waited(item.tab.name) }}</span>
-            <span class="mic-recipient" :style="{ '--mic-weight': recipientWeights[item.tab.name] ?? 0 }" :aria-hidden="item.tab.name !== active" title="Receiving your speech">Mic</span>
-            <!-- Tab N hotkey number, from the daemon's stable order: a
-                 reserved slot, empty when none. -->
-            <kbd class="shortcut" :title="meta?.[item.tab.name]?.shortcut ? `Tab ${meta[item.tab.name].shortcut} hotkey` : undefined">{{ meta?.[item.tab.name]?.shortcut ?? '' }}</kbd>
+            <!-- Tab N hotkey, from the daemon's stable order, drawn as a key
+                 so it reads as a shortcut, not a count. A reserved slot. -->
+            <kbd class="shortcut" :class="{ none: !meta?.[item.tab.name]?.shortcut }" :title="meta?.[item.tab.name]?.shortcut ? `Hotkey: Tab ${meta[item.tab.name].shortcut} talks to this conversation` : undefined">{{ meta?.[item.tab.name]?.shortcut ? `Tab ${meta[item.tab.name].shortcut}` : '' }}</kbd>
           </span>
-          <span class="line where clip">{{ whereLine(item.tab) }}</span>
+          <span class="line where">
+            <svg v-if="whereLine(item.tab)" class="branch-icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="4.5" cy="3.5" r="1.6" /><circle cx="4.5" cy="12.5" r="1.6" /><circle cx="11.5" cy="5.5" r="1.6" /><path d="M4.5 5.1v5.8M11.5 7.1c0 2.4-2.2 3-5.4 4" /></svg>
+            <span class="clip">{{ whereLine(item.tab) }}</span>
+          </span>
         </span>
         <!-- Settle: hides the conversation, it does not end the session;
              it comes back when its session speaks. Settling the mic's row
@@ -250,14 +229,15 @@ function onDrop(target: Tab) {
 .tab.dragging { opacity:.5; }
 .tab:focus-visible { outline-offset:-2px; }
 /* Explicit, complementary widths avoid max-width's content-size plateau. */
-.mic-recipient { font-size:10px; color:var(--green); flex:none; width:calc(3ch * var(--mic-weight)); margin-left:calc(-6px * (1 - var(--mic-weight))); overflow:hidden; white-space:nowrap; opacity:var(--mic-weight); }
-.lines { flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:1px; }
+.lines { flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:5px; }
 .line { display:flex; align-items:center; gap:6px; min-width:0; }
 .clip { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
-.where { display:block; height:13px; font:10px var(--mono, monospace); color:var(--muted); }
+.where { display:flex; align-items:center; gap:5px; height:14px; font:10px var(--mono, monospace); color:var(--muted); }
 .waited { flex:none; min-width:22px; text-align:right; font-size:10px; color:var(--amber); }
 .tab-label { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.shortcut { flex:none; width:14px; font:10px var(--mono, monospace); color:var(--muted); text-align:center; background:none; border:0; padding:0; }
+.shortcut { flex:none; min-width:38px; height:16px; padding:0 4px; box-sizing:border-box; font:9px/14px var(--mono, monospace); color:var(--muted); text-align:center; background:var(--panel-solid); border:1px solid var(--line-strong); border-bottom-width:2px; border-radius:4px; }
+.shortcut.none { visibility:hidden; }
+.branch-icon { flex:none; width:11px; height:11px; fill:none; stroke:currentColor; stroke-width:1.4; stroke-linecap:round; }
 .statusslot { display:inline-flex; justify-content:center; align-items:center; width:13px; height:13px; flex:none; align-self:flex-start; margin-top:6px; }
 .dot { width:6px; height:6px; background:var(--muted); border-radius:50%; }
 .think { background:var(--violet); }
@@ -268,7 +248,7 @@ function onDrop(target: Tab) {
 .mutecount, .mutespk { color:var(--red); }
 .mutespk { width:14px; height:14px; }
 /* Over the end of line 2 (the branch), on the z-axis: nothing reflows. */
-.settle { position:absolute; right:8px; bottom:3px; height:15px; padding:0 7px; border:1px solid var(--line-strong); border-radius:6px; background:var(--panel-solid); box-shadow:-12px 0 8px -2px var(--surface-hover); color:var(--ink); font:10px/13px var(--sans); box-sizing:border-box; opacity:0; pointer-events:none; }
+.settle { position:absolute; right:8px; bottom:5px; height:20px; padding:0 10px; border:1px solid var(--line-strong); border-radius:6px; background:var(--panel-solid); box-shadow:-12px 0 8px -2px var(--surface-hover); color:var(--ink); font:11px/18px var(--sans); box-sizing:border-box; opacity:0; pointer-events:none; }
 .tab:hover .settle, .tab:focus-within .settle { opacity:1; pointer-events:auto; }
 .settle:hover, .settle:focus-visible { border-color:var(--muted); }
 /* Project heading: badge + name + amber waiting count in a reserved slot. */

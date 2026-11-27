@@ -54,9 +54,8 @@ describe("AgentTabs", () => {
 
     const [a, b] = wrapper.findAll("button.tab");
     expect(a.classes()).toContain("viewing");
-    expect(a.find(".mic-recipient").attributes("aria-hidden")).toBe("true");
-    expect(b.find(".mic-recipient").attributes("aria-hidden")).toBe("false");
-    expect(b.find(".mic-recipient").text()).toBe("Mic");
+    // The mic row is marked by its green edge alone; no "Mic" word.
+    expect([a.classes("mic"), b.classes("mic"), b.find(".mic-recipient").exists()]).toEqual([false, true, false]);
     expect(b.find(".eq").exists()).toBe(true); // speaking = green equalizer
     expect(a.find(".eq").exists()).toBe(false);
     expect(a.find(".dot.think").exists()).toBe(true); // working = violet pulse
@@ -235,7 +234,7 @@ describe("AgentTabs", () => {
     };
     const wrapper = mount(AgentTabs, { props });
     const rows = () => wrapper.findAll("button.tab").map((b) => [b.find(".tab-label").text(), b.find(".shortcut").text()]);
-    const quiet = [["First", "1"], ["Second", "2"], ["Extra", ""]];
+    const quiet = [["First", "Tab 1"], ["Second", "Tab 2"], ["Extra", ""]];
     expect(rows()).toEqual(quiet);
     await wrapper.setProps({ thinking: ["first"], speaking: ["extra"], queued: { second: 2 } });
     expect(rows()).toEqual(quiet);

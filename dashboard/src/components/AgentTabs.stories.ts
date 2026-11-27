@@ -26,7 +26,7 @@ export const UnsafeSavedNames: StoryObj<typeof AgentTabs> = {
 /** The canonical tab-state matrix, rendered by the REAL component.
  *
  *  Rows: is this the selected row (highlighted, and here also the mic
- *  recipient: green edge + Mic) or a background one. Columns: the single
+ *  recipient: green edge) or a background one. Columns: the single
  *  status glyph, option-B priority ladder: MUTE (with or without a waiting
  *  count) > SPEAKING (green equalizer) > WAIT count (amber) > WORKING
  *  (violet) > idle dot. WORK+3 shows the count outranking work, SPEAK+3 the
@@ -181,7 +181,7 @@ export const EndedButViewed: StoryObj<typeof AgentTabs> = {
   decorators: [() => ({ template: '<div style="width:268px"><story /></div>' })],
 };
 /** Settle, shown on hover or keyboard focus over the end of the branch
- *  line: the title, wait time, Mic and number stay where they are. Here
+ *  line: the title, wait time and hotkey stay where they are. Here
  *  the mic row is focused. Settled rows offer Remove instead (no Restore:
  *  the daemon cannot un-hide a conversation on request yet). */
 export const SettleOnFocus: StoryObj<typeof AgentTabs> = {
