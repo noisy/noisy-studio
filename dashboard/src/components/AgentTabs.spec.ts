@@ -181,14 +181,16 @@ describe("AgentTabs", () => {
     expect(labels).toEqual(["c title", "b title", "a title"]);
   });
 
-  it("emits the section's new order after a drag within the section", async () => {
+  it("drags within a project only, sending the full order with other projects' slots untouched", async () => {
+    const base = { offline_since: null, manual_pos: null };
     const wrapper = mount(AgentTabs, {
       props: {
-        agents: { a: "a", b: "b", dead: "dead" },
+        agents: { a: "Alpha", web: "Website", b: "Beta", dead: "Dead spike" },
         meta: {
-          a: { label: "a", online: true, activated_at: 1, offline_since: null, manual_pos: null },
-          b: { label: "b", online: true, activated_at: 2, offline_since: null, manual_pos: null },
-          dead: { label: "dead", online: false, activated_at: 0, offline_since: 9, manual_pos: null },
+          a: { ...base, label: "Alpha", online: true, activated_at: 1, project: "studio" },
+          web: { ...base, label: "Website", online: true, activated_at: 2, project: "website" },
+          b: { ...base, label: "Beta", online: true, activated_at: 3, project: "studio" },
+          dead: { ...base, label: "Dead spike", online: false, activated_at: 0, offline_since: 9, project: "studio" },
         },
         active: "a",
         viewed: "a",
@@ -197,15 +199,18 @@ describe("AgentTabs", () => {
       },
     });
 
-    const [a, b, dead] = wrapper.findAll("button.tab");
-    await a.trigger("dragstart");
-    await b.trigger("drop");
-    expect(wrapper.emitted("reorder")).toEqual([[["b", "a"]]]);
+    const row = (label: string) => wrapper.findAll("button.tab").find((b) => b.find(".tab-label").text() === label)!;
+    await row("Alpha").trigger("dragstart");
+    await row("Beta").trigger("drop");
+    expect(wrapper.emitted("reorder")).toEqual([[["dead", "b", "web", "a"]]]);
 
-    // Dropping an active tab onto the Settled section is ignored.
-    await a.trigger("dragstart");
-    await dead.trigger("drop");
+    // Across projects, or onto Settled: ignored.
+    await row("Alpha").trigger("dragstart");
+    await row("Website").trigger("drop");
+    await row("Alpha").trigger("dragstart");
+    await row("Dead spike").trigger("drop");
     expect(wrapper.emitted("reorder")).toHaveLength(1);
+    expect(row("Dead spike").attributes("draggable")).toBe("false");
   });
 
   it("treats agents without meta as online (legacy daemon)", () => {
@@ -217,74 +222,86 @@ describe("AgentTabs", () => {
     expect(tabs.every((t) => !t.classes().includes("offline"))).toBe(true);
   });
 
-  it("shows each row's Tab hotkey number from the daemon, whatever section it is in", () => {
-    const wrapper = mount(AgentTabs, {
-      props: {
-        agents: { first: "First", second: "Second", extra: "Extra" },
-        meta: {
-          first: { label: "First", online: true, activated_at: 1, offline_since: null, shortcut: 1 },
-          second: { label: "Second", online: true, activated_at: 2, offline_since: null, shortcut: 2 },
-          extra: { label: "Extra", online: true, activated_at: 3, offline_since: null, shortcut: null },
-        },
-        active: null, viewed: null, speaking: [], thinking: ["first"], working: ["first"],
+  it("shows each row's Tab hotkey number, and a row never moves because it works, speaks or queues", async () => {
+    const props = {
+      agents: { first: "First", second: "Second", extra: "Extra" },
+      meta: {
+        first: { label: "First", online: true, activated_at: 1, offline_since: null, shortcut: 1 },
+        second: { label: "Second", online: true, activated_at: 2, offline_since: null, shortcut: 2 },
+        extra: { label: "Extra", online: true, activated_at: 3, offline_since: null, shortcut: null },
       },
-    });
-    const rows = wrapper.findAll("button.tab").map((b) => [b.find(".tab-label").text(), b.find(".shortcut").text()]);
-    expect(rows).toEqual([["Second", "2"], ["Extra", ""], ["First", "1"]]);
+      active: null, viewed: null, speaking: [] as string[],
+    };
+    const wrapper = mount(AgentTabs, { props });
+    const rows = () => wrapper.findAll("button.tab").map((b) => [b.find(".tab-label").text(), b.find(".shortcut").text()]);
+    const quiet = [["First", "1"], ["Second", "2"], ["Extra", ""]];
+    expect(rows()).toEqual(quiet);
+    await wrapper.setProps({ thinking: ["first"], speaking: ["extra"], queued: { second: 2 } });
+    expect(rows()).toEqual(quiet);
   });
 
-  it("shows project, branch and how long it waited, and leaves them out when unknown", () => {
-    const base = { online: true, activated_at: 1, offline_since: null };
+  it("groups rows under project headings, no-project last, with branch and wait time on the row", () => {
+    const base = { online: true, offline_since: null };
     const wrapper = mount(AgentTabs, {
       props: {
-        agents: { known: "Release notes", bare: "Legacy" },
+        agents: { notes: "Release notes", site: "Landing page", bare: "Legacy", fix: "Bug fixing" },
         meta: {
-          known: { ...base, label: "Release notes", project: "noisy-studio", branch: "main", waiting_since: 1000 - 240 },
-          bare: { ...base, label: "Legacy", activated_at: 2 },
+          notes: { ...base, activated_at: 1, label: "Release notes", project: "noisy-studio", branch: "main", waiting_since: 1000 - 240 },
+          site: { ...base, activated_at: 2, label: "Landing page", project: "website", branch: "feat/cta" },
+          bare: { ...base, activated_at: 3, label: "Legacy" },
+          fix: { ...base, activated_at: 4, label: "Bug fixing", project: "noisy-studio", branch: "fix/hold" },
         },
-        active: null, viewed: null, speaking: [], now: 1000,
+        active: null, viewed: null, speaking: [], queued: { notes: 2, fix: 1 }, now: 1000,
       },
     });
-    const rows = wrapper.findAll("button.tab").map((b) => ({
-      project: b.find(".project").exists() ? b.find(".project .clip").text() : null,
-      label: b.find(".tab-label").text(),
-      branch: b.find(".branch").exists() ? b.find(".branch").text() : null,
-      waited: b.find(".waited").text(),
-    }));
-    expect(rows).toEqual([
-      { project: "noisy-studio", label: "Release notes", branch: "main", waited: "4m" },
-      { project: null, label: "Legacy", branch: null, waited: "" },
+    const list = wrapper.findAll(".project-head, button.tab").map((el) => el.classes().includes("project-head")
+      ? { project: el.find(".project-name").text(), waiting: el.find(".project-waiting").text() }
+      : { label: el.find(".tab-label").text(), where: el.find(".where").text(), waited: el.find(".waited").text() });
+    expect(list).toEqual([
+      { project: "noisy-studio", waiting: "3" },
+      { label: "Release notes", where: "main", waited: "4m" },
+      { label: "Bug fixing", where: "fix/hold", waited: "" },
+      { project: "website", waiting: "" },
+      { label: "Landing page", where: "feat/cta", waited: "" },
+      { project: "No project", waiting: "" },
+      { label: "Legacy", where: "", waited: "" },
     ]);
   });
 
-  it("splits the list into your turn, Working and a collapsed Settled section", async () => {
+  it("shows no project headings when the daemon knows no projects", () => {
+    const wrapper = mount(AgentTabs, { props: { agents, active: "id-a", viewed: "id-a", speaking: [] } });
+    expect(wrapper.find(".project-head").exists()).toBe(false);
+  });
+
+  it("marks the mic recipient with a green edge, not by moving it", () => {
+    const wrapper = mount(AgentTabs, { props: { agents, active: "id-b", viewed: "id-a", speaking: [] } });
+    expect(wrapper.findAll("button.tab").map((b) => b.classes().includes("mic"))).toEqual([false, true]);
+  });
+
+  it("folds ended sessions into a collapsed Settled section that names their project", async () => {
     localStorage.removeItem("noisy.tabs.settledOpen");
     const wrapper = mount(AgentTabs, {
       props: {
-        agents: { mine: "Release notes", busy: "Bug fixing", gone: "Old spike" },
+        agents: { mine: "Release notes", gone: "Old spike" },
         meta: {
-          mine: { label: "Release notes", online: true, activated_at: 1, offline_since: null },
-          busy: { label: "Bug fixing", online: true, activated_at: 2, offline_since: null },
-          gone: { label: "Old spike", online: false, activated_at: 0, offline_since: 5 },
+          mine: { label: "Release notes", online: true, activated_at: 1, offline_since: null, project: "noisy-studio" },
+          gone: { label: "Old spike", online: false, activated_at: 0, offline_since: 5, project: "noisy-studio", branch: "spike" },
         },
-        active: "mine", viewed: "mine", speaking: [],
-        thinking: ["busy"], working: ["busy"], activity: { busy: "Bash · pytest" },
+        active: "mine", viewed: "mine", speaking: [], thinking: ["mine"], activity: { mine: "Bash · pytest" },
       },
     });
     const labels = () => wrapper.findAll("button.tab").map((b) => b.find(".tab-label").text());
-    expect(labels()).toEqual(["Release notes", "Bug fixing"]);
-    expect(wrapper.find(".section").text()).toBe("▸ Working 1");
-    expect(wrapper.find(".section").attributes("aria-expanded")).toBe("true");
-    // A one-line glimpse of a shell command told nothing: the row says only
-    // that it works; the detail stays in the tooltip.
-    const busyRow = wrapper.findAll("button.tab")[1];
-    expect([busyRow.find(".activity").exists(), busyRow.attributes("title")]).toEqual([false, "Bug fixing · Working · Bash · pytest"]);
+    expect(labels()).toEqual(["Release notes"]);
+    // Working is a glyph, the detail stays in the tooltip.
+    expect(wrapper.get("button.tab").attributes("title")).toBe("Release notes · Receiving your speech · Working · Bash · pytest");
 
-    const settled = wrapper.findAll("button.toggle")[1];
-    expect(settled.attributes("aria-expanded")).toBe("false");
+    const settled = wrapper.get("button.toggle");
+    expect([settled.text(), settled.attributes("aria-expanded")]).toEqual(["▸ Settled 1", "false"]);
     await settled.trigger("click");
-    expect(labels()).toEqual(["Release notes", "Bug fixing", "Old spike"]);
+    expect(labels()).toEqual(["Release notes", "Old spike"]);
+    expect(wrapper.findAll("button.tab")[1].find(".where").text()).toBe("noisy-studio · spike");
     expect(localStorage.getItem("noisy.tabs.settledOpen")).toBe("1");
+    localStorage.removeItem("noisy.tabs.settledOpen");
   });
 
   it("opens Settled when this browser remembered it open", () => {
@@ -302,30 +319,5 @@ describe("AgentTabs", () => {
     expect(wrapper.get("button.toggle").attributes("aria-expanded")).toBe("true");
     expect(wrapper.findAll("button.tab").map((b) => b.find(".tab-label").text())).toEqual(["Release notes", "Old spike"]);
     localStorage.removeItem("noisy.tabs.settledOpen");
-  });
-
-  it("folds Working on click, remembers it, and keeps the viewed row in sight", async () => {
-    localStorage.removeItem("noisy.tabs.workingOpen");
-    const wrapper = mount(AgentTabs, {
-      props: {
-        agents: { a: "Release notes", b: "Bug fixing", c: "Docs pass" },
-        active: "a", viewed: "b", speaking: [], thinking: ["b", "c"], working: ["b", "c"],
-      },
-    });
-    const labels = () => wrapper.findAll("button.tab").map((t) => t.find(".tab-label").text());
-    expect(labels()).toEqual(["Release notes", "Bug fixing", "Docs pass"]);
-    await wrapper.get("button.toggle").trigger("click");
-    expect(wrapper.get("button.toggle").attributes("aria-expanded")).toBe("false");
-    expect(labels()).toEqual(["Release notes", "Bug fixing"]);
-    expect(localStorage.getItem("noisy.tabs.workingOpen")).toBe("0");
-    localStorage.removeItem("noisy.tabs.workingOpen");
-  });
-
-  it("brings a working conversation back to the top when it has something for you", () => {
-    const wrapper = mount(AgentTabs, {
-      props: { agents, active: "id-a", viewed: "id-a", speaking: [], thinking: ["id-a", "id-b"], working: ["id-a", "id-b"], queued: { "id-b": 1 } },
-    });
-    const labels = wrapper.findAll("button.tab").map((b) => b.find(".tab-label").text());
-    expect(labels).toEqual(["personal", "noisy-studio-stabilization"]);
   });
 });

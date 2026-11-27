@@ -1,42 +1,85 @@
 import { describe, expect, it } from "vitest";
-import { sectionAgents } from "./agentOrder";
+import { groupAgents, moveWithinProject, orderAgents, projectOrder } from "./agentOrder";
 
+// Two projects interleaved by arrival, one session without a project, one
+// ended session of the first project.
 const meta = {
-  idle: { online: true, activated_at: 1 },
-  busy: { online: true, activated_at: 2 },
-  talking: { online: true, activated_at: 3 },
-  backlog: { online: true, activated_at: 4 },
-  ended: { online: false, activated_at: 0, offline_since: 9 },
+  studio1: { online: true, activated_at: 1, project: "noisy-studio" },
+  web1: { online: true, activated_at: 2, project: "website" },
+  loose: { online: true, activated_at: 3, project: null },
+  studio2: { online: true, activated_at: 4, project: "noisy-studio" },
+  ended: { online: false, activated_at: 0, offline_since: 9, project: "noisy-studio" },
 };
 const names = Object.keys(meta);
 
-describe("sectionAgents", () => {
-  it("keeps your turn on top, sends sustained work and ended sessions down", () => {
-    expect(sectionAgents(names, meta, { working: ["busy"] })).toEqual({
-      yourTurn: ["idle", "talking", "backlog"],
-      working: ["busy"],
+describe("orderAgents", () => {
+  it("groups online conversations by project, no-project last, then the ended ones", () => {
+    expect(orderAgents(names, meta)).toEqual(["studio1", "studio2", "web1", "loose", "ended"]);
+  });
+
+  it("keeps the legacy flat arrival order for a daemon without projects", () => {
+    expect(orderAgents(["b", "a"], { a: { activated_at: 1 }, b: { activated_at: 2 } })).toEqual(["a", "b"]);
+  });
+});
+
+describe("projectOrder", () => {
+  it("orders projects by their first conversation, ended ones included", () => {
+    expect(projectOrder(names, meta)).toEqual(["noisy-studio", "website", null]);
+  });
+
+  it("does not move a project when its first session ends", () => {
+    const studioEnded = { ...meta, studio1: { ...meta.studio1, online: false, offline_since: 10 } };
+    expect(projectOrder(names, studioEnded)).toEqual(["noisy-studio", "website", null]);
+  });
+});
+
+describe("groupAgents", () => {
+  it("lists each project's live conversations and sends ended ones to Settled", () => {
+    expect(groupAgents(names, meta)).toEqual({
+      projects: [
+        { project: "noisy-studio", names: ["studio1", "studio2"] },
+        { project: "website", names: ["web1"] },
+        { project: null, names: ["loose"] },
+      ],
       settled: ["ended"],
     });
   });
 
-  it("pulls a working conversation back up the moment it speaks or queues a message", () => {
-    const sections = sectionAgents(names, meta, {
-      working: ["busy", "talking", "backlog"],
-      speaking: ["talking"],
-      queued: { backlog: 2 },
+  it("never re-sorts on speaking, queued messages or work", () => {
+    const quiet = groupAgents(names, meta);
+    const busy = groupAgents(names, meta, { speaking: ["web1"], queued: { loose: 3, studio2: 1 } });
+    expect(busy).toEqual(quiet);
+  });
+
+  it("keeps an ended session in its project while it waits for you or is in sight", () => {
+    const more = {
+      ...meta,
+      unheard: { online: false, offline_since: 8, project: "website" },
+      viewed: { online: false, offline_since: 7, project: null },
+    };
+    const groups = groupAgents(Object.keys(more), more, { queued: { unheard: 1 }, keepInSight: ["viewed", null] });
+    expect(groups).toEqual({
+      projects: [
+        { project: "noisy-studio", names: ["studio1", "studio2"] },
+        { project: "website", names: ["web1", "unheard"] },
+        { project: null, names: ["loose", "viewed"] },
+      ],
+      settled: ["ended"],
     });
-    expect(sections.working).toEqual(["busy"]);
-    expect(sections.yourTurn).toEqual(["idle", "talking", "backlog"]);
   });
 
-  it("never hides an ended session that still waits for you, or the one you look at or talk to", () => {
-    const more = { ...meta, unheard: { online: false, offline_since: 8 }, viewed: { online: false, offline_since: 7 }, mic: { online: false, offline_since: 6 } };
-    const sections = sectionAgents(Object.keys(more), more, { queued: { unheard: 1 }, keepInSight: ["viewed", "mic"] });
-    expect(sections.settled).toEqual(["ended"]);
-    expect(sections.yourTurn.slice(-3)).toEqual(["unheard", "viewed", "mic"]);
+  it("treats conversations without metadata as online, without a project (legacy daemon)", () => {
+    expect(groupAgents(["a", "b"])).toEqual({ projects: [{ project: null, names: ["a", "b"] }], settled: [] });
+  });
+});
+
+describe("moveWithinProject", () => {
+  it("reshuffles only the project's own slots and keeps every other position", () => {
+    expect(moveWithinProject(names, meta, "studio2", "studio1"))
+      .toEqual(["ended", "studio2", "web1", "loose", "studio1"]);
   });
 
-  it("treats conversations without metadata as online (legacy daemon)", () => {
-    expect(sectionAgents(["a", "b"])).toEqual({ yourTurn: ["a", "b"], working: [], settled: [] });
+  it("refuses a drop onto another project", () => {
+    expect(moveWithinProject(names, meta, "studio1", "web1")).toBeNull();
   });
 });

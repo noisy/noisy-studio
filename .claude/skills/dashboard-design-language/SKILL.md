@@ -54,12 +54,18 @@ follows the turn mode - Mute mic in Auto, Hold to talk in push to talk
 "Mic muted" in the same slot, never as a dead button. The telemetry/catch-up
 width = the bubbles column only, never under the rail.
 
-The conversations are a vertical list in the left column, T3-style (2026-11-27):
-what needs you stays on top with no heading; "Working" (sustained work,
-10 s, nothing waiting; foldable, open by default) and "Settled" (ended;
-folded by default) sit below. A folded section never hides the viewed or
-mic row. The selected row is highlighted, NOT fused with the frame - fusing
-breaks as soon as the list scrolls. Sectioning lives in `agentOrder.ts`.
+The conversations are a vertical list in the left column, grouped by
+PROJECT (v3, 2026-11-27): a project is the session's repository (worktrees
+fold into it), its heading is badge + name + an amber count of messages
+waiting for you there; conversations without one gather under "No project"
+at the end. Projects keep a stable order and never re-sort on state - there
+is no "Working" section: projects are always busy, so working is a row
+glyph. "Settled" (ended; folded by default) sits below. A folded section
+never hides the viewed or mic row, nor one with messages for you. The mic
+row carries an inset green edge as well as the Mic label. The selected row
+is highlighted, NOT fused with the frame - fusing breaks as soon as the
+list scrolls. Grouping and order live in `agentOrder.ts` (the widget uses
+the same order); drag-and-drop reorders within a project only.
 
 ## Geometry as script constants
 

@@ -1,6 +1,5 @@
 import { computed, type Ref } from "vue";
 import type { DaemonStatus } from "../types";
-import { useSustainedWork } from "./useSustainedWork";
 
 /** What each agent is doing, read from the daemon's activity map.
  *
@@ -9,9 +8,8 @@ import { useSustainedWork } from "./useSustainedWork";
  * - thinking: activity updated in the last few seconds - the live violet
  *   pulse in the status slot.
  * - busy: activity present at all - a long tool call is still work. The
- *   age cap only guards against a lost end-of-turn hook.
- * - working: busy without a break for SUSTAINED_WORK_MS - what moves a
- *   conversation into the list's Working section. */
+ *   age cap only guards against a lost end-of-turn hook; its text is the
+ *   row's tooltip. */
 const THINKING_FRESH_S = 20;
 const BUSY_STALE_S = 600;
 
@@ -25,9 +23,8 @@ export function useAgentActivity(status: Ref<DaemonStatus | null>) {
   });
   const thinking = withActivity(THINKING_FRESH_S);
   const busy = withActivity(BUSY_STALE_S);
-  const working = useSustainedWork(busy);
   const activityText = computed(() =>
     Object.fromEntries(busy.value.map((name) => [name, status.value?.activity?.[name]?.text ?? ""])),
   );
-  return { thinking, working, activityText };
+  return { thinking, activityText };
 }

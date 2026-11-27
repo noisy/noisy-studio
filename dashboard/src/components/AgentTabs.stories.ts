@@ -127,20 +127,21 @@ export const SlowMicrophoneTransfer: StoryObj<typeof AgentTabs> = {
   decorators: [() => ({ template: '<div style="--mic-transition-duration-ms:1800"><story /></div>' })],
 };
 
-/** The sections, T3-style: your turn on top (no heading), Working below
- *  (after 10 s of sustained work; the detail is in the tooltip), Settled
- *  (ended sessions) collapsed at the bottom. */
-const SECTION_AGENTS: Record<string, string> = {
+/** The list grouped by project, as the daemon derives it from each
+ *  session's repository (worktrees fold into the main repo). Projects keep
+ *  their order whatever their conversations do; the amber number in a
+ *  project heading counts the messages waiting for you there. Working is the
+ *  violet glyph on a row, not a place. Ended sessions fold into Settled. */
+const PROJECT_AGENTS: Record<string, string> = {
   dash: 'noisy-studio · dashboard', bucky: 'Bucky', qa: 'QA docs', diet: 'fitatu',
   bugs: 'Bug fixing', release: 'release 3.0.0', mobile: 'mobile TestFlight',
   cta: 'website CTA', grok: 'grok harness', deck: 'presentation', i152: 'issue 152 live', i172: 'issue 172 review',
 };
 const ENDED = ['cta', 'grok', 'deck', 'i152', 'i172'];
-// Tab N hotkeys come from the daemon's stable order, not the sections:
-// #2 sits in Working, and the numbers stay put while rows change section.
+// Tab N hotkeys come from the daemon's stable order, not the grouping.
 const SHORTCUTS: Record<string, number> = { dash: 1, bugs: 2, qa: 3, bucky: 4 };
 // Project and branch come from the session's directory (no setup); legacy
-// and Codex sessions may have neither, so 'diet' shows the bare row.
+// and Codex sessions may have neither, so 'diet' lands in "No project".
 const NOW = 1_800_000_000;
 const WORKSPACE: Record<string, { project: string; branch: string | null }> = {
   dash: { project: 'noisy-studio', branch: 'main' }, bucky: { project: 'bucky', branch: 'feat/voice-tiles' },
@@ -150,31 +151,31 @@ const WORKSPACE: Record<string, { project: string; branch: string | null }> = {
   deck: { project: 'Downloads', branch: null }, i152: { project: 'noisy-studio', branch: 'issue-152' }, i172: { project: 'noisy-studio', branch: 'issue-172' },
 };
 const WAITING_SINCE: Record<string, number> = { dash: NOW - 30, bucky: NOW - 4 * 60, qa: NOW - 2 * 3600 };
-const sectionsArgs = (settledOpen: boolean) => ({
-  agents: SECTION_AGENTS,
-  meta: Object.fromEntries(Object.entries(SECTION_AGENTS).map(([id, label], i) => [id, {
+const projectArgs = (settledOpen: boolean) => ({
+  agents: PROJECT_AGENTS,
+  meta: Object.fromEntries(Object.entries(PROJECT_AGENTS).map(([id, label], i) => [id, {
     label, online: !ENDED.includes(id), activated_at: i, offline_since: ENDED.includes(id) ? 100 - i : null,
     shortcut: SHORTCUTS[id] ?? null,
     project: WORKSPACE[id]?.project ?? null, branch: WORKSPACE[id]?.branch ?? null,
     waiting_since: WAITING_SINCE[id] ?? null,
   }])),
-  active: 'dash', viewed: 'dash', speaking: ['qa'], queued: { bucky: 2 },
-  thinking: ['bugs', 'release', 'mobile'], working: ['bugs', 'release', 'mobile'],
+  active: 'dash', viewed: 'dash', speaking: ['qa'], queued: { bucky: 2, release: 1 },
+  thinking: ['bugs', 'release', 'mobile'],
   activity: { bugs: 'Bash · pytest', release: 'Thinking…', mobile: 'Edit · App.swift' },
   settledOpen,
   now: NOW,
 });
-export const Sections: StoryObj<typeof AgentTabs> = {
-  args: sectionsArgs(false),
+export const Projects: StoryObj<typeof AgentTabs> = {
+  args: projectArgs(false),
   decorators: [() => ({ template: '<div style="width:268px"><story /></div>' })],
 };
-export const SectionsSettledOpen: StoryObj<typeof AgentTabs> = {
-  args: sectionsArgs(true),
+export const ProjectsSettledOpen: StoryObj<typeof AgentTabs> = {
+  args: projectArgs(true),
   decorators: [() => ({ template: '<div style="width:268px"><story /></div>' })],
 };
-/** Working folded: only its heading stays (plus the viewed/mic row, if it
- *  is working). */
-export const SectionsWorkingFolded: StoryObj<typeof AgentTabs> = {
-  args: { ...sectionsArgs(false), workingOpen: false },
+/** An ended session you are looking at (or that still has messages for
+ *  you) stays in its project: a folded Settled never hides it. */
+export const EndedButViewed: StoryObj<typeof AgentTabs> = {
+  args: { ...projectArgs(false), viewed: 'i152', queued: { bucky: 2, release: 1, cta: 1 } },
   decorators: [() => ({ template: '<div style="width:268px"><story /></div>' })],
 };

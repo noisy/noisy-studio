@@ -50,7 +50,7 @@ const { status, utterances, allUtterances, utterancesFor, character, characterPe
   useDaemonState();
 
 // Live pulse, the list's Working section and what each agent is doing.
-const { thinking: thinkingAgents, working: sustainedWork, activityText } = useAgentActivity(status);
+const { thinking: thinkingAgents, activityText } = useAgentActivity(status);
 // Left column: the conversation list and machine-global controls.
 const leftColumn = useColumnWidth();
 
@@ -424,8 +424,8 @@ function changeAudio({id,value}: AudioChange) {
     <div class="cols" :style="{ '--left-column-width': leftColumn.width.value + 'px' }">
       <ColumnResizer :width="leftColumn.width.value" @resize="leftColumn.set" @reset="leftColumn.reset" />
       <div class="col-left">
-        <!-- The conversations, T3-style: what needs you on top, working and
-             ended sessions in their own sections below. -->
+        <!-- The conversations, grouped by project; ended sessions fold
+             into Settled below. -->
         <AgentTabs
           class="convo-list"
           :agents="status?.agent_labels ?? {}"
@@ -434,7 +434,6 @@ function changeAudio({id,value}: AudioChange) {
           :viewed="viewedAgent"
           :speaking="status?.speaking_agents ?? []"
           :thinking="thinkingAgents"
-          :working="sustainedWork"
           :activity="activityText"
           :queued="status?.queued_by_agent ?? {}"
           :muted="status?.muted_agents ?? []"
