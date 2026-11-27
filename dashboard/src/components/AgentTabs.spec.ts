@@ -378,6 +378,56 @@ describe("AgentTabs", () => {
     wrapper.unmount();
   });
 
+  describe("folding a project", () => {
+    const now = 10_000;
+    const props = () => ({
+      agents: { mic: "Release notes", busy: "Bug fixing", quiet: "Docs", talk: "QA", web: "Website" },
+      meta: {
+        mic: { label: "Release notes", online: true, activated_at: 1, offline_since: null, project: "studio", waiting_since: now - 5 * 60 },
+        busy: { label: "Bug fixing", online: true, activated_at: 2, offline_since: null, project: "studio", waiting_since: now - 12 * 60 },
+        quiet: { label: "Docs", online: true, activated_at: 3, offline_since: null, project: "studio" },
+        talk: { label: "QA", online: true, activated_at: 4, offline_since: null, project: "studio" },
+        web: { label: "Website", online: true, activated_at: 5, offline_since: null, project: "website" },
+      },
+      active: "mic", viewed: "web", speaking: ["talk"], queued: { busy: 2, quiet: 1 }, now,
+    });
+    const labels = (wrapper: ReturnType<typeof mount>) => wrapper.findAll("button.tab").map((b) => b.get(".tab-label").text());
+
+    it("folds on a click, keeps the mic and speaking rows in sight, and sums up what waits", async () => {
+      localStorage.removeItem("noisy.tabs.foldedProjects");
+      const wrapper = mount(AgentTabs, { props: props() });
+      const heading = () => wrapper.get(".project-head");
+
+      await heading().trigger("click");
+
+      expect(labels(wrapper)).toEqual(["Release notes", "QA", "Website"]);
+      expect([heading().attributes("aria-expanded"), heading().get(".project-title .project-waiting").text(), heading().get(".folded-wait").text()])
+        .toEqual(["false", "3", "12m"]);
+      expect(localStorage.getItem("noisy.tabs.foldedProjects")).toBe('["studio"]');
+
+      await heading().trigger("keydown", { key: "Enter" });
+      expect([labels(wrapper).length, heading().get(".meta").text()]).toEqual([5, "3"]);
+      localStorage.removeItem("noisy.tabs.foldedProjects");
+    });
+
+    it("keeps the viewed row in sight and remembers folded projects per browser", () => {
+      localStorage.setItem("noisy.tabs.foldedProjects", '["website"]');
+      const wrapper = mount(AgentTabs, { props: props() });
+      expect(labels(wrapper)).toEqual(["Release notes", "Bug fixing", "Docs", "QA", "Website"]);
+      expect(wrapper.findAll(".project-head")[1].attributes("aria-expanded")).toBe("false");
+      localStorage.removeItem("noisy.tabs.foldedProjects");
+    });
+
+    it("does not fold when the heading was just dragged", async () => {
+      const wrapper = mount(AgentTabs, { props: { ...props(), foldedProjects: [] } });
+      const heading = wrapper.get(".project-head");
+      await heading.trigger("dragstart");
+      await heading.trigger("dragend");
+      await heading.trigger("click");
+      expect(heading.attributes("aria-expanded")).toBe("true");
+    });
+  });
+
   it("opens Settled when this browser remembered it open", () => {
     localStorage.setItem("noisy.tabs.settledOpen", "1");
     const wrapper = mount(AgentTabs, {

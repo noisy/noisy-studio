@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { groupAgents, moveProject, moveWithinProject, orderAgents, projectOrder, settledRows } from "./agentOrder";
+import { foldedProjectSummary, groupAgents, moveProject, moveWithinProject, orderAgents, projectOrder, rowsKeptInFoldedProject, settledRows } from "./agentOrder";
 
 // Two projects interleaved by arrival, one session without a project, one
 // ended session of the first project.
@@ -140,5 +140,25 @@ describe("settledRows", () => {
 
   it("works with a daemon that sends no settled conversations", () => {
     expect(settledRows(["gone1"], endedMeta, undefined)).toEqual({ rows: [{ name: "gone1", hidden: null }], total: 1, older: 0 });
+  });
+});
+
+describe("folded projects", () => {
+  it("keep the mic, viewed and speaking rows in sight, in their order", () => {
+    expect(rowsKeptInFoldedProject(["a", "mic", "b", "talking", "seen"], { speaking: ["talking"], keepInSight: ["seen", "mic", null] }))
+      .toEqual(["mic", "talking", "seen"]);
+  });
+
+  it("hide every row when none needs attention", () => {
+    expect(rowsKeptInFoldedProject(["a", "b"], { speaking: ["elsewhere"], keepInSight: [null] })).toEqual([]);
+  });
+
+  it("sum up the messages waiting and the longest wait", () => {
+    const waiting = { a: { waiting_since: 300 }, b: { waiting_since: 120 }, c: { waiting_since: null }, d: {} };
+    expect(foldedProjectSummary(["a", "b", "c", "d"], waiting, { a: 2, c: 1, other: 9 })).toEqual({ waiting: 3, waitingSince: 120 });
+  });
+
+  it("have no wait time when nothing waits", () => {
+    expect(foldedProjectSummary(["a"], { a: {} })).toEqual({ waiting: 0, waitingSince: null });
   });
 });

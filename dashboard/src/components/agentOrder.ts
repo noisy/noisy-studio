@@ -20,6 +20,7 @@ export interface AgentMetaLike {
   manual_pos?: number | null;
   project?: string | null;
   kept?: boolean; // ended, but the user restored it: it stays in its project
+  waiting_since?: number | null; // epoch s: your move since then
 }
 
 /** A project is virtual: the conversations whose sessions run in the same
@@ -93,6 +94,32 @@ export function groupAgents(
     .map((project) => ({ project, names: listed.filter((n) => projectOf(n, meta) === project) }))
     .filter((group) => group.names.length > 0);
   return { projects, settled: ordered.filter((n) => !keepsItsPlace(n)) };
+}
+
+/** A folded (collapsed) project: the rows that must stay in sight under
+ *  its heading - the one you talk to or look at, and one speaking right
+ *  now. A collapsed project never hides those. */
+export function rowsKeptInFoldedProject(
+  names: string[],
+  live: { speaking?: string[]; keepInSight?: (string | null)[] } = {},
+): string[] {
+  const kept = new Set<string | null>([...(live.speaking ?? []), ...(live.keepInSight ?? [])]);
+  return names.filter((name) => kept.has(name));
+}
+
+/** What a folded project's heading sums up: the messages waiting for you
+ *  in it, and since when the longest-waiting conversation has waited
+ *  (epoch s; null when none waits). */
+export function foldedProjectSummary(
+  names: string[],
+  meta: Record<string, AgentMetaLike>,
+  queued: Record<string, number> = {},
+): { waiting: number; waitingSince: number | null } {
+  const since = names.map((name) => meta[name]?.waiting_since).filter((at): at is number => at != null);
+  return {
+    waiting: names.reduce((sum, name) => sum + (queued[name] ?? 0), 0),
+    waitingSince: since.length ? Math.min(...since) : null,
+  };
 }
 
 /** How many Settled rows the list shows; the rest is "+N older". */

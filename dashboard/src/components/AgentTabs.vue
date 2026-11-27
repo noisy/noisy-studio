@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { groupAgents, moveProject, moveWithinProject, settledRows, type ProjectGroup } from "./agentOrder";
+import { foldedProjectSummary, groupAgents, moveProject, moveWithinProject, rowsKeptInFoldedProject, settledRows } from "./agentOrder";
 import type { SettledAgent, SettledAgents } from "../types";
 import { computed, onBeforeUnmount, ref } from "vue";
 import { conversationLabel } from "../conversationLabel";
@@ -34,6 +34,7 @@ const props = withDefaults(
     queued?: Record<string, number>; // waiting messages per agent
     muted?: string[]; // per-conversation mute (future daemon feature)
     settledOpen?: boolean; // initial Settled state; omit for the remembered one
+    foldedProjects?: (string | null)[]; // initially folded projects; omit for the remembered ones
     now?: number; // epoch s; omit to use the row clock (stories/tests pin it)
     tabKeys?: Record<number, string>; // Tab N hotkey -> its chord ("F16"), shown on the row
     // Give a conversation its own talk key ("" clears); resolves to the
@@ -42,7 +43,7 @@ const props = withDefaults(
     // Settled (hidden) conversations, newest first, capped, with the total.
     settledAgents?: SettledAgents | null;
   }>(),
-  { thinking: () => [], activity: () => ({}), queued: () => ({}), muted: () => [], meta: null, settledOpen: undefined, settledAgents: null },
+  { thinking: () => [], activity: () => ({}), queued: () => ({}), muted: () => [], meta: null, settledOpen: undefined, foldedProjects: undefined, settledAgents: null },
 );
 
 // Geometry knobs. Every heading and row sits on ONE grid - lead | text |
@@ -94,10 +95,28 @@ function toggleSettled() {
 
 // `hidden`: a settled conversation, no longer in the agents table - the
 // daemon's settled_agents entry carries what its row shows.
+// A project folds on a click on its heading, remembered per browser per
+// project ("" stands for "No project").
+const FOLDED_PROJECTS_KEY = "noisy.tabs.foldedProjects";
+const projectId = (project: string | null) => project ?? "";
+function storedFoldedProjects(): string[] {
+  try {
+    const saved: unknown = JSON.parse(localStorage.getItem(FOLDED_PROJECTS_KEY) ?? "[]");
+    return Array.isArray(saved) ? saved.filter((id): id is string => typeof id === "string") : [];
+  } catch { return []; }
+}
+const foldedProjects = ref(new Set(props.foldedProjects?.map(projectId) ?? storedFoldedProjects()));
+function toggleProject(project: string | null) {
+  const folded = new Set(foldedProjects.value);
+  if (!folded.delete(projectId(project))) folded.add(projectId(project));
+  foldedProjects.value = folded;
+  try { localStorage.setItem(FOLDED_PROJECTS_KEY, JSON.stringify([...folded])); } catch { /* session only */ }
+}
+
 interface Tab { name: string; label: string; online: boolean; settled: boolean; hidden: SettledAgent | null }
 type Item =
   | { kind: "tab"; key: string; tab: Tab }
-  | { kind: "project"; key: string; project: string | null; waiting: number }
+  | { kind: "project"; key: string; project: string | null; waiting: number; folded: boolean; waitingSince: number | null }
   | { kind: "settled"; key: string; count: number }
   | { kind: "older"; key: string; count: number };
 
@@ -118,8 +137,6 @@ const tabOf = (name: string, settled: boolean, hidden: SettledAgent | null = nul
 });
 // Settled: the ended sessions and the settled conversations, newest first.
 const settled = computed(() => settledRows(groups.value.settled, props.meta ?? {}, props.settledAgents));
-// What waits for you in a project: its queued messages, in amber.
-const waitingIn = (group: ProjectGroup) => group.names.reduce((sum, name) => sum + (props.queued[name] ?? 0), 0);
 // A daemon that knows no projects (legacy, or no repository at all) gets the
 // plain list: a lone "No project" heading would say nothing.
 const showProjectHeads = computed(() => groups.value.projects.some((group) => group.project !== null));
@@ -127,12 +144,19 @@ const tabCount = computed(() => Object.keys(props.agents).length + settled.value
 const items = computed<Item[]>(() => {
   const { rows: settledList, total, older } = settled.value;
   return [
-    ...groups.value.projects.flatMap((group): Item[] => [
-      ...(showProjectHeads.value
-        ? [{ kind: "project", key: `p-${group.project ?? ""}`, project: group.project, waiting: waitingIn(group) } as Item]
-        : []),
-      ...group.names.map((name): Item => ({ kind: "tab", key: name, tab: tabOf(name, false) })),
-    ]),
+    ...groups.value.projects.flatMap((group): Item[] => {
+      // What waits for you in a project: its queued messages, in amber; a
+      // folded one also says since when the longest-waiting row has waited.
+      const summary = foldedProjectSummary(group.names, props.meta ?? {}, props.queued);
+      const folded = showProjectHeads.value && foldedProjects.value.has(projectId(group.project));
+      const shown = folded ? rowsKeptInFoldedProject(group.names, { speaking: props.speaking, keepInSight: [props.viewed, props.active] }) : group.names;
+      return [
+        ...(showProjectHeads.value
+          ? [{ kind: "project", key: `p-${group.project ?? ""}`, project: group.project, folded, ...summary } as Item]
+          : []),
+        ...shown.map((name): Item => ({ kind: "tab", key: name, tab: tabOf(name, false) })),
+      ];
+    }),
     ...(total ? [{ kind: "settled", key: "h-settled", count: total } as Item] : []),
     ...(settledShown.value
       ? [
@@ -176,6 +200,18 @@ const rowTitle = (tab: Tab) => [
 const dragging = ref<string | null>(null);
 // A project heading drags its whole project (onto another heading).
 const draggingProject = ref<{ project: string | null } | null>(null);
+// A heading both folds (click) and drags (the whole project). Browsers do
+// not click after a drag, but some send one right after the drop; a click
+// this soon after a drag ended belongs to the drag.
+const CLICK_AFTER_DRAG_MS = 150;
+let projectDragEndedAt = 0;
+function endProjectDrag() {
+  draggingProject.value = null;
+  projectDragEndedAt = Date.now();
+}
+function onProjectClick(project: string | null) {
+  if (Date.now() - projectDragEndedAt > CLICK_AFTER_DRAG_MS) toggleProject(project);
+}
 function onProjectDrop(target: string | null) {
   const from = draggingProject.value;
   draggingProject.value = null;
@@ -235,18 +271,28 @@ const capture = useKeyCapture((name, result) => {
 <template>
   <nav v-if="tabCount" class="tabs" aria-label="Conversations" :style="gridVars">
     <template v-for="item in items" :key="item.key">
-      <!-- A project heading: badge, name, and how many messages wait for
-           you there (amber, in the meta column). Drag it onto another
-           heading to move the whole project. -->
+      <!-- A project heading: badge, name + fold chevron, and how many
+           messages wait for you there (amber, in the meta column). Click it
+           to fold the project; folded, the count moves beside the name and
+           the meta column shows how long the longest-waiting row has waited
+           (the rows' own format). Drag it onto another heading to move the
+           whole project. -->
       <div
-        v-if="item.kind === 'project'" class="head project-head" :class="{ unknown: !item.project, dragging: draggingProject?.project === item.project }"
-        draggable="true" title="Drag onto another project to move it"
-        @dragstart="draggingProject = { project: item.project }" @dragend="draggingProject = null"
+        v-if="item.kind === 'project'" class="head project-head" :class="{ unknown: !item.project, dragging: draggingProject?.project === item.project, folded: item.folded }"
+        role="button" tabindex="0" :aria-expanded="!item.folded" draggable="true"
+        :title="`Click to ${item.folded ? 'unfold' : 'fold'} · drag onto another project to move it`"
+        @click="onProjectClick(item.project)" @keydown.enter.prevent="toggleProject(item.project)" @keydown.space.prevent="toggleProject(item.project)"
+        @dragstart="draggingProject = { project: item.project }" @dragend="endProjectDrag"
         @dragover.prevent @drop.prevent="onProjectDrop(item.project)"
       >
         <span class="lead"><span class="badge" :style="item.project ? { '--hue': projectHue(item.project) } : undefined" aria-hidden="true">{{ item.project ? item.project.charAt(0).toUpperCase() : '?' }}</span></span>
-        <span class="project-name clip">{{ item.project ?? 'No project' }}</span>
-        <span class="meta project-waiting" :title="item.waiting ? `${item.waiting} waiting for you` : undefined">{{ item.waiting || '' }}</span>
+        <span class="project-title">
+          <span class="project-name clip">{{ item.project ?? 'No project' }}</span>
+          <span class="chev" :class="{ open: !item.folded }" aria-hidden="true">▸</span>
+          <span v-if="item.folded && item.waiting" class="project-waiting" :title="`${item.waiting} waiting for you`">{{ item.waiting }}</span>
+        </span>
+        <span v-if="item.folded" class="meta folded-wait" :title="item.waitingSince ? `Waiting for you ${waitLabel(item.waitingSince, now ?? clock)}` : undefined">{{ waitLabel(item.waitingSince, now ?? clock) }}</span>
+        <span v-else class="meta project-waiting" :title="item.waiting ? `${item.waiting} waiting for you` : undefined">{{ item.waiting || '' }}</span>
       </div>
       <button
         v-else-if="item.kind === 'settled'"
@@ -428,7 +474,15 @@ const capture = useKeyCapture((name, result) => {
 .action-icon { width:11px; height:11px; fill:none; stroke:currentColor; stroke-width:1.5; stroke-linecap:round; stroke-linejoin:round; }
 
 /* Right-click: assign a Tab key. */
-.project-head { cursor:grab; }
+.project-head { cursor:pointer; }
+.project-head:hover { color:var(--ink); }
+.project-head:focus-visible { outline-offset:-2px; }
+/* Name, then the fold chevron (quiet until the heading is pointed at or
+   folded), then - folded - the amber count beside the name. */
+.project-title { display:flex; align-items:center; gap:6px; min-width:0; }
+.project-title .chev { flex:none; color:var(--faint); opacity:0; }
+.project-head:hover .chev, .project-head:focus-visible .chev, .project-head.folded .chev { opacity:1; }
+.folded-wait { font-weight:400; color:var(--amber); }
 .project-head.dragging { opacity:.5; }
 .keymenu-scrim { position:fixed; inset:0; z-index:9; }
 .keymenu { position:absolute; z-index:10; min-width:150px; padding:6px; display:flex; flex-direction:column; gap:2px; background:var(--panel-solid); border:1px solid var(--line-strong); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.35); }

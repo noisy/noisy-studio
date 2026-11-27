@@ -185,6 +185,22 @@ export const SnoozeMenuOpen: StoryObj<typeof AgentTabs> = {
     canvasElement.querySelector<HTMLElement>('button.tab.mic .snooze')?.click();
   },
 };
+/** A folded project (click its heading; drag still moves it): the heading
+ *  sums up what waits there - the amber count beside the name, and in the
+ *  meta column how long its longest-waiting row has waited, in the rows'
+ *  own format. Here "bucky" is folded with 2 messages waiting for 4m. */
+export const FoldedProjectWaiting: StoryObj<typeof AgentTabs> = {
+  args: { ...projectArgs(false), foldedProjects: ['bucky'] },
+  decorators: [() => ({ template: '<div style="width:268px"><story /></div>' })],
+};
+/** A folded project never hides what needs you: the mic row (dashboard)
+ *  and the speaking row (QA docs) stay under the folded "noisy-studio"
+ *  heading, as would the row you are looking at; the rest fold away, and
+ *  the heading still sums up the waiting messages (1, for 2h). */
+export const FoldedProjectKeepsMic: StoryObj<typeof AgentTabs> = {
+  args: { ...projectArgs(false), foldedProjects: ['noisy-studio'] },
+  decorators: [() => ({ template: '<div style="width:268px"><story /></div>' })],
+};
 /** The viewed row (highlighted surface) is not the mic row (green bar in
  *  the inset): the two marks never fight, and either can sit on any row. */
 export const ViewedIsNotMic: StoryObj<typeof AgentTabs> = {

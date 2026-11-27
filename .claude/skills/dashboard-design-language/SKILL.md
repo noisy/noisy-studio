@@ -86,6 +86,12 @@ fusing breaks as soon as the list scrolls. Grouping and order live in
 `agentOrder.ts` (the widget uses the same order); a row drags within its
 project only; a project heading drags the whole project onto another heading
 (moveProject: the projects are laid out whole in the new sequence).
+A click on a project heading folds it (a click right after a drag does not),
+remembered per browser per project, with a chevron after the name. A folded
+heading sums up what waits: the amber count moves beside the name and the
+meta column shows the longest wait among its rows ("12m", the rows' own
+format). Folding never hides the mic row, the viewed row or a speaking row:
+they stay under the folded heading.
 
 ### Conversation list grid (visual design pass, 2026-11-27)
 
