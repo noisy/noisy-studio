@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import pytest
 
 from noisy_studio.listener import daemon
 from noisy_studio.listener.state import ListenerState

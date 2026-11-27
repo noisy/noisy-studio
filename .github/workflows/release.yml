@@ -42,12 +42,16 @@ jobs:
             fi
           fi
 
+  # A tag on a red commit must not ship: the full CI runs first.
+  checks:
+    uses: ./.github/workflows/ci.yml
+
   # A GitHub Release used to be created by hand and was forgettable — now a
   # draft appears automatically for every version tag. It ships with
   # generated notes; polishing the title/notes and publishing stays a human
   # step on purpose (release names here carry personality).
   github-release:
-    needs: verify-version
+    needs: [verify-version, checks]
     runs-on: ubuntu-latest
     if: github.ref_type == 'tag'
     permissions:
@@ -71,7 +75,7 @@ jobs:
   # release, so every tag gets a downloadable app - signed and notarized (#95)
   # (signing/notarisation needs Apple certificates as secrets; #72 family).
   desktop-app:
-    needs: [verify-version]
+    needs: [verify-version, checks]
     runs-on: macos-14
     if: github.ref_type == 'tag' || github.event_name == 'workflow_dispatch'
     permissions:

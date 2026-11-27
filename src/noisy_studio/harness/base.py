@@ -18,8 +18,8 @@ swappable and testable without a daemon:
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Literal, Protocol
+from dataclasses import dataclass
+from typing import Literal
 
 __all__ = [
     "Capabilities",

@@ -1,7 +1,7 @@
 """Retained hook protocol types, private to adapters and HTTP compatibility."""
 from dataclasses import dataclass, field
 from typing import Protocol
-from noisy_studio.harness.base import Capabilities, Event, ListenerAction, Moment, Observation
+from noisy_studio.harness.base import Capabilities, ListenerAction, Moment, Observation
 
 @dataclass(frozen=True)
 class Interpretation(Observation):

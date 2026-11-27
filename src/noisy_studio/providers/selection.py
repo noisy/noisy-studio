@@ -4,7 +4,6 @@ import hashlib
 import json
 
 from noisy_studio.providers import config, local, engine_registry
-from noisy_studio.providers.builtin_selection import WHISPER_MODELS
 
 
 

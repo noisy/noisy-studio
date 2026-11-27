@@ -41,7 +41,10 @@ def test_cache_rereads_only_after_it_expires():
     calls = []
     cache = WorkspaceCache(reader=lambda cwd: calls.append(cwd) or Workspace("p", "b"), clock=lambda: now[0])
 
-    cache.get("/x"); cache.get("/x"); now[0] = 20.0; cache.get("/x")
+    cache.get("/x")
+    cache.get("/x")
+    now[0] = 20.0
+    cache.get("/x")
 
     assert calls == ["/x", "/x"]
 

@@ -7,6 +7,7 @@ from collections import deque
 from collections.abc import Callable
 from dataclasses import replace, asdict, dataclass
 
+from noisy_studio.listener.identity import canonical_identity, fold_by_identity
 from noisy_studio.listener.conversations import ConversationRegistry
 from noisy_studio.listener.microphone_sample import MicrophoneSample
 from noisy_studio.listener.history import ConversationHistory
@@ -41,8 +42,6 @@ VOICE_POOL = (
     "sal", "zagan", "zenith",
 )
 
-
-from noisy_studio.listener.identity import canonical_identity, fold_by_identity
 
 
 def speaker_key(name: str) -> str:

@@ -8,12 +8,12 @@ from noisy_studio.harness.claude.socket_transport import Endpoint, validate
 import sqlite3
 from noisy_studio.harness import hook_runtime
 
-# Deliberate rollback: change only this choice, then restart/re-register sessions.
-CLAUDE_DELIVERY = "hook-wake"
-
 from noisy_studio.harness.provider import (
     Availability, ProviderCapabilities, Receipt, Registration, Speech, WakeResult, provider_name,
 )
+
+# Deliberate rollback: change only this choice, then restart/re-register sessions.
+CLAUDE_DELIVERY = "hook-wake"
 
 
 class HookDelivery:

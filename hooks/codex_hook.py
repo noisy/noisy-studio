@@ -19,7 +19,7 @@ from _codex_config import configure  # noqa: E402
 
 def main() -> None:
     try:
-        settings = configure()
+        configure()
     except (ValueError, OSError, TypeError) as error:
         print(json.dumps({"systemMessage": f"noisy-studio configuration error: {error}"}))
         return

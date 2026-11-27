@@ -7,7 +7,6 @@ import subprocess
 import sys
 import threading
 import time
-from dataclasses import asdict
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
