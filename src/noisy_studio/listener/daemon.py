@@ -90,7 +90,7 @@ PENDING_FILE = CONFIG_DIR / "pending.json"
 HISTORY_SAVE_SECONDS = 5.0
 
 
-def _ptt_barge_in(state: ListenerState) -> bool:
+def _ptt_barge_in(state: ListenerState, *, dictating: bool = False) -> bool:
     """The held push-to-talk key wins over the echo mute (#61, #64).
 
     Capture is muted while the agent speaks so the microphone does not hear
@@ -111,7 +111,9 @@ def _ptt_barge_in(state: ListenerState) -> bool:
     # become obsolete by what the user is about to say, so it parks as
     # UNHEARD (replay or skip). Another agent's message is still valid: it
     # waits and plays again, from the start, once the user has finished.
-    addressee = state.active_agent
+    # Dictation addresses no conversation: every cut clip is still valid
+    # and plays again once the user has finished.
+    addressee = None if dictating else state.active_agent
     owner = (clip or {}).get("agent") or addressee
     if clip and owner != addressee:
         interrupted = state.interrupt_playing_as_unheard("waiting — you were speaking")
@@ -513,9 +515,13 @@ def run(config: VadConfig | None = None) -> None:
     # Global PTT hotkeys (#25): armed only when a key is configured. The
     # listener hangs off the state so the /settings endpoint can rearm it.
     from noisy_studio.listener import hotkey as hotkey_mod
+    from noisy_studio.listener.dictation import Dictation
     from noisy_studio.listener.hotkey import HotkeyListener
 
-    hotkeys = HotkeyListener(state, _log)
+    # Dictate anywhere: transcripts of dictation utterances are pasted into
+    # the focused app; the dictate hotkey starts and stops a session.
+    state.dictation = Dictation(state, _log)
+    hotkeys = HotkeyListener(state, _log, state.dictation)
     state.hotkey_listener = hotkeys
     state.fill_default_hotkeys(hotkey_mod.DEFAULT_HOTKEYS)  # never overrides a stored value
     hotkeys.configure_bindings(state.hotkeys)  # boot never prompts (#97)
@@ -586,6 +592,7 @@ def run(config: VadConfig | None = None) -> None:
     try:
         try:
             current_utterance_id = 0
+            current_dictation = 0  # dictation session of the open utterance
             recognition_request: RecognitionRequest | None = None
             stream: providers.STTStreamSession | None = None
             recognition_ready = False
@@ -693,14 +700,19 @@ def run(config: VadConfig | None = None) -> None:
                 if now >= recognition_check_at:
                     recognition_ready = providers.direction_ready('stt')
                     recognition_check_at = now + RECOGNITION_READY_CHECK_SECONDS
+                # Dictate anywhere drives the same lease as toggle-to-talk,
+                # whatever the detection mode: the key, not the VAD, says
+                # when a dictation starts and ends.
+                dictation = state.dictation_session
+                ptt = state.detection_mode == "ptt" or bool(dictation)
                 if (
                     state.paused
                     and not state.user_muted
-                    and state.detection_mode == "ptt"
+                    and ptt
                     and state.ptt_held
                 ):
                     # Echo mute vs a HELD key: the key wins (#61, #64).
-                    if _ptt_barge_in(state):
+                    if _ptt_barge_in(state, dictating=bool(dictation)):
                         _log("[recording] push-to-talk interrupted the agent")
                         state.add_event("barge_in", "push-to-talk interrupted the agent's speech")
                 if state.paused:
@@ -747,10 +759,18 @@ def run(config: VadConfig | None = None) -> None:
                     _log("[recording] scratched by the cancel hotkey")
                     state.add_event("recording_done", "scratched — cancel hotkey")
                     continue
+                # A dictation boundary is a hard cut: words said to an agent
+                # before the dictate key must not be pasted, and dictated
+                # words must not reach the agent. Close the open utterance
+                # now, with the audio it holds, under the target it opened with.
+                if segmenter.is_recording and current_dictation != dictation:
+                    _log("[recording] closed at a dictation boundary")
+                    state.add_event("recording_done", "closed — dictation started or ended")
+                    finalize_open_segment()
+                    continue
                 # Push-to-talk: the held button IS the turn signal. Idle =
                 # cold mic (nothing captured); held = the utterance never
                 # closes on silence; release = close it right now.
-                ptt = state.detection_mode == "ptt"
                 ptt_held = ptt and state.ptt_held
                 if ptt and not ptt_held and not segmenter.is_recording:
                     state.set_recording(False)
@@ -770,7 +790,10 @@ def run(config: VadConfig | None = None) -> None:
                 if segmenter.is_recording and not was_recording:
                     _log("[recording] user started speaking")
                     state.add_event("recording")
-                    current_utterance_id = state.create_utterance("user", "recording…")
+                    current_dictation = dictation
+                    current_utterance_id = state.create_utterance(
+                        "user", "recording…", dictation=dictation
+                    )
                     try:
                         recognition_request = RecognitionRequest.capture(state)
                     except providers.STTError as error:

@@ -19,6 +19,9 @@ dependencies = [
     # Global push-to-talk hotkey (#25): a CGEventTap needs the Quartz
     # bindings - macOS only, source-only Linux development runs without it.
     "pyobjc-framework-Quartz==12.1; sys_platform == 'darwin'",
+    # Dictate anywhere's live overlay: the text cursor's position comes
+    # from the Accessibility API (HIServices).
+    "pyobjc-framework-ApplicationServices==12.1; sys_platform == 'darwin'",
 ]
 
 [project.scripts]

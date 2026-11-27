@@ -61,6 +61,20 @@ describe("SettingsView", () => {
     expect(w.emitted("grantHotkeys")).toHaveLength(1);
   });
 
+  it("offers the dictate key with its Accessibility gate in the Hotkeys tab", async () => {
+    const w = mount(SettingsView, {
+      props: {
+        apiKeyHint: "····kRc9",
+        hotkeys: { configured: true, permission: "granted", armed: true, stored: { dictate: "F13" }, problems: {} },
+        dictation: { permission: "missing", active: false },
+      },
+    });
+    await w.findAll(".tabbtn").find((b) => b.text() === "Hotkeys")!.trigger("click");
+    expect(w.find(".card.dictate kbd").text()).toBe("F13");
+    await w.find(".card.dictate .gate button").trigger("click");
+    expect(w.emitted("grantDictation")).toHaveLength(1);
+  });
+
   it("opens the experimental Stage from the Appearance tab", async () => {
     const wrapper = mount(SettingsView, { props: { apiKeyHint: "" } });
     await wrapper.findAll(".tabbtn").find((b) => b.text() === "Appearance")!.trigger("click");

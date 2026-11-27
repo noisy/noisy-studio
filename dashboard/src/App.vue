@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import "./styles/dashboard.css";
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
-import { cancelTranscript, getDevices, runDiagnostics, saveApiKey, setAgentMuted, setMode, setMuted, setPtt, setSettings, setVoiceMuted, speakText, stopPlayback, type DiagnosticChecks, togglePlaybackPause, interruptPlayback, scheduleShutdown, cancelShutdown, postponeShutdown, requestHotkeyPermission } from "./api/client";
+import { cancelTranscript, getDevices, runDiagnostics, saveApiKey, setAgentMuted, setMode, setMuted, setPtt, setSettings, setVoiceMuted, speakText, stopPlayback, type DiagnosticChecks, togglePlaybackPause, interruptPlayback, scheduleShutdown, cancelShutdown, postponeShutdown, requestHotkeyPermission, requestDictationPermission } from "./api/client";
 import type { InputDevice } from "./types";
 import { replaySpeechText } from "./components/bubbleStatus";
 import type { Character, Utterance } from "./types";
@@ -290,6 +290,7 @@ const shutdownLabel = computed(() => {
 
 // The GRANT button in settings: the one other moment macOS may prompt (#97).
 const grantHotkeys = () => requestHotkeyPermission().catch(swallow);
+const grantDictation = () => requestDictationPermission().catch(swallow);
 // One action at a time: the daemon merges, refuses collisions, and the
 // next snapshot carries the stored map plus any problem to show (#104).
 const setHotkey = (action: string, chord: string) => setSettings({ hotkeys: { [action]: chord } }).catch(swallow);
@@ -451,12 +452,14 @@ function changeAudio({id,value}: AudioChange) {
             :selected-device="status?.input_device ?? ''"
             :cue-prefs="cuePrefs"
             :hotkeys="status?.hotkeys ?? null"
+            :dictation="status?.dictation ?? null"
             :checks="visibleChecks"
             :checks-running="checksRunning"
             @save="saveKey"
             @pick-device="pickMic"
             @set-hotkey="setHotkey"
             @grant-hotkeys="grantHotkeys"
+            @grant-dictation="grantDictation"
             @refresh-devices="loadDevices"
             @toggle-cue="setCue"
             @set-hum="setHum"

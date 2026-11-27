@@ -8,7 +8,7 @@ const TABS = ["AUDIO", "SOUNDS", "HOTKEYS", "APPEARANCE", "SPEECH", "SYSTEM"] as
 const tab = ref<(typeof TABS)[number]>("AUDIO");
 
 import type { DiagnosticChecks } from "../api/client";
-import type { InputDevice, HotkeyState } from "../types";
+import type { DictationState, InputDevice, HotkeyState } from "../types";
 import { CUE_LABELS, type CuePrefs } from "../composables/useAudioCues";
 import { HUM_NOISES, startRecordingHum, stopRecordingHum } from "../composables/cueSounds";
 import type { CueName } from "../composables/cueEvents";
@@ -25,12 +25,13 @@ const props = withDefaults(
     selectedDevice?: string;
     cuePrefs?: CuePrefs | null;
     hotkeys?: HotkeyState | null;
+    dictation?: DictationState | null;
     checks?: DiagnosticChecks | null;
     checksRunning?: boolean;
   }>(),
   {
     devices: () => [], selectedDevice: "", cuePrefs: null,
-    hotkeys: null,
+    hotkeys: null, dictation: null,
     checks: null, checksRunning: false,
   },
 );
@@ -38,6 +39,7 @@ const props = withDefaults(
 // a click on a field captures the next chord from THIS window.
 const HOTKEY_LABELS: Record<string, string> = {
   hold: "Hold", toggle: "Toggle", scratch: "Scratch", tab1: "Tab 1", tab2: "Tab 2", tab3: "Tab 3", tab4: "Tab 4",
+  dictate: "Dictate",
 };
 const binding = (action: string): HotkeyBinding => ({
   action,
@@ -55,6 +57,11 @@ const tabsPane = computed<HotkeyPane>(() => ({
   caption: "Toggle aimed at one conversation: the number next to it in the list. Press again to close; another tab's key hands the mic over.",
   bindings: ["tab1", "tab2", "tab3", "tab4"].map(binding),
 }));
+const dictatePane = computed<HotkeyPane>(() => ({
+  title: "Dictate anywhere",
+  caption: "Put the cursor in any text field, press to start, speak, press again: the words are pasted there instead of going to a conversation.",
+  bindings: [binding("dictate")],
+}));
 const appPane: HotkeyPane = {
   title: "Companion window",
   bindings: [
@@ -71,6 +78,7 @@ const emit = defineEmits<{
   pickDevice: [name: string];
   setHotkey: [action: string, chord: string];
   grantHotkeys: [];
+  grantDictation: [];
   refreshDevices: [];
   toggleCue: [name: CueName, value: boolean];
   setHum: [patch: { recordingHum?: boolean; humNoise?: string; humVolume?: number }];
@@ -124,9 +132,12 @@ function submit() {
       :permission="hotkeys?.permission ?? 'unknown'"
       :talk="talkPane"
       :tabs="tabsPane"
+      :dictate="dictatePane"
+      :accessibility="dictation?.permission ?? 'unknown'"
       :app="appPane"
       :capturing="capture.capturing.value"
       @grant="emit('grantHotkeys')"
+      @grant-accessibility="emit('grantDictation')"
       @capture="capture.start"
       @clear="(action) => emit('setHotkey', action, '')"
     />
@@ -166,7 +177,7 @@ function submit() {
     <section class="sec">
       <div class="keyrow">
         <span class="lbl">Hotkeys</span>
-        <span class="pointer">Hold, toggle, scratch and per-tab keys live in the <button class="linkbtn" @click="tab = 'HOTKEYS'">Hotkeys</button> tab.</span>
+        <span class="pointer">Hold, toggle, scratch, per-tab and dictation keys live in the <button class="linkbtn" @click="tab = 'HOTKEYS'">Hotkeys</button> tab.</span>
       </div>
     </section>
     </template>

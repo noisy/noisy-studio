@@ -20,10 +20,12 @@ nested code that `codesign --deep` validates, not as sealed data. macOS keys per
 identity of the process that asks: a bare PyInstaller binary had a random
 ad-hoc identifier per build, so System Settings > Privacy & Security
 showed a generic "exec" icon for it (#98) and every rebuild would have
-lost the grant. Microphone and Input Monitoring are therefore listed
-under **Noisy Studio Engine**; the Electron app itself asks for nothing.
+lost the grant. Microphone, Input Monitoring and Accessibility are therefore
+listed under **Noisy Studio Engine**; the Electron app itself asks for nothing.
 Input Monitoring is requested only when the user picks a hotkey or
-presses GRANT ACCESS in settings, never at boot (#97).
+presses GRANT ACCESS in settings, never at boot (#97). Accessibility (dictate
+anywhere pastes with a synthetic Cmd+V) follows the same rule: it is requested
+when the user binds or presses the dictate key, or presses its GRANT ACCESS.
 
 The bundle is a PyInstaller onedir tree (a bundle cannot be a single
 file, and onefile unpacked unsigned libraries into a temp dir on every

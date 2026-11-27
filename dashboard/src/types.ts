@@ -1,6 +1,6 @@
 /** Shapes of the listener daemon's HTTP API responses. */
 
-export type HotkeyAction = "hold" | "toggle" | "scratch" | "tab1" | "tab2" | "tab3" | "tab4";
+export type HotkeyAction = "hold" | "toggle" | "scratch" | "tab1" | "tab2" | "tab3" | "tab4" | "dictate";
 export interface HotkeyProblem { kind: "collision" | "system" | "invalid"; detail: string }
 export interface HotkeyState {
   configured: boolean;
@@ -11,6 +11,19 @@ export interface HotkeyState {
   /** Everything the user stored, armed or not. */
   stored?: Record<string, string>;
   problems?: Record<string, HotkeyProblem>;
+}
+
+/** Dictate anywhere: pasting into other apps needs macOS Accessibility. */
+export interface DictationState {
+  permission: "granted" | "missing" | "unavailable" | "unknown";
+  /** A dictation session is recording right now. */
+  active: boolean;
+  /** The running (or last) session; its utterances carry the same number. */
+  session?: number;
+  /** Where the text cursor was when it started (global screen points). */
+  anchor?: { x: number; y: number; width: number; height: number; source: "caret" | "field" | "mouse" } | null;
+  /** Its words are still being recorded, transcribed or pasted. */
+  pending?: boolean;
 }
 
 export interface ProviderQuota {
@@ -71,6 +84,7 @@ export interface DaemonStatus {
   input_device: string;
   /** Global push-to-talk keys and the macOS Input Monitoring permission they need (#97). */
   hotkeys?: HotkeyState;
+  dictation?: DictationState;
   /** Live per-endpoint xAI check results — partial while checks run. */
   diagnostic_checks?: Record<string, { ok?: boolean; ms?: number; detail?: string; pending?: boolean }> | null;
   activity: Record<string, { text: string; at: number }>;
@@ -121,6 +135,9 @@ export interface Utterance {
   committed_at: number;
   /** Real audio duration in seconds (absent for older/mid-flight cards). */
   duration_s?: number;
+  /** Dictate anywhere: the session this utterance was dictated in. It
+   * belongs to no conversation; its text is pasted into the focused app. */
+  dictation?: number;
   /** Who inside the conversation actually said this (#22): empty/absent =
    * the main agent; a subagent's speech carries its identity here while the
    * utterance still belongs to the parent conversation's tab. */

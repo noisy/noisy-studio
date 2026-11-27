@@ -7,7 +7,9 @@ focus and drives the SAME push-to-talk lease the dashboard button uses:
 - toggle:  one press opens, the next press releases;
 - scratch: abort the recording in progress, in any mode;
 - tabN:    select the N-th visible conversation and toggle the lease -
-           press again to close, another tab's key hands the mic over.
+           press again to close, another tab's key hands the mic over;
+- dictate: toggle a dictation - the transcript is pasted into the focused
+           app instead of going to a conversation (see dictation.py).
 
 macOS only: the tap needs the Input Monitoring permission (System
 Settings > Privacy & Security > Input Monitoring) for the process that
@@ -40,7 +42,7 @@ from noisy_studio.listener.chords import (
 
 # Every action a chord can drive. "tabN" = toggle-to-talk aimed at the N-th
 # visible conversation (#104). Settings store {action: chord text}.
-ACTIONS = ("hold", "toggle", "scratch", "tab1", "tab2", "tab3", "tab4")
+ACTIONS = ("hold", "toggle", "scratch", "tab1", "tab2", "tab3", "tab4", "dictate")
 TAB_ACTIONS = {f"tab{i}": i for i in range(1, 5)}
 # What a fresh install gets, and what fills an action the user never touched.
 # F16-F19 type nothing anywhere; a double Escape never fires by accident.
@@ -83,12 +85,20 @@ class _PttState(Protocol):
     def talk_to_tab(self, index: int) -> bool: ...
 
 
+class _Dictation(Protocol):
+    def start(self) -> bool: ...
+    def stop(self) -> None: ...
+
+
 class HotkeyListener:
     """Owns the event tap thread and the lease-renewal thread."""
 
-    def __init__(self, state: _PttState, log: Callable[[str], None]) -> None:
+    def __init__(
+        self, state: _PttState, log: Callable[[str], None], dictation: _Dictation | None = None
+    ) -> None:
         self._state = state
         self._log = log
+        self._dictation = dictation
         self._lock = threading.Lock()
         self._bindings: dict[str, Chord] = {}
         self._problems: dict[str, dict[str, str]] = {}
@@ -96,6 +106,7 @@ class HotkeyListener:
         self._engaged = False          # lease currently open (either mode)
         self._toggle_latched = False   # toggle mode: waiting for 2nd press
         self._tab_latched: int | None = None  # which tabN opened the lease
+        self._dictate_latched = False  # the dictate key opened the lease
         self._tap_thread: threading.Thread | None = None
         self._renew_thread: threading.Thread | None = None
         self._restart = None  # CFRunLoop stop handle, set by the tap thread
@@ -226,8 +237,14 @@ class HotkeyListener:
             self._engaged = False
             self._toggle_latched = False
             self._tab_latched = None
+            was_dictating = self._dictate_latched
+            self._dictate_latched = False
         if was:
             self._state.release_ptt()
+        if was_dictating and self._dictation is not None:
+            # Any key that closes the lease ends the dictation: the toggle,
+            # scratch (the recording is dropped, nothing is pasted), a tab key.
+            self._dictation.stop()
 
     def _renew_loop(self) -> None:
         while True:
@@ -294,6 +311,21 @@ class HotkeyListener:
             with self._lock:
                 self._tab_latched = index
             self._engage()
+        elif action == "dictate" and down:
+            self._toggle_dictation()
+
+    def _toggle_dictation(self) -> None:
+        with self._lock:
+            dictating = self._dictate_latched
+        if dictating:
+            self._disengage()              # second press: stop and paste
+            return
+        if self._dictation is None or not self._dictation.start():
+            return                         # it said why (permission, muted mic)
+        self._disengage()                  # an open talk lease ends here
+        with self._lock:
+            self._dictate_latched = True
+        self._engage()
 
     # -- the tap -----------------------------------------------------------
 

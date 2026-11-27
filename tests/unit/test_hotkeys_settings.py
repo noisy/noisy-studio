@@ -106,3 +106,35 @@ def test_clearing_over_http_is_an_explicit_off():
     stored, problems = http_api._apply_hotkeys(st, {"tab1": ""})
     assert stored["tab1"] == "" and problems == {}
     assert st.hotkey_listener.calls[-1][0]["tab1"] == ""
+
+
+class _Dictation:
+    def __init__(self):
+        self.requests = 0
+
+    def request_permission(self):
+        self.requests += 1
+        return {"permission": "granted", "active": False}
+
+    def snapshot(self):
+        return {"permission": "missing", "active": False}
+
+
+def test_binding_the_dictate_key_is_the_moment_accessibility_is_requested():
+    st = _state()
+    st.dictation = _Dictation()
+    http_api._apply_hotkeys(st, {"hold": "F8"})
+    after_other_key = st.dictation.requests
+    http_api._apply_hotkeys(st, {"dictate": "F13"})
+    http_api._apply_hotkeys(st, {"dictate": ""})          # clearing never prompts
+    assert (after_other_key, st.dictation.requests) == (0, 1)
+
+
+def test_status_reports_dictation_permission():
+    st = _state()
+    without = http_api._dictation_snapshot(st)
+    st.dictation = _Dictation()
+    assert (without, http_api._dictation_snapshot(st)) == (
+        {"permission": "unknown", "active": False, "session": 0, "anchor": None, "pending": False},
+        {"permission": "missing", "active": False},
+    )

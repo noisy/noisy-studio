@@ -6,7 +6,9 @@
  * collision with one of our own actions, and a warning about a macOS
  * shortcut. Layout picked by Krzysztof on 2026-09-15: one card with push to
  * talk on the left and the per-tab keys on the right, the app-owned
- * companion keys listed below without commentary. */
+ * companion keys listed below without commentary. Dictate anywhere has its
+ * own card under the main one: it talks to no conversation, and it needs a
+ * second permission (Accessibility, to paste), gated right there. */
 import { computed } from "vue";
 
 export interface HotkeyBinding {
@@ -28,19 +30,33 @@ const props = withDefaults(
     /** The main card: two panes side by side. */
     talk: HotkeyPane;
     tabs: HotkeyPane;
+    /** Dictate anywhere: its own card under the main one. */
+    dictate?: HotkeyPane | null;
+    /** macOS Accessibility, which dictation needs to paste into other apps. */
+    accessibility?: "granted" | "missing" | "unavailable" | "unknown";
     /** The read-only card below (companion window keys). */
     app?: HotkeyPane | null;
     capturing?: string | null;  // action id whose field is waiting for a key
   }>(),
-  { permission: "unknown", app: null, capturing: null },
+  { permission: "unknown", dictate: null, accessibility: "unknown", app: null, capturing: null },
 );
 const emit = defineEmits<{
   grant: [];
+  grantAccessibility: [];
   capture: [action: string];   // user clicked a field: start listening
   clear: [action: string];
 }>();
 
 const locked = computed(() => props.permission === "missing");
+// Editable cards, in order: the main one (two panes side by side), then dictation.
+const cards = computed(() => [
+  { key: "main", panes: [props.talk, props.tabs] },
+  ...(props.dictate ? [{ key: "dictate", panes: [props.dictate] }] : []),
+]);
+// Only nag once a dictate key is bound: until then nothing needs to paste.
+const pasteBlocked = computed(
+  () => props.accessibility === "missing" && !!props.dictate?.bindings.some((b) => b.chord),
+);
 const GLYPH: Record<string, string> = { cmd: "⌘", shift: "⇧", alt: "⌥", ctrl: "⌃" };
 const keys = (chord: string) => {
   const [base, taps] = chord.split(" ");
@@ -63,8 +79,16 @@ const keys = (chord: string) => {
       Global hotkeys are a macOS feature.
     </div>
 
-    <fieldset :disabled="locked" class="card main">
-      <section v-for="(pane, i) in [talk, tabs]" :key="pane.title" class="pane" :class="{ second: i === 1 }">
+    <fieldset v-for="card in cards" :key="card.key" :disabled="locked" class="card" :class="card.key">
+      <div v-if="card.key === 'dictate' && pasteBlocked" class="gate inset" role="status">
+        <div class="gatetext">
+          <b>Dictation cannot paste yet.</b>
+          It puts the text into other apps through the Accessibility permission; until that is
+          granted, the key records nothing. The system dialog can open behind other windows.
+        </div>
+        <button class="btn primary" @click="emit('grantAccessibility')">Grant access</button>
+      </div>
+      <section v-for="(pane, i) in card.panes" :key="pane.title" class="pane" :class="{ second: i === 1 }">
         <h3>{{ pane.title }}</h3>
         <p v-if="pane.caption" class="caption">{{ pane.caption }}</p>
         <div class="rows">
@@ -102,6 +126,7 @@ const keys = (chord: string) => {
 .hotkeys { display: grid; gap: 18px; min-width: 0; max-width: 760px; font-family: var(--sans); }
 .gate { display: flex; align-items: center; gap: 16px; padding: 12px 14px; border: 1px solid var(--amber-dim); border-left-width: 3px; border-radius: 6px; background: var(--bg1); font-size: 12px; line-height: 1.5; color: var(--ink); }
 .gate.muted { border-color: var(--line); color: var(--muted); }
+.gate.inset { margin-bottom: 12px; }
 .gatetext { flex: 1; min-width: 0; }
 .gate b { color: var(--amber); font-weight: 400; }
 .btn { font-family: var(--sans); font-size: 11px; color: var(--cyan); background: rgba(158,188,245,.06); border: 1px solid var(--line-strong); padding: 7px 14px; cursor: pointer; border-radius: 8px; flex: none; }
