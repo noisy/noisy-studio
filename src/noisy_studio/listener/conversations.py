@@ -93,6 +93,8 @@ class ConversationRegistry:
         # their project as ended rows instead of folding away. Beside the
         # rows for the same rollback reason as talk keys.
         self._kept: set[str] = set()
+        # Settled conversations that come back by themselves: key -> epoch s.
+        self._snoozed: dict[str, float] = {}
         if path is not None:
             self._load()
             self.providers.restore_connections()
@@ -161,8 +163,9 @@ class ConversationRegistry:
             conversation.last_event_kind = event.kind
             if event.kind == "session_started":
                 conversation.ended = False
-                self._kept.discard(conversation.key)
                 conversation.hidden = False
+                self._kept.discard(conversation.key)
+                self._snoozed.pop(conversation.key, None)
                 if title := conversation_title(event.title, conversation.key, conversation.short_id, *conversation.aliases):
                     conversation.title = title
             elif event.kind == "session_ended":
@@ -174,6 +177,7 @@ class ConversationRegistry:
                 conversation.ended = False
                 self._kept.discard(conversation.key)
                 conversation.hidden = False  # the user is talking there again
+                self._snoozed.pop(conversation.key, None)
             elif event.kind == "turn_ended":
                 conversation.turn_open = False
             elif event.kind == "activity":
@@ -297,6 +301,7 @@ class ConversationRegistry:
             return False
         conversation.hidden = False
         conversation.position = self._next_position()
+        self._snoozed.pop(key, None)  # back early: the snooze has done its job
         self._save()
         return True
 
@@ -316,6 +321,26 @@ class ConversationRegistry:
 
     def kept_in_project(self, key: str) -> bool:
         return key in self._kept
+
+    # -- snooze -------------------------------------------------------
+
+    def snooze(self, key: str, until: float | None) -> None:
+        """Wake a settled conversation at `until` (epoch s); None cancels.
+        Hiding it is the caller's job; any way back clears the snooze."""
+        self._require(key)
+        if until is None:
+            self._snoozed.pop(key, None)
+        else:
+            self._snoozed[key] = until
+        self._save()
+
+    def snoozed_until(self, key: str) -> float | None:
+        return self._snoozed.get(key)
+
+    def due_snoozes(self, now: float | None = None) -> list[str]:
+        """Snoozed conversations whose wake time has come."""
+        now = self._clock() if now is None else now
+        return [key for key, until in self._snoozed.items() if until <= now]
 
     # -- talk keys ----------------------------------------------------
 
@@ -393,6 +418,7 @@ class ConversationRegistry:
             "usage_providers": dict(self._usage_providers),
             "talk_keys": dict(self._talk_keys),
             "kept": sorted(self._kept),
+            "snoozed_until": dict(self._snoozed),
             "capabilities": {name: asdict(caps) for name, caps in self._capabilities.items()},
         }
         try:
@@ -451,11 +477,24 @@ class ConversationRegistry:
         self._talk_keys = self._restored_talk_keys(data.get("talk_keys"))
         kept = data.get("kept")
         self._kept = {key for key in (self.resolve(str(k)) for k in (kept if isinstance(kept, list) else [])) if key}
+        self._snoozed = self._restored_snoozes(data.get("snoozed_until"))
         for name, caps in data.get("capabilities", {}).items():
             try:
                 self._capabilities[provider_name(name)] = Capabilities(**caps)
             except TypeError:
                 continue
+
+    def _restored_snoozes(self, saved: object) -> dict[str, float]:
+        """Saved wake times, re-pointed through the alias table; a malformed
+        one, or one whose conversation is gone, is dropped."""
+        if not isinstance(saved, dict):
+            return {}
+        restored: dict[str, float] = {}
+        for presented, until in saved.items():
+            key = self.resolve(str(presented))
+            if key is not None and isinstance(until, (int, float)) and not isinstance(until, bool):
+                restored[key] = float(until)
+        return restored
 
     def _restored_talk_keys(self, saved: object) -> dict[str, str]:
         """Saved talk keys, re-pointed through the alias table: a key folded

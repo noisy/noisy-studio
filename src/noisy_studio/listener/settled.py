@@ -42,4 +42,5 @@ def _row(registry: ConversationRegistry, workspaces: WorkspaceCache, key: str) -
         "last_active_at": conversation.last_event_at,
         "ended": conversation.ended,
         "talk_key": registry.talk_key(key) or None,
+        "snoozed_until": registry.snoozed_until(key),
     }

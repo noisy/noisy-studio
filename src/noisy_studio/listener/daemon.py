@@ -32,6 +32,7 @@ from noisy_studio.listener.http_api import (
     SPEAKER_COLORS_FILE,
     save_characters,
     save_settings,
+    wake_snoozed,
 )
 from noisy_studio.listener.identity import canonical_identity, is_transcript_path
 from noisy_studio.listener.state import ListenerState
@@ -88,6 +89,8 @@ _HISTORY_SAVE_LOCK = threading.Lock()
 # that was not listening at that moment.
 PENDING_FILE = CONFIG_DIR / "pending.json"
 HISTORY_SAVE_SECONDS = 5.0
+# How often snoozed conversations are checked: a wake-up lands within this.
+SNOOZE_CHECK_SECONDS = 30.0
 
 
 def _ptt_barge_in(state: ListenerState, *, dictating: bool = False) -> bool:
@@ -170,6 +173,16 @@ def _history_saver(state: ListenerState) -> None:
         if snapshot != last_saved:
             _save_history(state)
             last_saved = snapshot
+
+
+def _snooze_waker(state: ListenerState) -> None:
+    """Bring snoozed conversations back when their time comes."""
+    while True:
+        threading.Event().wait(SNOOZE_CHECK_SECONDS)
+        try:
+            wake_snoozed(state)
+        except Exception as error:  # a bad tick must not end the waking
+            _log(f"snooze check failed: {error}")
 
 
 def _poll_credits(state: ListenerState) -> None:
@@ -507,6 +520,9 @@ def run(config: VadConfig | None = None) -> None:
         conversation = state.conversations.get(key)
         if conversation is not None:
             state.register_agent(key, conversation.label())
+    # Snoozes persist; one that fell due while the daemon was down wakes on
+    # the first check.
+    threading.Thread(target=_snooze_waker, args=(state,), daemon=True, name="snooze-waker").start()
     # Providers own integration I/O; the core supplies queue ownership and receipts.
     from noisy_studio.harness.provider import Speech
     for item in state.snapshot_transcripts():

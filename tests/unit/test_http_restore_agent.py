@@ -142,8 +142,8 @@ def test_settled_lists_the_newest_settled_conversations_with_their_workspace(sta
     settled = settled_conversations(state.conversations, workspaces, state.agents)
 
     assert settled == {"total": 2, "items": [
-        {"name": "b", "label": "B", "project": None, "branch": None, "last_active_at": seen["b"], "ended": False, "talk_key": "F13"},
-        {"name": "a", "label": "A", "project": "app", "branch": "main", "last_active_at": seen["a"], "ended": True, "talk_key": None},
+        {"name": "b", "label": "B", "project": None, "branch": None, "last_active_at": seen["b"], "ended": False, "talk_key": "F13", "snoozed_until": None},
+        {"name": "a", "label": "A", "project": "app", "branch": "main", "last_active_at": seen["a"], "ended": True, "talk_key": None, "snoozed_until": None},
     ]}
 
 

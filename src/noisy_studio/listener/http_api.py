@@ -509,12 +509,47 @@ def _revive_if_known(state: ListenerState, presented: str) -> str:
     return key
 
 
-def _restore(state: ListenerState, key: str) -> None:
-    """The user restored a conversation from Settled: back in its project,
-    an ended one as an ended row (it does not fold straight back)."""
+def _restore(state: ListenerState, key: str, why: str = "restored") -> None:
+    """Bring a conversation back from Settled (the user's Restore, or its
+    snooze ending): back in its project, an ended one as an ended row (it
+    does not fold straight back), any snooze cancelled."""
     state.conversations.keep_in_project(key)
+    state.conversations.snooze(key, None)
     _return_to_list(state, key)
-    state.add_event("agent", f"'{state.conversations.get(key).label()}' restored")
+    state.add_event("agent", f"'{state.conversations.get(key).label()}' {why}")
+
+
+def wake_snoozed(state: ListenerState) -> list[str]:
+    """Bring back every snoozed conversation whose time has come. The
+    daemon calls this periodically; returns the keys it woke."""
+    woken = state.conversations.due_snoozes()
+    for key in woken:
+        _restore(state, key, "is back (snooze ended)")
+    return woken
+
+
+def _settle(state: ListenerState, name: str) -> None:
+    """Hide a listed conversation: out of the agents table, kept in the
+    registry. Settling the mic's conversation hands the mic to the next
+    visible one (browser-tab semantics), loudly - the user must know where
+    their speech goes now."""
+    if name == state.active_agent:
+        remaining = [k for k in state.conversations.visible_keys()
+                     if k != name and k in state.agents]
+        handed_to = remaining[0] if remaining else None
+        state.set_active_agent(handed_to) if handed_to else state.clear_active_agent()
+        state.add_event("agent", f"mic handed to '{handed_to}'" if handed_to else "mic released - no conversation active")
+        save_settings(state)
+    state.dismiss_agent(name, force=True)
+    state.conversations.hide(name)
+
+
+def _wake_label(until: float) -> str:
+    """Local wake time for the event log: "14:30", or "Mon 09:00" when it
+    is not today."""
+    wake = time.localtime(until)
+    same_day = time.strftime("%Y%m%d", wake) == time.strftime("%Y%m%d")
+    return time.strftime("%H:%M" if same_day else "%a %H:%M", wake)
 
 
 def _return_to_list(state: ListenerState, key: str) -> bool:
@@ -883,21 +918,9 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 if name not in state.agents:
                     self._respond({"error": "unknown agent"}, status=404)
                     return
-                handed_to = None
-                if name == state.active_agent:
-                    # Closing the mic's tab hands the mic to the next visible
-                    # conversation (browser-tab semantics), loudly - the user
-                    # must know where their speech goes now.
-                    remaining = [k for k in state.conversations.visible_keys()
-                                 if k != name and k in state.agents]
-                    handed_to = remaining[0] if remaining else None
-                    state.set_active_agent(handed_to) if handed_to else state.clear_active_agent()
-                    state.add_event("agent", f"mic handed to '{handed_to}'" if handed_to else "mic released - no conversation active")
-                    save_settings(state)
                 # Hidden, not forgotten: the conversation stays in the registry
                 # and comes back when the user talks there again.
-                state.dismiss_agent(name, force=True)
-                state.conversations.hide(name)
+                _settle(state, name)
                 state.add_event("agent", f"'{name}' closed")
                 self._respond({"dismissed": name, "active_agent": state.active_agent})
             elif self.path == "/restore-agent":
@@ -907,6 +930,30 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                     return
                 _restore(state, key)
                 self._respond({"restored": key})
+            elif self.path == "/snooze-agent":
+                # Settle now, come back by itself at `until` (epoch s) - or
+                # earlier, when its session speaks. until=null cancels the
+                # snooze and leaves it settled (Restore brings it back).
+                body = self._read_json_body()
+                key = state.conversations.resolve(str(body.get("name", "")).strip())
+                if key is None:
+                    self._respond({"error": "unknown conversation"}, status=404)
+                    return
+                until = body.get("until")
+                if until is None:
+                    state.conversations.snooze(key, None)
+                    self._respond({"snoozed": key, "snoozed_until": None})
+                    return
+                if isinstance(until, bool) or not isinstance(until, (int, float)) or until <= time.time():
+                    self._respond({"error": "until must be a future time in epoch seconds"}, status=400)
+                    return
+                if key in state.agents:
+                    _settle(state, key)
+                else:
+                    state.conversations.hide(key)
+                state.conversations.snooze(key, float(until))
+                state.add_event("agent", f"'{state.conversations.get(key).label()}' snoozed until {_wake_label(until)}")
+                self._respond({"snoozed": key, "snoozed_until": float(until)})
             elif self.path == "/conversation-hotkey":
                 body = self._read_json_body()
                 presented = str(body.get("conversation", "")).strip()
