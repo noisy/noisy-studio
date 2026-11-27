@@ -9,6 +9,15 @@ const mic = (w: ReturnType<typeof mount>) => w.get("button.mic");
 const global = { stubs: { Oscilloscope: true } };
 
 describe("HeaderVoiceControls", () => {
+  it("draws the global talk hotkey on the mic button: toggle first, else hold, else nothing", () => {
+    const keyOf = (hotkeys: DaemonStatus["hotkeys"]) =>
+      mount(HeaderVoiceControls, { props: { status: status({ hotkeys }), offline: false, level: 0 }, global }).find("button.mic .keycap");
+    const hk = (bindings: Record<string, string>) => ({ configured: true, permission: "granted", armed: true, bindings, stored: {} }) as DaemonStatus["hotkeys"];
+
+    expect([keyOf(hk({ toggle: "F15", hold: "F8" })).text(), keyOf(hk({ hold: "ctrl+alt+h" })).text(), keyOf(hk({})).exists()]).toEqual(["F15", "⌃⌥H", false]);
+  });
+
+
   it("mutes the mic with a click in Auto", async () => {
     const w = mount(HeaderVoiceControls, { props: { status: status({}), offline: false, level: 0.4 }, global });
     expect(mic(w).text()).toBe("Mute mic");

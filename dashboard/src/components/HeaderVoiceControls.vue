@@ -8,6 +8,7 @@
 // -> Hold to talk (muting means nothing there: nothing is captured unless
 // you hold). A mute left over from Auto shows in the same slot as "Mic
 // muted" and a click unmutes, so it is never a dead end.
+import { chordLabel } from "./tabDetails";
 import { computed } from "vue";
 import Oscilloscope from "./Oscilloscope.vue";
 import type { DaemonStatus } from "../types";
@@ -18,7 +19,7 @@ const emit = defineEmits<{ toggleMute: []; toggleAgentsMute: []; pttStart: []; p
 // Geometry knobs. Each button keeps one width in every state, so a mode or
 // mute change never moves its neighbours (the fixed-slot rule).
 const METER_PX = 84;
-const MIC_SLOT_PX = 136;
+const MIC_SLOT_PX = 172;
 const AGENTS_SLOT_PX = 148;
 
 type MicSlot = "offline" | "muted" | "mute" | "talk" | "held";
@@ -30,6 +31,12 @@ const slot = computed<MicSlot>(() => {
   return props.status?.ptt_held ? "held" : "talk";
 });
 const toggleKey = computed(() => props.status?.ptt_toggle_key?.toUpperCase() ?? "");
+// The global talk hotkey drawn on the button itself (toggle, else hold), so
+// the key and the button read as one control. Same key-cap as the list rows.
+const talkKey = computed(() => {
+  const chords = { ...(props.status?.hotkeys?.stored ?? {}), ...(props.status?.hotkeys?.bindings ?? {}) };
+  return chordLabel(chords.toggle || chords.hold || props.status?.ptt_toggle_key);
+});
 const micLabel = computed(() => ({ offline: "Mic offline", muted: "Mic muted", mute: "Mute mic", talk: "Hold to talk", held: "◉ On air" })[slot.value]);
 const micHint = computed(() => ({
   offline: "Waiting for the voice service",
@@ -77,7 +84,7 @@ function onPointerUp() {
         @pointerdown="onPointerDown"
         @pointerup="onPointerUp"
         @pointercancel="onPointerUp"
-      ><span class="slot-label">{{ micLabel }}</span></button>
+      ><span class="slot-label">{{ micLabel }}</span><kbd v-if="talkKey" class="keycap" :title="`Global hotkey: ${talkKey}`">{{ talkKey }}</kbd></button>
     </fieldset>
     <fieldset class="group">
       <legend>Agents · output</legend>
@@ -103,6 +110,7 @@ legend { padding:0 4px; font-size:9px; letter-spacing:.08em; text-transform:uppe
 .slot { height:40px; padding:0 12px; font:500 13px var(--sans); color:var(--ink); background:var(--surface-hover); border:1px solid var(--line-strong); white-space:nowrap; }
 .slot:hover:not(:disabled) { border-color:var(--cyan); }
 .mic { width:var(--mic-slot); }
+.mic .keycap { flex:none; margin-left:6px; height:16px; padding:0 4px; box-sizing:border-box; font:9px/14px var(--mono, monospace); color:var(--muted); background:var(--panel-solid); border:1px solid var(--line-strong); border-bottom-width:2px; border-radius:4px; }
 .agents { width:var(--agents-slot); }
 .slot-label { font-weight:600; }
 /* Red = muting, amber = on air: the dashboard's colour meanings. Only the

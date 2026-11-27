@@ -8,7 +8,9 @@ const meta: Meta<typeof HeaderVoiceControls> = {
 };
 export default meta;
 
-const status = (patch: Partial<DaemonStatus>) => ({ detection_mode: "auto", muted: false, ptt_held: false, voice_muted: false, ...patch }) as DaemonStatus;
+// The mic button carries the global talk hotkey (here the toggle, F15).
+const HOTKEYS = { configured: true, permission: "granted", armed: true, bindings: { toggle: "F15" }, stored: { toggle: "F15" } } as DaemonStatus["hotkeys"];
+const status = (patch: Partial<DaemonStatus>) => ({ detection_mode: "auto", muted: false, ptt_held: false, voice_muted: false, hotkeys: HOTKEYS, ...patch }) as DaemonStatus;
 const STATES: { caption: string; status: DaemonStatus; offline?: boolean }[] = [
   { caption: "Auto · listening", status: status({}) },
   { caption: "Auto · mic muted + agents muted", status: status({ muted: true, voice_muted: true }) },
@@ -16,6 +18,7 @@ const STATES: { caption: string; status: DaemonStatus; offline?: boolean }[] = [
   { caption: "Push to talk · held (on air)", status: status({ detection_mode: "ptt", ptt_held: true }) },
   { caption: "Push to talk · mute left over from Auto (click unmutes)", status: status({ detection_mode: "ptt", muted: true }) },
   { caption: "Voice service offline", status: status({}), offline: true },
+  { caption: "No talk hotkey bound (no key cap)", status: status({ hotkeys: { configured: true, permission: "granted", armed: true, bindings: {}, stored: {} } }) },
 ];
 
 /** Every state of the header's input/output groups. Each button keeps its
