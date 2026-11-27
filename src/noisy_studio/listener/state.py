@@ -113,6 +113,10 @@ def user_turn_wait_seconds(
     return max(0.0, grace_s - seconds_since_end)
 
 
+# Statuses of a dictation utterance whose words are not in the app yet.
+DICTATION_IN_FLIGHT = ("recording", "transcribing", "dictation — inserting")
+
+
 class ListenerState:
     def __init__(self) -> None:
         self._lock = threading.Lock()
@@ -1092,6 +1096,16 @@ class ListenerState:
 
         # Provider calls may perform I/O. Never hold the audio/state lock across them.
         self.submit_speech(Speech(utterance_id, addressee, text, now))
+
+    def dictation_pending(self, session: int) -> bool:
+        """Words of this dictation session not yet in the app: still being
+        recorded, transcribed or pasted."""
+        with self._lock:
+            return any(
+                u.get("dictation") == session
+                and str(u.get("status", "")).startswith(DICTATION_IN_FLIGHT)
+                for u in self._utterances
+            )
 
     def _dictation_of(self, utterance_id: int) -> int:
         if not utterance_id:

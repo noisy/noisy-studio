@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import pytest
 
+from noisy_studio.listener.caret import Anchor
 from noisy_studio.listener.dictation import MUTED_HINT, PERMISSION_HINT, Dictation
 from noisy_studio.listener.state import ListenerState
 from noisy_studio.listener.text_insertion import Insertion, InsertionError
@@ -27,6 +28,14 @@ class _Inserter:
             raise self.error
         self.texts.append(text)
         return Insertion(app="iTerm2")
+
+
+class _Locator:
+    def __init__(self, anchor=None):
+        self.anchor = anchor or Anchor(100.0, 200.0, 2.0, 18.0, "caret")
+
+    def locate(self):
+        return self.anchor
 
 
 class _Permission:
@@ -58,6 +67,7 @@ def _dictation(state, inserter=None, permission=None):
         status=permission.status,
         request=permission.request,
         executor=_Inline(),
+        locator=_Locator(),
     )
     state.dictation = controller
     return controller
@@ -174,6 +184,30 @@ def test_ordinary_speech_still_goes_to_the_agent(state):
     assert ([t.text for t in state.drain("tab-a")], inserter.texts) == (["hi agent"], [])
 
 
-def test_snapshot_reports_permission_and_session(state):
+def test_snapshot_before_any_session(state):
     dictation = _dictation(state, permission=_Permission("missing"))
-    assert dictation.snapshot() == {"permission": "missing", "active": False}
+    assert dictation.snapshot() == {
+        "permission": "missing", "active": False, "session": 0, "anchor": None, "pending": False,
+    }
+
+
+def test_snapshot_tells_the_overlay_where_and_whether_to_show(state):
+    dictation = _dictation(state)
+    dictation.start()
+    utterance = state.create_utterance("user", "recording…", dictation=1)
+    recording = dictation.snapshot()
+    dictation.stop()
+    stopped_but_transcribing = dictation.snapshot()["pending"]
+    state.add_transcript("done", utterance)
+
+    assert (recording, stopped_but_transcribing, dictation.snapshot()["pending"]) == (
+        {
+            "permission": "granted",
+            "active": True,
+            "session": 1,
+            "anchor": {"x": 100.0, "y": 200.0, "width": 2.0, "height": 18.0, "source": "caret"},
+            "pending": True,
+        },
+        True,
+        False,
+    )

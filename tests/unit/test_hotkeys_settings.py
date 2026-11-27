@@ -135,6 +135,6 @@ def test_status_reports_dictation_permission():
     without = http_api._dictation_snapshot(st)
     st.dictation = _Dictation()
     assert (without, http_api._dictation_snapshot(st)) == (
-        {"permission": "unknown", "active": False},
+        {"permission": "unknown", "active": False, "session": 0, "anchor": None, "pending": False},
         {"permission": "missing", "active": False},
     )

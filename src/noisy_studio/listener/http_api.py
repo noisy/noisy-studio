@@ -334,7 +334,7 @@ def _hotkeys_snapshot(state: ListenerState) -> dict:
 def _dictation_snapshot(state: ListenerState) -> dict:
     controller = getattr(state, "dictation", None)
     if controller is None:
-        return {"permission": "unknown", "active": False}
+        return {"permission": "unknown", "active": False, "session": 0, "anchor": None, "pending": False}
     return controller.snapshot()
 
 
@@ -575,6 +575,10 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
             if url.path == "/tasks":
                 store = getattr(state, "task_progress", None)
                 self._respond(store.snapshot() if store else {"threads": {}, "error": "Task reporting not initialized"})
+            elif url.path == "/dictation":
+                # The desktop shell polls this for the live dictation
+                # overlay: small, unlike /status.
+                self._respond(_dictation_snapshot(state))
             elif url.path == "/":
                 # The Vue HUD is the main dashboard; the legacy one stays
                 # at /legacy (and serves as fallback before the first build).

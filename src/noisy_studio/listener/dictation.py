@@ -20,6 +20,7 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, Protocol
 
 from noisy_studio.listener import text_insertion
+from noisy_studio.listener.caret import Anchor, CaretLocator
 from noisy_studio.listener.text_insertion import InsertionError
 
 MUTED_HINT = "Dictation needs the microphone: it is muted"
@@ -33,9 +34,14 @@ class _Inserter(Protocol):
     def insert(self, text: str) -> text_insertion.Insertion: ...
 
 
+class _Locator(Protocol):
+    def locate(self) -> Anchor | None: ...
+
+
 class _DictationState(Protocol):
     @property
     def user_muted(self) -> bool: ...
+    def dictation_pending(self, session: int) -> bool: ...
     def set_dictation_session(self, session: int) -> None: ...
     def update_utterance(self, utterance_id: int, **fields: str) -> None: ...
     def add_event(self, kind: str, detail: str = "") -> None: ...
@@ -52,12 +58,14 @@ class Dictation:
         status: Callable[[], str] = text_insertion.accessibility_status,
         request: Callable[[], str] = text_insertion.request_accessibility,
         executor: ThreadPoolExecutor | None = None,
+        locator: _Locator | None = None,
     ) -> None:
         self._state = state
         self._log = log
         self._inserter = inserter if inserter is not None else text_insertion.PasteInserter()
         self._status = status
         self._request = request
+        self._locator = locator if locator is not None else CaretLocator()
         # One worker: segments of a session must land in the order spoken,
         # and the restore delay must not hold up the next transcription.
         self._executor = executor or ThreadPoolExecutor(max_workers=1, thread_name_prefix="dictation")
@@ -65,6 +73,7 @@ class Dictation:
         self._session = 0          # number of the running session, 0 = off
         self._last_session = 0     # sessions are numbered from 1
         self._inserted_in = 0      # the session whose first segment is already in
+        self._anchor: Anchor | None = None  # where the overlay opens (last session)
 
     # -- sessions ------------------------------------------------------------
 
@@ -85,8 +94,11 @@ class Dictation:
         with self._lock:
             self._last_session += 1
             self._session = self._last_session
+            self._anchor = None
             session = self._session
         self._state.set_dictation_session(session)
+        # Off the hotkey thread: AX queries a busy app can take a while.
+        self._executor.submit(self._locate, session)
         self._state.add_event("dictation", "started — speak, press the key again to insert")
         return True
 
@@ -97,6 +109,12 @@ class Dictation:
         if was:
             self._state.set_dictation_session(0)
             self._state.add_event("dictation", "stopped")
+
+    def _locate(self, session: int) -> None:
+        anchor = self._locator.locate()
+        with self._lock:
+            if self._last_session == session:
+                self._anchor = anchor
 
     # -- transcripts -----------------------------------------------------------
 
@@ -147,4 +165,18 @@ class Dictation:
     def snapshot(self) -> dict:
         """For /status. Re-probes (cheap, never prompts) so a grant given in
         System Settings shows up without a restart."""
-        return {"permission": self._status(), "active": self.active}
+        with self._lock:
+            session = self._last_session
+            active = self._session != 0
+            anchor = self._anchor
+        return {
+            "permission": self._status(),
+            "active": active,
+            # The live overlay: which session's words to show, where the
+            # text cursor was when it started, and whether its words are
+            # still on their way into the app (recording, transcribing,
+            # pasting) after the key stopped it.
+            "session": session,
+            "anchor": anchor.as_dict() if anchor else None,
+            "pending": bool(session) and self._state.dictation_pending(session),
+        }
