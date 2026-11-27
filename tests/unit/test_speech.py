@@ -702,6 +702,22 @@ def test_skip_pending_synthesis_then_mute_only_new_message_needs_catchup(monkeyp
     assert restored.queued_by_agent == {"a1": 1}
 
 
+def test_skipped_backlog_stays_skipped_when_the_next_message_parks(monkeypatch, batch_pipeline):
+    state = ListenerState()
+    state.register_agent("a1")
+    state.set_agent_muted("a1", True)
+    _install_fake_synth(monkeypatch, [])
+    for index in range(5):
+        speech.submit(state, f"old message {index}", agent="a1").result(timeout=5)
+
+    state.skip_unheard("a1")
+    speech.submit(state, "new message", agent="a1").result(timeout=5)
+
+    assert [u["status"] for u in state.utterances()] == ["skipped — dismissed by you"] * 5 + [
+        "unheard — conversation muted",
+    ]
+
+
 @pytest.mark.parametrize("settled", ["skipped — dismissed by you", "played"])
 def test_explicit_replay_of_settled_card_plays_but_interruption_does_not_requeue(monkeypatch, batch_pipeline, settled):
     state = ListenerState()

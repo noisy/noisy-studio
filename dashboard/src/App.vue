@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import "./styles/dashboard.css";
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
-import { cancelTranscript, getDevices, runDiagnostics, saveApiKey, setAgentMuted, setMode, setMuted, setPtt, setSettings, setVoiceMuted, speakText, stopPlayback, type DiagnosticChecks, togglePlaybackPause, interruptPlayback, skipUnheard, scheduleShutdown, cancelShutdown, postponeShutdown, requestHotkeyPermission } from "./api/client";
+import { cancelTranscript, getDevices, runDiagnostics, saveApiKey, setAgentMuted, setMode, setMuted, setPtt, setSettings, setVoiceMuted, speakText, stopPlayback, type DiagnosticChecks, togglePlaybackPause, interruptPlayback, scheduleShutdown, cancelShutdown, postponeShutdown, requestHotkeyPermission } from "./api/client";
 import type { InputDevice } from "./types";
 import { replaySpeechText } from "./components/bubbleStatus";
 import type { Character, Utterance } from "./types";
@@ -41,6 +41,7 @@ import type { CueName } from "./composables/cueEvents";
 import { useAudioCues } from "./composables/useAudioCues";
 import { useDaemonState } from "./composables/useDaemonState";
 import { useMicStream } from "./composables/useMicStream";
+import { useUnheardBacklog } from "./composables/useUnheardBacklog";
 
 const { status, utterances, allUtterances, utterancesFor, character, characterPending, characterError, changeCharacter, offline, viewedAgent, errors, clearErrors, selectAgent, dismissAgent, reorderAgents } =
   useDaemonState();
@@ -110,34 +111,8 @@ const replay = (utterance: Utterance) => {
 };
 const cancel = (utterance: Utterance) => cancelTranscript(utterance.id).catch(swallow);
 
-const unheard = computed(() =>
-  utterances.value.filter((u) => u.role === "claude" && u.status.includes("unheard")),
-);
 const toggleVoiceMute = () => setVoiceMuted(!status.value?.voice_muted).catch(swallow);
-// Catch up: unmute FIRST (or the replays would park as unheard again) —
-// BOTH the global voice mute and this conversation's own mute — then
-// queue every parked message in arrival order; the playback queue
-// serializes them, each stoppable with its ⏹.
-// Skip-all: the mirror of catch-up - settle the parked queue unplayed.
-// One daemon call; the next status poll empties the counter.
-const skipAll = () => skipUnheard(viewedAgent.value ?? undefined).catch(swallow);
-
-async function catchUp() {
-  await setVoiceMuted(false).catch(swallow);
-  const agent = viewedAgent.value;
-  if (agent && (status.value?.muted_agents ?? []).includes(agent)) {
-    await setAgentMuted(agent, false).catch(swallow);
-  }
-  // Sequential awaits + interrupt:false — parallel POSTs can arrive out of
-  // order and an interrupting replay would jump the queue, so a batch
-  // catch-up must do neither (it played last-before-previous once).
-  const parked = [...unheard.value].sort(
-    (a, b) => (a.committed_at || a.started_at) - (b.committed_at || b.started_at),
-  );
-  for (const u of parked) {
-    await speakText(replaySpeechText(u.text), u.id, undefined, { interrupt: false }).catch(swallow);
-  }
-}
+const { unheard, catchUp, skipAll } = useUnheardBacklog(status, utterances, viewedAgent);
 
 // Push-to-talk: while the button (or the space bar) is physically held we
 // renew the daemon's hold lease (it expires by itself if we die mid-hold).
