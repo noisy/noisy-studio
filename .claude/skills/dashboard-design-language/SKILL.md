@@ -60,8 +60,16 @@ fold into it), its heading is badge + name + an amber count of messages
 waiting for you there; conversations without one gather under "No project"
 at the end. Projects keep a stable order and never re-sort on state - there
 is no "Working" section: projects are always busy, so working is a row
-glyph. "Settled" (ended; folded by default) sits below. A folded section
-never hides the viewed or mic row, nor one with messages for you. The mic
+glyph. "Settled" (folded by default) sits below: the ended sessions AND the
+conversations you settled (hidden), in one list, newest first; its count is
+all of them. The daemon sends only the newest 30 settled ones
+(`settled_agents`), so the list ends in "+N older". Every Settled row's hover
+action is Restore (/restore-agent): back to its project, an ended one as an
+ended row (`kept`) until its session starts again or you settle it. There is
+no Remove - a removed row would only reappear as a settled one. A settled
+row is not in the agents table, so clicking it does nothing: restore first.
+A folded section never hides the viewed or mic row, nor one with messages
+for you. The mic
 row carries a green bar in the row's inset (no "Mic" word: the bar says it).
 The Tab hotkey is drawn as a key with the real chord ("F17"), never a bare
 number that reads as a count; on rows it shows on hover/focus only (the user
@@ -98,7 +106,7 @@ was one system, chosen on `Lab/ConversationListDesign` (variant A, Ledger):
 - **States never fight**: hover = a dim opaque surface; selected = the full
   `--surface-hover` surface (no border); mic = a 3px green bar inside the
   inset, clear of the rounded corners, so it combines with either.
-- **Hover actions are ONE cluster** (key cap + Settle/Remove), vertically
+- **Hover actions are ONE cluster** (key cap + Settle/Restore), vertically
   centred, laid over the row's right end with a fade from the row surface.
   Settle always sits at the same x (an unbound key cap keeps its width,
   invisible). It covers the wait time, so the row tooltip carries it.

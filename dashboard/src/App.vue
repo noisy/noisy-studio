@@ -46,7 +46,7 @@ import { useDaemonState } from "./composables/useDaemonState";
 import { useMicStream } from "./composables/useMicStream";
 import { useUnheardBacklog } from "./composables/useUnheardBacklog";
 
-const { status, utterances, allUtterances, utterancesFor, character, characterPending, characterError, changeCharacter, offline, viewedAgent, errors, clearErrors, selectAgent, dismissAgent, reorderAgents } =
+const { status, utterances, allUtterances, utterancesFor, character, characterPending, characterError, changeCharacter, offline, viewedAgent, errors, clearErrors, selectAgent, dismissAgent, restoreAgent, reorderAgents } =
   useDaemonState();
 
 // Live pulse, the list's Working section and what each agent is doing.
@@ -455,8 +455,10 @@ function changeAudio({id,value}: AudioChange) {
           :activity="activityText"
           :queued="status?.queued_by_agent ?? {}"
           :muted="status?.muted_agents ?? []"
+          :settled-agents="status?.settled_agents ?? null"
           @select="selectAgent"
           @settle="dismissAgent"
+          @restore="restoreAgent"
           @reorder="reorderAgents"
         />
         <TaskProgressPanel :status="status" :offline="offline" :utterances="allUtterances" @review-open="taskReviewOpen = $event" @start-ptt="startPtt" @stop-ptt="stopPtt" />

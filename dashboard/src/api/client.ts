@@ -126,6 +126,11 @@ export function dismissAgent(name: string): Promise<void> {
   return post("/dismiss-agent", { name });
 }
 
+/** Bring a settled conversation back to its project. */
+export function restoreAgent(name: string): Promise<void> {
+  return post("/restore-agent", { name });
+}
+
 export function reorderAgents(order: string[]): Promise<void> {
   return post("/reorder-agents", { order });
 }

@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { groupAgents, moveProject, moveWithinProject, type ProjectGroup } from "./agentOrder";
+import { groupAgents, moveProject, moveWithinProject, settledRows, type ProjectGroup } from "./agentOrder";
+import type { SettledAgent, SettledAgents } from "../types";
 import { computed, onBeforeUnmount, ref } from "vue";
 import { conversationLabel } from "../conversationLabel";
 import { chordLabel, projectHue, waitLabel } from "./tabDetails";
@@ -16,6 +17,7 @@ export interface AgentMeta {
   project?: string | null; // git repository (or folder) the session runs in
   branch?: string | null;
   waiting_since?: number | null; // epoch s; set while it is your move
+  kept?: boolean; // ended, restored from Settled: stays in its project
 }
 
 const props = withDefaults(
@@ -35,8 +37,10 @@ const props = withDefaults(
     // Give a conversation its own talk key ("" clears); resolves to the
     // daemon's refusal text, or null when it took the key.
     setTalkKey?: (name: string, chord: string) => Promise<string | null>;
+    // Settled (hidden) conversations, newest first, capped, with the total.
+    settledAgents?: SettledAgents | null;
   }>(),
-  { thinking: () => [], activity: () => ({}), queued: () => ({}), muted: () => [], meta: null, settledOpen: undefined },
+  { thinking: () => [], activity: () => ({}), queued: () => ({}), muted: () => [], meta: null, settledOpen: undefined, settledAgents: null },
 );
 
 // Geometry knobs. Every heading and row sits on ONE grid - lead | text |
@@ -62,12 +66,14 @@ onBeforeUnmount(() => clearInterval(clockTimer));
 // The row shows the real key (F16), falling back to "Tab N" when unbound.
 const keyCap = (shortcut: number | null | undefined) => (shortcut ? chordLabel(props.tabKeys?.[shortcut]) || `Tab ${shortcut}` : "");
 // A row's key: its own talk key, else its positional Tab N key.
-const rowKey = (name: string) => chordLabel(props.meta?.[name]?.talk_key) || keyCap(props.meta?.[name]?.shortcut);
+const rowKey = (tab: Tab) =>
+  chordLabel(tab.hidden ? tab.hidden.talk_key : props.meta?.[tab.name]?.talk_key) || keyCap(props.meta?.[tab.name]?.shortcut);
 const waited = (name: string) => waitLabel(props.meta?.[name]?.waiting_since, props.now ?? clock.value);
 
 const emit = defineEmits<{
   select: [name: string];
   settle: [name: string]; // hide it from the list (the daemon's /dismiss-agent)
+  restore: [name: string]; // bring a Settled one back to its project (/restore-agent)
   reorder: [names: string[]];
 }>();
 
@@ -83,11 +89,14 @@ function toggleSettled() {
   try { localStorage.setItem(SETTLED_OPEN_KEY, settledShown.value ? "1" : "0"); } catch { /* session only */ }
 }
 
-interface Tab { name: string; label: string; online: boolean; settled: boolean }
+// `hidden`: a settled conversation, no longer in the agents table - the
+// daemon's settled_agents entry carries what its row shows.
+interface Tab { name: string; label: string; online: boolean; settled: boolean; hidden: SettledAgent | null }
 type Item =
   | { kind: "tab"; key: string; tab: Tab }
   | { kind: "project"; key: string; project: string | null; waiting: number }
-  | { kind: "settled"; key: string; count: number };
+  | { kind: "settled"; key: string; count: number }
+  | { kind: "older"; key: string; count: number };
 
 // Grouping and ordering live in agentOrder.ts, next to the order the
 // widget uses, so the two rules cannot drift apart unnoticed.
@@ -97,44 +106,60 @@ const groups = computed(() =>
     keepInSight: [props.viewed, props.active],
   }),
 );
-const tabOf = (name: string, settled: boolean): Tab => ({
+const tabOf = (name: string, settled: boolean, hidden: SettledAgent | null = null): Tab => ({
   name,
-  label: conversationLabel(props.meta?.[name]?.label ?? props.agents[name], name),
-  online: props.meta?.[name]?.online ?? true,
+  label: conversationLabel(hidden?.label ?? props.meta?.[name]?.label ?? props.agents[name], name),
+  online: hidden ? !hidden.ended : props.meta?.[name]?.online ?? true,
   settled,
+  hidden,
 });
+// Settled: the ended sessions and the settled conversations, newest first.
+const settled = computed(() => settledRows(groups.value.settled, props.meta ?? {}, props.settledAgents));
 // What waits for you in a project: its queued messages, in amber.
 const waitingIn = (group: ProjectGroup) => group.names.reduce((sum, name) => sum + (props.queued[name] ?? 0), 0);
 // A daemon that knows no projects (legacy, or no repository at all) gets the
 // plain list: a lone "No project" heading would say nothing.
 const showProjectHeads = computed(() => groups.value.projects.some((group) => group.project !== null));
-const tabCount = computed(() => Object.keys(props.agents).length);
+const tabCount = computed(() => Object.keys(props.agents).length + settled.value.total);
 const items = computed<Item[]>(() => {
-  const { projects, settled } = groups.value;
-  const rows = (names: string[], isSettled: boolean): Item[] =>
-    names.map((name) => ({ kind: "tab", key: name, tab: tabOf(name, isSettled) }));
+  const { rows: settledList, total, older } = settled.value;
   return [
-    ...projects.flatMap((group): Item[] => [
+    ...groups.value.projects.flatMap((group): Item[] => [
       ...(showProjectHeads.value
         ? [{ kind: "project", key: `p-${group.project ?? ""}`, project: group.project, waiting: waitingIn(group) } as Item]
         : []),
-      ...rows(group.names, false),
+      ...group.names.map((name): Item => ({ kind: "tab", key: name, tab: tabOf(name, false) })),
     ]),
-    ...(settled.length ? [{ kind: "settled", key: "h-settled", count: settled.length } as Item] : []),
-    ...(settledShown.value ? rows(settled, true) : []),
+    ...(total ? [{ kind: "settled", key: "h-settled", count: total } as Item] : []),
+    ...(settledShown.value
+      ? [
+          ...settledList.map((row): Item => ({ kind: "tab", key: row.name, tab: tabOf(row.name, true, row.hidden) })),
+          ...(older ? [{ kind: "older", key: "settled-older", count: older } as Item] : []),
+        ]
+      : []),
   ];
 });
 // Settled rows sit outside their project, so their second line names it.
 const whereLine = (tab: Tab) => {
-  const meta = props.meta?.[tab.name];
-  return (tab.settled ? [meta?.project, meta?.branch] : [meta?.branch]).filter(Boolean).join(" · ");
+  const where = tab.hidden ?? props.meta?.[tab.name];
+  return (tab.settled ? [where?.project, where?.branch] : [where?.branch]).filter(Boolean).join(" · ");
 };
-const statusText = (name: string, online: boolean) =>
-  !online ? "Ended" : props.muted.includes(name) ? "Muted" : props.speaking.includes(name) ? "Speaking"
+// A settled (hidden) conversation is not in the list the daemon serves, so
+// it cannot be opened: Restore brings it back first.
+function onRowClick(tab: Tab) {
+  if (!tab.hidden) emit("select", tab.name);
+}
+// The row's one hover action: Settle a listed row, Restore a Settled one.
+function rowAction(tab: Tab) {
+  if (tab.settled) emit("restore", tab.name);
+  else emit("settle", tab.name);
+}
+const statusText = ({ name, online, hidden }: Tab) =>
+  !online ? "Ended" : hidden ? "Settled" : props.muted.includes(name) ? "Muted" : props.speaking.includes(name) ? "Speaking"
     : props.thinking.includes(name) ? "Working" : "Ready";
 // The hover actions cover the wait time, so the tooltip carries it.
 const rowTitle = (tab: Tab) => [
-  tab.label, tab.name === props.active ? "Receiving your speech" : "", statusText(tab.name, tab.online),
+  tab.label, tab.name === props.active ? "Receiving your speech" : "", statusText(tab),
   props.activity[tab.name] ?? "", waited(tab.name) ? `Waiting for you ${waited(tab.name)}` : "",
 ].filter(Boolean).join(" · ");
 
@@ -200,6 +225,8 @@ const capture = useKeyCapture((name, result) => {
         v-else-if="item.kind === 'settled'"
         type="button" class="head section toggle" :aria-expanded="settledShown" @click="toggleSettled"
       ><span class="lead chev" :class="{ open: settledShown }" aria-hidden="true">▸</span> <span class="project-name">Settled</span> <b class="meta">{{ item.count }}</b></button>
+      <!-- The daemon sends the newest settled conversations only. -->
+      <p v-else-if="item.kind === 'older'" class="older">+{{ item.count }} older</p>
       <button
         v-else
         class="tab"
@@ -213,8 +240,9 @@ const capture = useKeyCapture((name, result) => {
           offline: !item.tab.online,
           dragging: item.tab.name === dragging,
           single: !whereLine(item.tab),
+          hidden: !!item.tab.hidden,
         }"
-        @click="$emit('select', item.tab.name)"
+        @click="onRowClick(item.tab)"
         @dragstart="dragging = item.tab.name"
         @dragend="dragging = null"
         @dragover.prevent
@@ -251,17 +279,18 @@ const capture = useKeyCapture((name, result) => {
              their keys, so it stays hidden at rest) and Settle. Settle hides
              the conversation, it does not end the session; it comes back
              when its session speaks. Settling the mic's row hands the mic to
-             the next one (the daemon decides and says so). On a Settled
-             (ended) row the same action is Remove; the daemon cannot restore
-             a hidden one on request yet. -->
+             the next one (the daemon decides and says so). On a Settled row
+             the same action is Restore: back to its project, an ended one as
+             an ended row (there is no Remove: a removed row would only come
+             back as a settled one). -->
         <span class="actions">
-          <kbd class="shortcut" :class="{ none: !rowKey(item.tab.name) }" :title="rowKey(item.tab.name) ? `Hotkey ${rowKey(item.tab.name)} talks to this conversation · right-click to change` : 'Right-click to give it a talk key'">{{ rowKey(item.tab.name) }}</kbd>
+          <kbd class="shortcut" :class="{ none: !rowKey(item.tab) }" :title="rowKey(item.tab) ? `Hotkey ${rowKey(item.tab)} talks to this conversation · right-click to change` : 'Right-click to give it a talk key'">{{ rowKey(item.tab) }}</kbd>
           <span
             class="settle"
-            role="button" tabindex="0" @keydown.enter.stop.prevent="$emit('settle', item.tab.name)" @keydown.space.stop.prevent="$emit('settle', item.tab.name)"
-            :title="item.tab.settled ? 'Remove: drop this ended conversation from the list' : 'Settle: hide it until its session speaks again'"
-            @click.stop="$emit('settle', item.tab.name)"
-            >{{ item.tab.settled ? 'Remove' : 'Settle' }}</span>
+            role="button" tabindex="0" @keydown.enter.stop.prevent="rowAction(item.tab)" @keydown.space.stop.prevent="rowAction(item.tab)"
+            :title="item.tab.settled ? 'Restore: back to its project' : 'Settle: hide it until its session speaks again'"
+            @click.stop="rowAction(item.tab)"
+            >{{ item.tab.settled ? 'Restore' : 'Settle' }}</span>
         </span>
       </button>
     </template>
@@ -269,7 +298,7 @@ const capture = useKeyCapture((name, result) => {
     <div v-if="keyMenu" class="keymenu" role="menu" aria-label="Talk key" :style="{ left: keyMenu.x + 'px', top: keyMenu.y + 'px' }" >
       <p class="keymenu-title">Talk key</p>
       <button type="button" role="menuitem" class="keymenu-item" @click="capture.start(keyMenu.name)">
-        <kbd class="shortcut">{{ capture.capturing.value === keyMenu.name ? "…" : rowKey(keyMenu.name) || "none" }}</kbd>
+        <kbd class="shortcut">{{ capture.capturing.value === keyMenu.name ? "…" : rowKey(tabOf(keyMenu.name, false)) || "none" }}</kbd>
         <span>{{ capture.capturing.value === keyMenu.name ? "Press a key · Delete clears" : "Set a key…" }}</span>
       </button>
       <button v-if="meta?.[keyMenu.name]?.talk_key" type="button" role="menuitem" class="keymenu-item" @click="applyTalkKey(keyMenu.name, '')"><span>Remove its own key</span></button>
@@ -316,6 +345,9 @@ const capture = useKeyCapture((name, result) => {
 .tab.mic::before { content:""; position:absolute; left:2px; top:12px; bottom:12px; width:3px; border-radius:2px; background:var(--green); }
 .tab.offline .tab-label, .tab.offline .where { color:var(--faint); }
 .tab.dragging { opacity:.5; }
+.tab.hidden { cursor:default; }
+/* "+N older": a quiet line on the text column, under the last Settled row. */
+.older { margin:2px 0 0; padding:0 var(--padX) 0 calc(var(--padX) + var(--lead) + var(--gap)); font:11px/20px var(--sans); color:var(--faint); }
 .statusslot { grid-row:1; grid-column:1; height:18px; }
 .tab-label { grid-row:1; grid-column:2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .waited { grid-row:1; grid-column:3; font-size:11px; color:var(--amber); }

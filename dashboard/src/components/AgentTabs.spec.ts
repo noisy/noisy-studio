@@ -131,7 +131,7 @@ describe("AgentTabs", () => {
     expect(labels).toEqual(["old title", "young title", "dead2 title", "dead1 title"]);
   });
 
-  it("greys out ended tabs; every live row settles - the mic's too - and an ended row can be removed", async () => {
+  it("greys out ended tabs; every live row settles - the mic's too - and a Settled row restores", async () => {
     const wrapper = mount(AgentTabs, {
       props: {
         agents: { live: "live", other: "other", gone: "gone" },
@@ -150,16 +150,16 @@ describe("AgentTabs", () => {
     const [live, other, gone] = wrapper.findAll("button.tab");
     expect(live.classes()).not.toContain("offline");
     expect(gone.classes()).toContain("offline");
-    // The daemon cannot un-hide a conversation on request, so an ended row
-    // offers Remove (the same hide), never Restore.
-    expect(gone.get(".settle").text()).toBe("Remove");
+    // No Remove: a removed row would only come back as a settled one.
+    expect(gone.get(".settle").text()).toBe("Restore");
     expect(live.get(".settle").attributes("tabindex")).toBe("0");
 
     await other.get(".settle").trigger("click");
     await live.get(".settle").trigger("keydown", { key: "Enter" });
     await gone.get(".settle").trigger("click");
-    expect(wrapper.emitted("settle")).toEqual([["other"], ["live"], ["gone"]]);
-    expect(wrapper.emitted("select")).toBeUndefined(); // Settle must not also select
+    expect(wrapper.emitted("settle")).toEqual([["other"], ["live"]]);
+    expect(wrapper.emitted("restore")).toEqual([["gone"]]);
+    expect(wrapper.emitted("select")).toBeUndefined(); // the actions must not also select
   });
 
   it("puts user-pinned tabs first within their group, in pinned order", () => {
@@ -319,6 +319,36 @@ describe("AgentTabs", () => {
     expect(labels()).toEqual(["Release notes", "Old spike"]);
     expect(wrapper.findAll("button.tab")[1].find(".where").text()).toBe("noisy-studio · spike");
     expect(localStorage.getItem("noisy.tabs.settledOpen")).toBe("1");
+    localStorage.removeItem("noisy.tabs.settledOpen");
+  });
+
+  it("lists settled conversations beside ended sessions, newest first, with the total and +N older", async () => {
+    localStorage.removeItem("noisy.tabs.settledOpen");
+    const wrapper = mount(AgentTabs, {
+      props: {
+        agents: { live: "Release notes", gone: "Old spike" },
+        meta: {
+          live: { label: "Release notes", online: true, activated_at: 1, offline_since: null },
+          gone: { label: "Old spike", online: false, activated_at: 0, offline_since: 50, project: "noisy-studio", branch: "spike" },
+        },
+        settledAgents: { total: 40, items: [
+          { name: "hid", label: "Settled draft", project: "website", branch: "main", last_active_at: 90, ended: true, talk_key: "F13" },
+        ] },
+        active: "live", viewed: "live", speaking: [],
+      },
+    });
+    expect(wrapper.get("button.toggle").text()).toBe("▸ Settled 41");
+    await wrapper.get("button.toggle").trigger("click");
+
+    const [, settledRow, endedRow] = wrapper.findAll("button.tab");
+    expect([settledRow.get(".tab-label").text(), settledRow.get(".where").text(), settledRow.get(".shortcut").text()])
+      .toEqual(["Settled draft", "website · main", "F13"]);
+    expect(endedRow.get(".tab-label").text()).toBe("Old spike");
+    expect(wrapper.get(".older").text()).toBe("+39 older");
+
+    await settledRow.trigger("click"); // not in the list: it opens only once restored
+    await settledRow.get(".settle").trigger("keydown", { key: " " });
+    expect([wrapper.emitted("select"), wrapper.emitted("restore")]).toEqual([undefined, [["hid"]]]);
     localStorage.removeItem("noisy.tabs.settledOpen");
   });
 

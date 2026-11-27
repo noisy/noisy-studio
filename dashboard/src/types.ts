@@ -1,5 +1,22 @@
 /** Shapes of the listener daemon's HTTP API responses. */
 
+/** A settled conversation as the daemon lists it (/status settled_agents):
+ *  hidden from the list, no longer in the agents table. */
+export interface SettledAgent {
+  name: string;
+  label: string;
+  project: string | null;
+  branch: string | null;
+  last_active_at: number; // epoch s
+  ended: boolean;
+  talk_key: string | null;
+}
+/** The daemon sends only the newest settled conversations, plus the total. */
+export interface SettledAgents {
+  total: number;
+  items: SettledAgent[];
+}
+
 export type HotkeyAction = "hold" | "toggle" | "scratch" | "tab1" | "tab2" | "tab3" | "tab4" | "dictate";
 export interface HotkeyProblem { kind: "collision" | "system" | "invalid"; detail: string }
 export interface HotkeyState {
@@ -121,8 +138,12 @@ export interface DaemonStatus {
       shortcut?: number | null;
       /** Its own global talk key (canonical chord); null when it has none. */
       talk_key?: string | null;
+      /** Ended, but restored from Settled: it stays in its project. */
+      kept?: boolean;
     }
   >;
+  /** Settled (hidden) conversations: the newest few + the total. Absent on old daemons. */
+  settled_agents?: SettledAgents;
   /** Each conversation's voice, so clients can draw a portrait without
    *  fetching /character once per agent. Absent on old daemons. */
   agent_voices?: Record<string, string>;

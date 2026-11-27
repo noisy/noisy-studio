@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { groupAgents, moveProject, moveWithinProject, orderAgents, projectOrder } from "./agentOrder";
+import { groupAgents, moveProject, moveWithinProject, orderAgents, projectOrder, settledRows } from "./agentOrder";
 
 // Two projects interleaved by arrival, one session without a project, one
 // ended session of the first project.
@@ -68,6 +68,12 @@ describe("groupAgents", () => {
     });
   });
 
+  it("keeps an ended session the user restored in its project", () => {
+    const restored = { ...meta, ended: { ...meta.ended, kept: true } };
+    const { projects, settled } = groupAgents(names, restored);
+    expect([projects[0], settled]).toEqual([{ project: "noisy-studio", names: ["studio1", "studio2", "ended"] }, []]);
+  });
+
   it("treats conversations without metadata as online, without a project (legacy daemon)", () => {
     expect(groupAgents(["a", "b"])).toEqual({ projects: [{ project: null, names: ["a", "b"] }], settled: [] });
   });
@@ -98,5 +104,41 @@ describe("moveProject", () => {
 
   it("ignores a drop on itself or an unknown project", () => {
     expect([moveProject(keys, order, "a", "a"), moveProject(keys, order, "a", "zzz")]).toEqual([null, null]);
+  });
+});
+
+describe("settledRows", () => {
+  const hidden = (name: string, at: number) => ({
+    name, label: name, project: null, branch: null, last_active_at: at, ended: true, talk_key: null,
+  });
+  const endedMeta = { gone1: { online: false, offline_since: 30 }, gone2: { online: false, offline_since: 10 } };
+
+  it("merges ended sessions and settled conversations, newest first, counting the daemon's total", () => {
+    const settled = { total: 7, items: [hidden("s1", 40), hidden("s2", 20)] };
+    expect(settledRows(["gone2", "gone1"], endedMeta, settled)).toEqual({
+      rows: [
+        { name: "s1", hidden: settled.items[0] },
+        { name: "gone1", hidden: null },
+        { name: "s2", hidden: settled.items[1] },
+        { name: "gone2", hidden: null },
+      ],
+      total: 9,
+      older: 5,
+    });
+  });
+
+  it("caps the rows and says how many older ones it left out", () => {
+    const settled = { total: 2, items: [hidden("s1", 40), hidden("s2", 20)] };
+    const { rows, older } = settledRows(["gone1"], endedMeta, settled, 2);
+    expect([rows.map((row) => row.name), older]).toEqual([["s1", "gone1"], 1]);
+  });
+
+  it("lists a conversation the daemon sends twice only once", () => {
+    const settled = { total: 1, items: [hidden("gone1", 50)] };
+    expect(settledRows(["gone1"], endedMeta, settled)).toEqual({ rows: [{ name: "gone1", hidden: null }], total: 1, older: 0 });
+  });
+
+  it("works with a daemon that sends no settled conversations", () => {
+    expect(settledRows(["gone1"], endedMeta, undefined)).toEqual({ rows: [{ name: "gone1", hidden: null }], total: 1, older: 0 });
   });
 });

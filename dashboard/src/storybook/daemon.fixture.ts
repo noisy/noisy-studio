@@ -58,6 +58,7 @@ export async function setCharacter(patch:Partial<Character>) { Object.assign(cha
 export async function setAgentMuted(agent:string,muted:boolean) { status.muted_agents=muted ? [...status.muted_agents!,agent] : status.muted_agents!.filter(a=>a!==agent); }
 export async function setActiveAgent(name:string) { status.active_agent=name; }
 export async function dismissAgent(name:string) { delete status.agents[name]; delete status.agent_labels[name]; }
+export async function restoreAgent(name:string) { const settled=status.settled_agents; if(settled){ settled.items=settled.items.filter(item=>item.name!==name); settled.total=Math.max(0,settled.total-1); } }
 export async function reorderAgents(names:string[]) { names.forEach((name,i)=>{status.agents_meta![name].manual_pos=i;}); }
 export async function setPtt(held:boolean) { status.ptt_held=held; status.recording=held; }
 export async function cancelTranscript(id:number) { messages=messages.filter(m=>m.id!==id); }

@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/vue3";
 import { h, ref } from "vue";
 import AgentTabs from "./AgentTabs.vue";
 import HudPanel from "./HudPanel.vue";
-import { projectArgs } from "../storybook/agentTabs.fixture";
+import { projectArgs, SETTLED_AGENTS } from "../storybook/agentTabs.fixture";
 import "../styles/dashboard.css";
 
 const meta: Meta<typeof AgentTabs> = {
@@ -32,7 +32,7 @@ export const UnsafeSavedNames: StoryObj<typeof AgentTabs> = {
  *  count) > SPEAKING (green equalizer) > WAIT count (amber) > WORKING
  *  (violet) > idle (empty slot). WORK+3 shows the count outranking work, SPEAK+3 the
  *  count hidden while it speaks; ENDED shows the greyed row of a session
- *  that ended (it lives in Settled, opened here; hover offers Remove). Every
+ *  that ended (it lives in Settled, opened here; hover offers Restore). Every
  *  live row offers Settle (beside its key cap) on hover/focus, the mic's too - settling the
  *  mic's row hands the mic to the next conversation. Liveness comes from
  *  the daemon's conversation registry, not heartbeats.
@@ -152,13 +152,24 @@ export const EndedButViewed: StoryObj<typeof AgentTabs> = {
 /** Settle, shown on hover or keyboard focus beside the key cap, laid over
  *  the row's right end (the wait time it covers stays in the tooltip);
  *  nothing else moves. Here the mic row is focused. Settled rows offer
- *  Remove instead (no Restore: the daemon cannot un-hide a conversation on
- *  request yet). */
+ *  Restore instead. */
 export const SettleOnFocus: StoryObj<typeof AgentTabs> = {
   args: projectArgs(true),
   decorators: [() => ({ template: '<div style="width:268px"><story /></div>' })],
   play: async ({ canvasElement }) => {
     canvasElement.querySelector<HTMLElement>('button.tab.mic .settle')?.focus();
+  },
+};
+/** Settled, opened: the ended sessions and the conversations you settled,
+ *  newest first. The heading counts all of them; the daemon sends only the
+ *  newest settled ones, so the rest is "+N older". Every Settled row offers
+ *  Restore (focused here), which puts it back in its project - an ended one
+ *  as an ended row. A settled row opens only once restored. */
+export const SettledWithRestore: StoryObj<typeof AgentTabs> = {
+  args: { ...projectArgs(true), settledAgents: SETTLED_AGENTS },
+  decorators: [() => ({ template: '<div style="width:268px"><story /></div>' })],
+  play: async ({ canvasElement }) => {
+    canvasElement.querySelector<HTMLElement>('button.tab.hidden .settle')?.focus();
   },
 };
 /** The viewed row (highlighted surface) is not the mic row (green bar in

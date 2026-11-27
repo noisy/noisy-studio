@@ -1,3 +1,5 @@
+import type { SettledAgent, SettledAgents } from "../types";
+
 /** ONE ordering rule for conversations, shared by the list and the widget.
  *
  * The dashboard grouped by liveness and honoured drag-and-drop; the widget
@@ -17,6 +19,7 @@ export interface AgentMetaLike {
   offline_since?: number | null;
   manual_pos?: number | null;
   project?: string | null;
+  kept?: boolean; // ended, but the user restored it: it stays in its project
 }
 
 /** A project is virtual: the conversations whose sessions run in the same
@@ -60,9 +63,9 @@ export function projectOrder(
  *  projectOrder, then Settled (ended sessions), folded by the caller.
  *
  * An ended session stays in its project - not in Settled - while it still
- * has something for you (speaking, messages waiting) or it is the
- * conversation you are looking at or talking to: a folded section must
- * never hide those. Working is not a place: projects are always busy, so it
+ * has something for you (speaking, messages waiting), it is the
+ * conversation you are looking at or talking to (a folded section must
+ * never hide those), or the user restored it from Settled (kept). Working is not a place: projects are always busy, so it
  * is a glyph on the row, and rows never move because an agent started or
  * stopped working.
  */
@@ -83,13 +86,44 @@ export function groupAgents(
   const speaking = new Set(live.speaking ?? []);
   const inSight = new Set(live.keepInSight ?? []);
   const keepsItsPlace = (n: string) =>
-    (meta[n]?.online ?? true) || speaking.has(n) || (live.queued?.[n] ?? 0) > 0 || inSight.has(n);
+    (meta[n]?.online ?? true) || !!meta[n]?.kept || speaking.has(n) || (live.queued?.[n] ?? 0) > 0 || inSight.has(n);
   const ordered = orderAgents(names, meta);
   const listed = ordered.filter(keepsItsPlace);
   const projects = projectOrder(names, meta)
     .map((project) => ({ project, names: listed.filter((n) => projectOf(n, meta) === project) }))
     .filter((group) => group.names.length > 0);
   return { projects, settled: ordered.filter((n) => !keepsItsPlace(n)) };
+}
+
+/** How many Settled rows the list shows; the rest is "+N older". */
+export const SETTLED_SHOWN = 30;
+/** One Settled row: an ended session still in the agents table, or a
+ *  settled (hidden) conversation (`hidden` carries what the row shows). */
+export interface SettledRow {
+  name: string;
+  hidden: SettledAgent | null;
+}
+
+/** The Settled section: ended sessions and settled conversations in one
+ *  list, newest first (ended when it ended, settled by last activity),
+ *  capped at `limit`. `total` counts every one, so `older` is what the
+ *  cap (here or in the daemon) left out. */
+export function settledRows(
+  ended: string[],
+  meta: Record<string, AgentMetaLike>,
+  settled: SettledAgents | null | undefined,
+  limit = SETTLED_SHOWN,
+): { rows: SettledRow[]; total: number; older: number } {
+  const listed = new Set(ended);
+  const hidden = (settled?.items ?? []).filter((item) => !listed.has(item.name));
+  const dated = [
+    ...ended.map((name) => ({ row: { name, hidden: null }, at: meta[name]?.offline_since ?? 0 })),
+    ...hidden.map((item) => ({ row: { name: item.name, hidden: item }, at: item.last_active_at })),
+  ].sort((a, b) => b.at - a.at);
+  const rows = dated.slice(0, limit).map(({ row }) => row);
+  const twins = (settled?.items.length ?? 0) - hidden.length; // listed already, counted once
+  const total = ended.length + (settled?.total ?? 0) - twins;
+  return { rows, total, older: total - rows.length };
 }
 
 /** Drag a whole project onto another project's heading. The project order
