@@ -165,6 +165,8 @@ const projectArgs = (settledOpen: boolean) => ({
   activity: { bugs: 'Bash · pytest', release: 'Thinking…', mobile: 'Edit · App.swift' },
   settledOpen,
   now: NOW,
+  // The rows show the real hotkey; unbound ones fall back to "Tab N".
+  tabKeys: { 1: 'F16', 2: 'F17', 3: 'ctrl+alt+3' },
 });
 export const Projects: StoryObj<typeof AgentTabs> = {
   args: projectArgs(false),

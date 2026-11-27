@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { projectHue, waitLabel } from "./tabDetails";
+import { chordLabel, projectHue, waitLabel } from "./tabDetails";
 
 describe("waitLabel", () => {
   it.each([
@@ -13,5 +13,11 @@ describe("waitLabel", () => {
 describe("projectHue", () => {
   it("is stable per name and differs between names", () => {
     expect([projectHue("noisy-studio"), projectHue("noisy-studio") === projectHue("dataoffice")]).toEqual([projectHue("noisy-studio"), false]);
+  });
+});
+
+describe("chordLabel", () => {
+  it.each([[undefined, ""], ["", ""], ["F16", "F16"], ["ctrl+alt+g", "⌃⌥G"], ["cmd+shift+1", "⌘⇧1"]])("%j reads %j", (chord, label) => {
+    expect(chordLabel(chord)).toBe(label);
   });
 });

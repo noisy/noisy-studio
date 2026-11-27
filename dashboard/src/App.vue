@@ -53,6 +53,11 @@ const { status, utterances, allUtterances, utterancesFor, character, characterPe
 const { thinking: thinkingAgents, activityText } = useAgentActivity(status);
 // Left column: the conversation list and machine-global controls.
 const leftColumn = useColumnWidth();
+// Each Tab N hotkey's armed chord (else the stored one), for the list rows.
+const tabKeys = computed(() => {
+  const chords = { ...(status.value?.hotkeys?.stored ?? {}), ...(status.value?.hotkeys?.bindings ?? {}) };
+  return Object.fromEntries([1, 2, 3, 4].map((n) => [n, chords[`tab${n}`] ?? ""]));
+});
 
 const lastError = computed(() => errors.value[errors.value.length - 1] ?? null);
 const errorCount = computed(() => errors.value.length);
@@ -430,6 +435,7 @@ function changeAudio({id,value}: AudioChange) {
           class="convo-list"
           :agents="status?.agent_labels ?? {}"
           :meta="status?.agents_meta ?? null"
+          :tab-keys="tabKeys"
           :active="status?.active_agent ?? null"
           :viewed="viewedAgent"
           :speaking="status?.speaking_agents ?? []"

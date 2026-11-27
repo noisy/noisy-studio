@@ -2,7 +2,7 @@
 import { groupAgents, moveWithinProject, type ProjectGroup } from "./agentOrder";
 import { computed, onBeforeUnmount, ref } from "vue";
 import { conversationLabel } from "../conversationLabel";
-import { projectHue, waitLabel } from "./tabDetails";
+import { chordLabel, projectHue, waitLabel } from "./tabDetails";
 
 export interface AgentMeta {
   label: string;
@@ -29,6 +29,7 @@ const props = withDefaults(
     muted?: string[]; // per-conversation mute (future daemon feature)
     settledOpen?: boolean; // initial Settled state; omit for the remembered one
     now?: number; // epoch s; omit to use the row clock (stories/tests pin it)
+    tabKeys?: Record<number, string>; // Tab N hotkey -> its chord ("F16"), shown on the row
   }>(),
   { thinking: () => [], activity: () => ({}), queued: () => ({}), muted: () => [], meta: null, settledOpen: undefined },
 );
@@ -42,6 +43,8 @@ const CLOCK_TICK_MS = 30_000;
 const clock = ref(Date.now() / 1000);
 const clockTimer = setInterval(() => { clock.value = Date.now() / 1000; }, CLOCK_TICK_MS);
 onBeforeUnmount(() => clearInterval(clockTimer));
+// The row shows the real key (F16), falling back to "Tab N" when unbound.
+const keyCap = (shortcut: number | null | undefined) => (shortcut ? chordLabel(props.tabKeys?.[shortcut]) || `Tab ${shortcut}` : "");
 const waited = (name: string) => waitLabel(props.meta?.[name]?.waiting_since, props.now ?? clock.value);
 
 
@@ -189,7 +192,7 @@ function onDrop(target: Tab) {
             <span class="waited" :title="waited(item.tab.name) ? 'Waiting for you' : undefined">{{ waited(item.tab.name) }}</span>
             <!-- Tab N hotkey, from the daemon's stable order, drawn as a key
                  so it reads as a shortcut, not a count. A reserved slot. -->
-            <kbd class="shortcut" :class="{ none: !meta?.[item.tab.name]?.shortcut }" :title="meta?.[item.tab.name]?.shortcut ? `Hotkey: Tab ${meta[item.tab.name].shortcut} talks to this conversation` : undefined">{{ meta?.[item.tab.name]?.shortcut ? `Tab ${meta[item.tab.name].shortcut}` : '' }}</kbd>
+            <kbd class="shortcut" :class="{ none: !meta?.[item.tab.name]?.shortcut }" :title="meta?.[item.tab.name]?.shortcut ? `Hotkey: Tab ${meta[item.tab.name].shortcut} talks to this conversation` : undefined">{{ keyCap(meta?.[item.tab.name]?.shortcut) }}</kbd>
           </span>
           <span class="line where">
             <svg v-if="whereLine(item.tab)" class="branch-icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="4.5" cy="3.5" r="1.6" /><circle cx="4.5" cy="12.5" r="1.6" /><circle cx="11.5" cy="5.5" r="1.6" /><path d="M4.5 5.1v5.8M11.5 7.1c0 2.4-2.2 3-5.4 4" /></svg>

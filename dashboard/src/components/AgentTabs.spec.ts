@@ -320,4 +320,17 @@ describe("AgentTabs", () => {
     expect(wrapper.findAll("button.tab").map((b) => b.find(".tab-label").text())).toEqual(["Release notes", "Old spike"]);
     localStorage.removeItem("noisy.tabs.settledOpen");
   });
+
+  it("shows each row's real hotkey, falling back to Tab N when it has none", () => {
+    const base = { online: true, offline_since: null };
+    const wrapper = mount(AgentTabs, {
+      props: {
+        agents: { a: "A", b: "B" },
+        meta: { a: { ...base, label: "A", activated_at: 1, shortcut: 1 }, b: { ...base, label: "B", activated_at: 2, shortcut: 2 } },
+        active: null, viewed: null, speaking: [], tabKeys: { 1: "F16", 2: "" },
+      },
+    });
+
+    expect(wrapper.findAll(".shortcut").map((k) => k.text())).toEqual(["F16", "Tab 2"]);
+  });
 });

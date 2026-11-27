@@ -22,3 +22,12 @@ export function projectHue(project: string): number {
   for (const char of project) hash = (hash * 31 + char.codePointAt(0)!) >>> 0;
   return hash % 360;
 }
+
+const MODIFIER_GLYPHS: Record<string, string> = { ctrl: "⌃", control: "⌃", alt: "⌥", option: "⌥", cmd: "⌘", command: "⌘", shift: "⇧" };
+
+/** A stored chord ("F16", "ctrl+alt+g") as a compact key-cap label
+ *  ("F16", "⌃⌥G"). Empty for no chord. */
+export function chordLabel(chord: string | null | undefined): string {
+  if (!chord) return "";
+  return chord.split("+").map((part) => MODIFIER_GLYPHS[part.toLowerCase()] ?? part.toUpperCase()).join("");
+}
