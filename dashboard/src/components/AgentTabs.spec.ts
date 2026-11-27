@@ -243,6 +243,23 @@ describe("AgentTabs", () => {
     expect(localStorage.getItem("noisy.tabs.settledOpen")).toBe("1");
   });
 
+  it("opens Settled when this browser remembered it open", () => {
+    localStorage.setItem("noisy.tabs.settledOpen", "1");
+    const wrapper = mount(AgentTabs, {
+      props: {
+        agents: { live: "Release notes", gone: "Old spike" },
+        meta: {
+          live: { label: "Release notes", online: true, activated_at: 1, offline_since: null },
+          gone: { label: "Old spike", online: false, activated_at: 0, offline_since: 5 },
+        },
+        active: "live", viewed: "live", speaking: [],
+      },
+    });
+    expect(wrapper.get("button.toggle").attributes("aria-expanded")).toBe("true");
+    expect(wrapper.findAll("button.tab").map((b) => b.find(".tab-label").text())).toEqual(["Release notes", "Old spike"]);
+    localStorage.removeItem("noisy.tabs.settledOpen");
+  });
+
   it("brings a working conversation back to the top when it has something for you", () => {
     const wrapper = mount(AgentTabs, {
       props: { agents, active: "id-a", viewed: "id-a", speaking: [], thinking: ["id-a", "id-b"], working: ["id-a", "id-b"], queued: { "id-b": 1 } },

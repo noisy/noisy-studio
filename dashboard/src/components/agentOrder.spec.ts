@@ -29,6 +29,13 @@ describe("sectionAgents", () => {
     expect(sections.yourTurn).toEqual(["idle", "talking", "backlog"]);
   });
 
+  it("never hides an ended session that still waits for you, or the one you look at or talk to", () => {
+    const more = { ...meta, unheard: { online: false, offline_since: 8 }, viewed: { online: false, offline_since: 7 }, mic: { online: false, offline_since: 6 } };
+    const sections = sectionAgents(Object.keys(more), more, { queued: { unheard: 1 }, keepInSight: ["viewed", "mic"] });
+    expect(sections.settled).toEqual(["ended"]);
+    expect(sections.yourTurn.slice(-3)).toEqual(["unheard", "viewed", "mic"]);
+  });
+
   it("treats conversations without metadata as online (legacy daemon)", () => {
     expect(sectionAgents(["a", "b"])).toEqual({ yourTurn: ["a", "b"], working: [], settled: [] });
   });

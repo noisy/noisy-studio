@@ -83,6 +83,7 @@ type Item =
 const sections = computed(() =>
   sectionAgents(Object.keys(props.agents), props.meta ?? {}, {
     working: props.working, speaking: props.speaking, queued: props.queued,
+    keepInSight: [props.viewed, props.active],
   }),
 );
 const tabOf = (name: string, section: Section): Tab => ({

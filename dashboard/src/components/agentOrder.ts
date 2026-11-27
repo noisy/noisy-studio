@@ -50,7 +50,9 @@ export function orderAgents(
  *   idle after finishing its turn.
  * - working: online, working for a while (the caller decides how long, see
  *   useSustainedWork) and nothing waiting for you.
- * - settled: the session ended.
+ * - settled: the session ended - unless it still has something for you
+ *   (speaking, messages waiting) or it is the conversation you are looking
+ *   at or talking to: a collapsed section must never hide those.
  *
  * Each section keeps the orderAgents order, so drag-and-drop and arrival
  * order still hold inside it.
@@ -64,15 +66,17 @@ export interface ConversationSections {
 export function sectionAgents(
   names: string[],
   meta: Record<string, AgentMetaLike> = {},
-  live: { working?: string[]; speaking?: string[]; queued?: Record<string, number> } = {},
+  live: { working?: string[]; speaking?: string[]; queued?: Record<string, number>; keepInSight?: (string | null)[] } = {},
 ): ConversationSections {
   const working = new Set(live.working ?? []);
   const speaking = new Set(live.speaking ?? []);
   const waitsForYou = (n: string) => speaking.has(n) || (live.queued?.[n] ?? 0) > 0;
+  const inSight = new Set(live.keepInSight ?? []);
   const sections: ConversationSections = { yourTurn: [], working: [], settled: [] };
   for (const name of orderAgents(names, meta)) {
-    if (!(meta[name]?.online ?? true)) sections.settled.push(name);
-    else if (working.has(name) && !waitsForYou(name)) sections.working.push(name);
+    const online = meta[name]?.online ?? true;
+    if (!online && !waitsForYou(name) && !inSight.has(name)) sections.settled.push(name);
+    else if (online && working.has(name) && !waitsForYou(name)) sections.working.push(name);
     else sections.yourTurn.push(name);
   }
   return sections;

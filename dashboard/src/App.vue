@@ -20,7 +20,7 @@ import Oscilloscope from "./components/Oscilloscope.vue";
 import TurnHistory from "./components/TurnHistory.vue";
 import AudioControls from "./components/AudioControls.vue";
 import type { AudioChange } from "./components/audioControls";
-import { useSustainedWork } from "./composables/useSustainedWork";
+import { useAgentActivity } from "./composables/useAgentActivity";
 import StageLive from "./components/StageLive.vue";
 import TaskProgressPanel from "./components/task-progress/TaskProgressPanel.vue";
 import TaskReviewPage from "./components/task-progress/TaskReviewPage.vue";
@@ -46,22 +46,8 @@ import { useMicStream } from "./composables/useMicStream";
 const { status, utterances, allUtterances, utterancesFor, character, characterPending, characterError, changeCharacter, offline, viewedAgent, errors, clearErrors, selectAgent, dismissAgent, reorderAgents } =
   useDaemonState();
 
-// Agents visibly "working": their live-activity line was updated in the
-// last few seconds (tool running or THINKING between tools).
-const THINKING_FRESH_S = 20;
-const thinkingAgents = computed(() => {
-  const activity = status.value?.activity ?? {};
-  const now = Date.now() / 1000;
-  return Object.entries(activity)
-    .filter(([, a]) => a?.text && now - a.at < THINKING_FRESH_S)
-    .map(([name]) => name);
-});
-// The conversation list moves an agent into "Working" only after sustained
-// work, and shows what it is doing there.
-const sustainedWork = useSustainedWork(thinkingAgents);
-const activityText = computed(() =>
-  Object.fromEntries(thinkingAgents.value.map((name) => [name, status.value?.activity?.[name]?.text ?? ""])),
-);
+// Live pulse, the list's Working section and what each agent is doing.
+const { thinking: thinkingAgents, working: sustainedWork, activityText } = useAgentActivity(status);
 // Left column: the conversation list and machine-global controls.
 const LEFT_COLUMN_PX = 268;
 
