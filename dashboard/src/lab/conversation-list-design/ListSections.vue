@@ -2,7 +2,8 @@
 // Variant B, "Sections": the current structure tidied - small-caps section
 // labels with a hairline, and everything hover adds lives on line 2, so the
 // title line never changes.
-import { assignShortcut, groupAgents, moveWithinProject, type ProjectGroup } from "../../components/agentOrder";
+import { groupAgents, moveWithinProject, type ProjectGroup } from "../../components/agentOrder";
+import { assignShortcut } from "./labOrder";
 import { computed, onBeforeUnmount, ref } from "vue";
 import { conversationLabel } from "../../conversationLabel";
 import { chordLabel, projectHue, waitLabel } from "../../components/tabDetails";

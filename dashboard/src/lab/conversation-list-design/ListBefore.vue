@@ -1,7 +1,8 @@
 <script setup lang="ts">
 // Frozen copy of AgentTabs.vue as it was before the visual design pass
 // (624f22b), kept so the Lab board can compare against it. Do not edit.
-import { assignShortcut, groupAgents, moveWithinProject, type ProjectGroup } from "../../components/agentOrder";
+import { groupAgents, moveWithinProject, type ProjectGroup } from "../../components/agentOrder";
+import { assignShortcut } from "./labOrder";
 import { computed, onBeforeUnmount, ref } from "vue";
 import { conversationLabel } from "../../conversationLabel";
 import { chordLabel, projectHue, waitLabel } from "../../components/tabDetails";
