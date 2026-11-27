@@ -23,6 +23,7 @@ from noisy_studio.listener import pricing, speech
 from noisy_studio.listener.dashboard import DASHBOARD_HTML
 from noisy_studio.listener.identity import canonical_identity
 from noisy_studio.listener.state import ListenerState
+from noisy_studio.listener.summary_request import summary_request
 
 _PRERELEASE_WORDS = {"a": "alpha", "b": "beta", "rc": "rc"}
 
@@ -1209,6 +1210,19 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 if count:
                     state.add_event("agent", f"skipped {count} unheard message(s)")
                 self._respond({"skipped": count})
+            elif self.path == "/summarize-unheard":
+                body = self._read_json_body()
+                agent = str(body.get("agent") or "") or state.active_agent or ""
+                if not agent or not state.agent_alive(agent):
+                    # Settling the cards with nobody home would lose them:
+                    # the request would wait in a queue no session drains.
+                    self._respond({"error": "this conversation's session is offline"}, status=409)
+                    return
+                texts = state.summarize_unheard(agent)
+                if texts:
+                    state.add_transcript(summary_request(texts), addressee=agent)
+                    state.add_event("agent", f"asked for a summary of {len(texts)} unheard message(s)")
+                self._respond({"summarized": len(texts)})
             elif self.path == "/playback-pause":
                 # Transport pause freezes the native player in place.
                 paused = playback.toggle_pause()

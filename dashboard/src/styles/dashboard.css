@@ -59,9 +59,6 @@
 .hud select.ctl { appearance:auto; }
 .hud .settingsbtn { width:100%; margin-top:auto; min-height:38px; }
 .hud .settings-x { position:absolute; top:12px; right:14px; background:var(--bg1); border:1px solid var(--line); color:var(--ink); padding:5px 10px; }
-.hud .catchup-row { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
-.hud .catchup { flex:1; border-color:var(--green); color:var(--green); }
-.hud .skipall { color:var(--muted); }
 .hud footer { flex:none; border-top:1px solid var(--line); display:flex; flex-wrap:wrap; align-items:center; gap:14px; padding:10px 0; color:var(--muted); font-size:10px; }
 .hud footer b { font-weight:500; color:var(--ink); }
 .hud footer .ok { color:var(--green); }
