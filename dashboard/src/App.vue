@@ -7,6 +7,8 @@ import { replaySpeechText } from "./components/bubbleStatus";
 import type { Character, Utterance } from "./types";
 import ActivityLine from "./components/ActivityLine.vue";
 import AgentTabs from "./components/AgentTabs.vue";
+import ColumnResizer from "./components/ColumnResizer.vue";
+import { useColumnWidth } from "./composables/useColumnWidth";
 import CatchUpBar from "./components/CatchUpBar.vue";
 import VoicePersona from "./components/VoicePersona.vue";
 import { provideTaskProgress } from "./composables/useTaskProgress";
@@ -50,7 +52,7 @@ const { status, utterances, allUtterances, utterancesFor, character, characterPe
 // Live pulse, the list's Working section and what each agent is doing.
 const { thinking: thinkingAgents, working: sustainedWork, activityText } = useAgentActivity(status);
 // Left column: the conversation list and machine-global controls.
-const LEFT_COLUMN_PX = 268;
+const leftColumn = useColumnWidth();
 
 const lastError = computed(() => errors.value[errors.value.length - 1] ?? null);
 const errorCount = computed(() => errors.value.length);
@@ -419,7 +421,8 @@ function changeAudio({id,value}: AudioChange) {
             <button ref="settingsToggle" class="ctl header-action settings-toggle" :aria-pressed="showSettings" @click="showSettings = !showSettings">Settings</button>
           </div>
         </header>
-    <div class="cols" :style="{ '--left-column-width': LEFT_COLUMN_PX + 'px' }">
+    <div class="cols" :style="{ '--left-column-width': leftColumn.width.value + 'px' }">
+      <ColumnResizer :width="leftColumn.width.value" @resize="leftColumn.set" @reset="leftColumn.reset" />
       <div class="col-left">
         <!-- The conversations, T3-style: what needs you on top, working and
              ended sessions in their own sections below. -->
