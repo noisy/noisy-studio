@@ -1,10 +1,11 @@
-/** Poll the daemon's REST API into reactive state (legacy cadence: 400 ms). */
+/** Daemon state as reactive refs: pushed over the state stream (#73), polled
+ * from the REST API (legacy cadence: 400 ms) only while the stream is down. */
 
 import { onMounted, onUnmounted, ref, type Ref } from "vue";
 import {
   getEvents, getStatus, getUtterances, setActiveAgent, dismissAgent as apiDismissAgent, reorderAgents as apiReorderAgents, type DaemonEvent,
 } from "../api/client";
-import { openStateStream, type StateSnapshot, type StreamHandle } from "../api/stateStream";
+import { openStateStream, type StateUpdate, type StreamHandle } from "../api/stateStream";
 import { validStatusChange } from "../machines/chat";
 import type { Character, DaemonStatus, Utterance } from "../types";
 import { canonicalCharacter } from "../character";
@@ -138,19 +139,21 @@ function createDaemonState(pollMs: number): SharedDaemonState {
   }
 
   /* Failures (STT/TTS errors) live in the daemon's event log, not in the
-   * snapshot; fetch them on the side at a relaxed cadence. */
+   * status. A v2 stream carries new entries; otherwise pull them on the side. */
   async function pullEvents() {
     try {
-      const fresh = await getEvents(lastEventSeq);
-      if (fresh.length) {
-        lastEventSeq = fresh[fresh.length - 1].seq;
-        const failures = fresh.filter((e) => e.kind.endsWith("_error"));
-        if (failures.length) {
-          errors.value = [...errors.value, ...failures].slice(-ERROR_LOG_SIZE);
-        }
-      }
+      ingestEvents(await getEvents(lastEventSeq));
     } catch {
       /* the next pull will try again */
+    }
+  }
+  function ingestEvents(events: DaemonEvent[]) {
+    const fresh = events.filter((e) => e.seq > lastEventSeq);
+    if (!fresh.length) return;
+    lastEventSeq = fresh[fresh.length - 1].seq;
+    const failures = fresh.filter((e) => e.kind.endsWith("_error"));
+    if (failures.length) {
+      errors.value = [...errors.value, ...failures].slice(-ERROR_LOG_SIZE);
     }
   }
 
@@ -158,14 +161,17 @@ function createDaemonState(pollMs: number): SharedDaemonState {
    * whenever it drops. One unfiltered fetch serves both the viewed log and
    * the unread badges on background tabs. */
   async function tick() {
-    if (streamOpen) {
-      await pullEvents();
+    if (streamLive) {
+      if (!eventsViaStream) await pullEvents(); // a v1 daemon streams no events
       return;
     }
     try {
       const askedAt = Date.now();
       const s = await getStatus();
       const all = await getUtterances();
+      // The stream went live while this poll was in flight: its state is
+      // newer, and it only pushes again on the next change.
+      if (streamLive) return;
       apply(s, all, askedAt);
       await pullEvents();
     } catch {
@@ -173,14 +179,38 @@ function createDaemonState(pollMs: number): SharedDaemonState {
     }
   }
 
-  let streamOpen = false;
+  let streamLive = false;
+  let eventsViaStream = false;
   let stream: StreamHandle | null = null;
-  function onSnapshot(snapshot: StateSnapshot) {
-    apply(snapshot.status, snapshot.utterances, Date.now());
+  function onStreamUpdate(update: StateUpdate) {
+    apply(update.status, update.utterances, Date.now());
+    eventsViaStream = update.events !== null;
+    if (update.events) {
+      // A fresh snapshot replays the daemon's whole log; one that ends below
+      // what we have seen comes from a restarted daemon numbering from 1.
+      const newest = update.events.at(-1)?.seq ?? 0;
+      if (update.fresh && newest < lastEventSeq) lastEventSeq = 0;
+      ingestEvents(update.events);
+    }
+    syncPolling();
   }
-  function onStreamState(open: boolean) {
-    streamOpen = open;
-    if (!open) tick(); // fall back at once, do not wait for the next interval
+  function onStreamLive(live: boolean) {
+    streamLive = live;
+    syncPolling();
+    if (!live) tick(); // fall back at once, do not wait for the next interval
+  }
+
+  /* The interval runs only while something is not pushed: everything while
+   * the stream is down, just the event log beside a v1 stream. */
+  let timer: ReturnType<typeof setInterval> | undefined;
+  let subscribers = 0;
+  function syncPolling() {
+    const needed = subscribers > 0 && (!streamLive || !eventsViaStream);
+    if (needed && !timer) timer = setInterval(tick, pollMs);
+    if (!needed && timer) {
+      clearInterval(timer);
+      timer = undefined;
+    }
   }
 
   function selectAgent(name: string) {
@@ -222,22 +252,20 @@ function createDaemonState(pollMs: number): SharedDaemonState {
       .finally(() => tick());
   }
 
-  let timer: ReturnType<typeof setInterval> | undefined;
-  let subscribers = 0;
   function subscribe() {
     if (subscribers++ === 0) {
       tick();
-      timer = setInterval(tick, pollMs);
-      stream = openStateStream(onSnapshot, onStreamState);
+      syncPolling();
+      stream = openStateStream(onStreamUpdate, onStreamLive);
     }
   }
   function unsubscribe() {
     if (--subscribers === 0) {
-      clearInterval(timer);
-      timer = undefined;
       stream?.close();
       stream = null;
-      streamOpen = false;
+      streamLive = false;
+      eventsViaStream = false;
+      syncPolling();
     }
   }
 

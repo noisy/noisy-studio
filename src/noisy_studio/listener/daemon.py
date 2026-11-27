@@ -569,7 +569,7 @@ def run(config: VadConfig | None = None) -> None:
     # Push dashboard snapshots independently of native audio capture.
     from noisy_studio.listener.http_api import state_snapshot
 
-    start_state_stream(port, snapshot=lambda: state_snapshot(state))
+    start_state_stream(port, snapshot=lambda: state_snapshot(state), events_since=state.events_since)
 
     def on_audio(indata: np.ndarray, *_args: object) -> None:
         if state.user_muted:

@@ -27,6 +27,18 @@ const DAEMON_PATHS = [
   "/speech-settings",
 ];
 
+// The pushed state stream (#73) is a WebSocket one port above the HTTP API.
+// Proxying it keeps the page on one origin, so the client needs no idea which
+// daemon `vite dev` points at.
+const STATE_STREAM_PORT_OFFSET = 1;
+function stateStreamTarget(daemonUrl: string): string {
+  const url = new URL(daemonUrl);
+  const port = Number(url.port || (url.protocol === "https:" ? 443 : 80));
+  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+  url.port = String(port + STATE_STREAM_PORT_OFFSET);
+  return url.origin;
+}
+
 export default defineConfig({
   // vueDevTools only touches `vite dev`: the floating Vue DevTools panel
   // (component tree, props, pinia-less state) — never part of the build.
@@ -43,7 +55,10 @@ export default defineConfig({
   define: { __APP_VERSION__: JSON.stringify(pkg.version) },
   base: "./", // served from /next/ — assets must resolve relatively
   server: {
-    proxy: Object.fromEntries(DAEMON_PATHS.map((path) => [path, DAEMON])),
+    proxy: {
+      ...Object.fromEntries(DAEMON_PATHS.map((path) => [path, DAEMON])),
+      "/state": { target: stateStreamTarget(DAEMON), ws: true },
+    },
   },
   test: {
     environment: "happy-dom",

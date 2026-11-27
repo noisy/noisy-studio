@@ -29,8 +29,9 @@ NOISY_STUDIO_DAEMON_URL=http://127.0.0.1:7765 npm run dev
 
 Open port 5173 for hot reload. New backend routes must be added to
 `DAEMON_PATHS` in `vite.config.ts`; otherwise Vite may return HTML with status
-200. Restart Vite after proxy configuration changes. Build with `npm run build`
-to update the daemon-served dashboard.
+200. Restart Vite after proxy configuration changes. The state WebSocket
+(`/state`) is proxied separately to the daemon's HTTP port + 1. Build with
+`npm run build` to update the daemon-served dashboard.
 
 ## Integrations
 
