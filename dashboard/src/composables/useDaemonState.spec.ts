@@ -32,7 +32,33 @@ async function flush() {
   for (let i = 0; i < 24; i++) await Promise.resolve();
 }
 
-beforeEach(() => vi.useFakeTimers());
+/** Stands in for the browser WebSocket: records what was opened and lets a
+ * test deliver messages or drop the connection. Never opens on its own, so a
+ * test that ignores it exercises the polling fallback. */
+class FakeSocket {
+  static opened: FakeSocket[] = [];
+  onmessage: ((event: { data: string }) => void) | null = null;
+  onclose: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  closed = false;
+  constructor(public url: string) {
+    FakeSocket.opened.push(this);
+  }
+  deliver(message: object) {
+    this.onmessage?.({ data: JSON.stringify(message) });
+  }
+  close() {
+    if (this.closed) return;
+    this.closed = true;
+    this.onclose?.();
+  }
+}
+
+beforeEach(() => {
+  vi.useFakeTimers();
+  FakeSocket.opened = [];
+  vi.stubGlobal("WebSocket", FakeSocket);
+});
 afterEach(() => {
   resetDaemonState(); // the state is now app-wide; each case starts clean
   vi.useRealTimers();
@@ -260,5 +286,113 @@ describe("useDaemonState", () => {
     await flush();
     expect(state.viewedAgent.value).toBe("agent-a");
     unmount();
+  });
+});
+
+describe("useDaemonState over the state stream", () => {
+  const snapshot = {
+    type: "snapshot", v: 2, seq: 1, status: STATUS,
+    utterances: [{ id: 1, agent: "agent-a" }],
+    events: [{ seq: 4, ts: 1, kind: "stt_error", detail: "old failure" }],
+  };
+
+  function countingFetch() {
+    return vi.fn(async (url: string) => {
+      if (url.startsWith("/status")) return jsonResponse({ ...STATUS, active_agent: "agent-b" });
+      if (url.startsWith("/utterances")) return jsonResponse({ utterances: [] });
+      if (url.startsWith("/events")) return jsonResponse({ events: [] });
+      return jsonResponse({ character: {} });
+    });
+  }
+  const stateFetches = (fetchMock: ReturnType<typeof countingFetch>) =>
+    fetchMock.mock.calls.filter(([url]) => /^\/(status|utterances|events)/.test(url)).length;
+
+  it("renders the pushed state and stops polling while the stream is live", async () => {
+    const fetchMock = countingFetch();
+    vi.stubGlobal("fetch", fetchMock);
+    const { state, unmount } = mountComposable();
+    await flush();
+    const socket = FakeSocket.opened[0];
+    socket.deliver(snapshot);
+    socket.deliver({
+      type: "patch", v: 2, seq: 2,
+      status: [[["queued"], 3]],
+      utterances: { remove: [], upsert: [{ id: 2, agent: "agent-a" }] },
+      events: [{ seq: 5, ts: 2, kind: "tts_error", detail: "new failure" }],
+    });
+    const fetchesWhileLive = stateFetches(fetchMock);
+    await vi.advanceTimersByTimeAsync(4000);
+    await flush();
+
+    expect({
+      url: socket.url,
+      queued: state.status.value?.queued,
+      viewed: state.utterances.value.map((u) => u.id),
+      errors: state.errors.value.map((e) => e.detail),
+      extraFetches: stateFetches(fetchMock) - fetchesWhileLive,
+    }).toEqual({
+      url: "ws://localhost:3000/state?v=2",
+      queued: 3,
+      viewed: [1, 2],
+      errors: ["old failure", "new failure"],
+      extraFetches: 0,
+    });
+    unmount();
+  });
+
+  it("falls back to polling at once when the stream drops, then reconnects", async () => {
+    const fetchMock = countingFetch();
+    vi.stubGlobal("fetch", fetchMock);
+    const { state, unmount } = mountComposable();
+    await flush();
+    FakeSocket.opened[0].deliver(snapshot);
+    FakeSocket.opened[0].close();
+    await flush();
+    const polledActive = state.status.value?.active_agent;
+    await vi.advanceTimersByTimeAsync(500);
+    FakeSocket.opened[1].deliver({ ...snapshot, seq: 9 });
+    await flush();
+
+    expect([polledActive, FakeSocket.opened.length, state.status.value?.active_agent])
+      .toEqual(["agent-b", 2, "agent-a"]);
+    unmount();
+  });
+
+  it("drops a stream that skipped a patch and takes a fresh snapshot", async () => {
+    vi.stubGlobal("fetch", countingFetch());
+    const { unmount } = mountComposable();
+    await flush();
+    const first = FakeSocket.opened[0];
+    first.deliver(snapshot);
+    first.deliver({ type: "patch", v: 2, seq: 5, status: [[["queued"], 1]] });
+    await vi.advanceTimersByTimeAsync(500);
+
+    expect([first.closed, FakeSocket.opened.length]).toEqual([true, 2]);
+    unmount();
+  });
+
+  it("keeps pulling events beside a v1 stream that does not carry them", async () => {
+    const fetchMock = countingFetch();
+    vi.stubGlobal("fetch", fetchMock);
+    const { unmount } = mountComposable();
+    await flush();
+    FakeSocket.opened[0].deliver({ type: "snapshot", status: STATUS, utterances: [] });
+    fetchMock.mockClear();
+    await vi.advanceTimersByTimeAsync(800);
+    await flush();
+
+    const urls = fetchMock.mock.calls.map(([url]) => url.split("?")[0]);
+    expect(urls).toEqual(["/events", "/events"]);
+    unmount();
+  });
+
+  it("closes the stream with the last subscriber", async () => {
+    vi.stubGlobal("fetch", countingFetch());
+    const { unmount } = mountComposable();
+    await flush();
+    unmount();
+    await vi.advanceTimersByTimeAsync(5000);
+
+    expect([FakeSocket.opened.length, FakeSocket.opened[0].closed]).toEqual([1, true]);
   });
 });
