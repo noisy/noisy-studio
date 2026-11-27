@@ -3,8 +3,9 @@ import { onMounted, onUnmounted, ref } from "vue";
 import HeaderOptions, { type HeaderState, type HeaderVariant } from "./HeaderOptions.vue";
 import ConversationSections from "./ConversationSections.vue";
 
-// Option board for the dashboard re-layout: mic controls move into the
-// header, the conversation tabs become a sectioned list in the left column.
+// Option board for the dashboard re-layout: the mic control moves into the
+// header as ONE slot (Mute mic in Auto, Hold to talk in Push to talk), the
+// conversation tabs become a sectioned list in the left column.
 // Pick a header variant and confirm the section rules; the winner is then
 // built into App/AgentTabs and this board is deleted.
 const meta: Meta = {
@@ -14,8 +15,8 @@ const meta: Meta = {
 export default meta;
 
 const VARIANTS: { id: HeaderVariant; name: string; idea: string }[] = [
-  { id: "A", name: "A · Paired plates", idea: "Mic plate (with live scope) and agents plate side by side on the right; icon + word tell them apart." },
-  { id: "B", name: "B · Centre console", idea: "The mic is the instrument: scope, Mute mic and Hold to talk as one console in the middle of the header." },
+  { id: "A", name: "A · Paired plates", idea: "Mic slot (with live scope) and agents plate side by side on the right; icon + word tell them apart." },
+  { id: "B", name: "B · Centre console", idea: "The mic is the instrument: scope and the mic slot as one console in the middle of the header." },
   { id: "C", name: "C · Input | Output", idea: "Two labelled groups, YOU · INPUT and AGENTS · OUTPUT. The frame says which way sound goes." },
 ];
 const STATES: { caption: string; state: HeaderState }[] = [
@@ -23,6 +24,7 @@ const STATES: { caption: string; state: HeaderState }[] = [
   { caption: "Auto · mic muted + agents muted", state: { mode: "auto", micMuted: true, pttHeld: false, agentsMuted: true } },
   { caption: "Push to talk · idle", state: { mode: "ptt", micMuted: false, pttHeld: false, agentsMuted: false } },
   { caption: "Push to talk · held (on air)", state: { mode: "ptt", micMuted: false, pttHeld: true, agentsMuted: false } },
+  { caption: "Push to talk · mute left over from Auto (slot offers unmute)", state: { mode: "ptt", micMuted: true, pttHeld: false, agentsMuted: false } },
 ];
 
 const BOARD_WIDTH_PX = 1280;

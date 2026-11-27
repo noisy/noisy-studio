@@ -74,14 +74,15 @@ const open = ref(!!props.settledOpen);
 </template>
 
 <style scoped>
-.mock { display:grid; grid-template-columns:var(--column) minmax(0,1fr); height:620px; background:var(--bg0); color:var(--ink); font:13px/1.4 var(--sans); padding:12px 20px; }
+.mock { display:grid; grid-template-columns:var(--column) minmax(0,1fr); gap:20px; height:620px; background:var(--bg0); color:var(--ink); font:13px/1.4 var(--sans); padding:12px 20px; }
 .column { display:flex; flex-direction:column; min-height:0; padding-right:0; }
-.list { display:flex; flex-direction:column; gap:2px; overflow-y:auto; padding:2px 0 2px 2px; flex:1; min-height:0; }
+.list { display:flex; flex-direction:column; gap:2px; overflow-y:auto; padding:2px; flex:1; min-height:0; }
 button { font:inherit; color:inherit; background:none; border:1px solid transparent; cursor:pointer; text-align:left; }
-.row { position:relative; flex:none; display:flex; align-items:center; gap:8px; height:var(--row); padding:0 10px; border-radius:8px 0 0 8px; color:var(--muted); }
+.row { position:relative; flex:none; display:flex; align-items:center; gap:8px; height:var(--row); padding:0 10px; border-radius:8px; color:var(--muted); }
 .row:hover { background:var(--surface-hover); color:var(--ink); }
-/* The viewed row is a folder tab turned sideways: it fuses with the frame. */
-.row.viewed { background:var(--panel); color:var(--ink); border-color:var(--line); border-right-color:var(--panel); margin-right:-1px; z-index:1; }
+/* The viewed row is simply selected - it does not fuse with the frame,
+   which would break as soon as the list scrolls. */
+.row.viewed { background:var(--surface-hover); color:var(--ink); border-color:var(--line-strong); }
 .row.dim .label { color:color-mix(in srgb, var(--muted) 85%, transparent); }
 .row.offline { border-style:dashed; border-color:transparent; }
 .row.offline .label { opacity:.7; }
@@ -102,9 +103,9 @@ button { font:inherit; color:inherit; background:none; border:1px solid transpar
 .toggle:hover { color:var(--ink); }
 .chev { display:inline-block; font-size:12px; transition:transform .12s; }
 .chev.open { transform:rotate(90deg); }
-.review { display:flex; justify-content:space-between; margin:10px 12px 0 0; padding:10px 12px; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); font-size:12px; font-weight:600; }
+.review { display:flex; justify-content:space-between; margin:10px 0 0; padding:10px 12px; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); font-size:12px; font-weight:600; }
 .review b { color:var(--amber); font-weight:500; }
-.frame { position:relative; background:var(--panel); border:1px solid var(--line); border-radius:0 var(--radius) var(--radius) var(--radius); padding:24px; display:flex; flex-direction:column; gap:12px; }
+.frame { position:relative; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:24px; display:flex; flex-direction:column; gap:12px; }
 .bubble { max-width:60%; padding:10px 14px; border-radius:12px; border:1px solid var(--line); }
 .bubble.agent { border-color:color-mix(in srgb, var(--agent-accent) 40%, var(--line)); }
 .bubble.you { align-self:flex-end; background:var(--surface-hover); }
