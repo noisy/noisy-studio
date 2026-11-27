@@ -62,14 +62,44 @@ at the end. Projects keep a stable order and never re-sort on state - there
 is no "Working" section: projects are always busy, so working is a row
 glyph. "Settled" (ended; folded by default) sits below. A folded section
 never hides the viewed or mic row, nor one with messages for you. The mic
-row carries an inset green edge (no "Mic" word: the edge says it). The Tab
-hotkey is drawn as a key with the real chord ("F17"), never a bare number that
-reads as a count; on rows it shows on hover/focus only (the user knows their
-keys), and right-click assigns one (a position swap: the daemon numbers by
-position). An idle row has an EMPTY status slot - a grey dot read as a bullet. The selected row
-is highlighted, NOT fused with the frame - fusing breaks as soon as the
-list scrolls. Grouping and order live in `agentOrder.ts` (the widget uses
-the same order); drag-and-drop reorders within a project only.
+row carries a green bar in the row's inset (no "Mic" word: the bar says it).
+The Tab hotkey is drawn as a key with the real chord ("F17"), never a bare
+number that reads as a count; on rows it shows on hover/focus only (the user
+knows their keys), and right-click assigns one (a position swap: the daemon
+numbers by position). An idle row has an EMPTY status slot - a grey dot read
+as a bullet. The selected row is highlighted, NOT fused with the frame -
+fusing breaks as soon as the list scrolls. Grouping and order live in
+`agentOrder.ts` (the widget uses the same order); drag-and-drop reorders
+within a project only.
+
+### Conversation list grid (visual design pass, 2026-11-27)
+
+The list was patched piece by piece and read as "odd, asymmetric"; the fix
+was one system, chosen on `Lab/ConversationListDesign` (variant A, Ledger):
+
+- **One grid for everything**: `lead | text | meta` (16px | 1fr | 32px,
+  8px gaps, 8px row inset), shared by project headings, the Settled heading
+  and rows. Badge, status glyph and the Settled chevron sit in `lead`; every
+  title and heading name starts at the same x; every amber count and wait
+  time ends on the same right edge, at any column width (220-560px). Nothing
+  reserves invisible space at rest - that is what made the wait time float.
+  Geometry is the `GRID` constant in `AgentTabs.vue`.
+- **Rhythm** in 4px steps: row 48px (every state), heading 24px with 16px
+  above it, so a heading sits closer to its rows than to the group above; 2px
+  between rows. Settled is set apart by a hairline (`--line`) above it.
+- **Type scale**: title 13px ink (the brightest thing in the list); branch
+  11px mono `--muted`; headings 11px/600 `--muted` - quieter than the rows they
+  hold, the coloured badge gives them identity; counts 11px/600 tabular. No
+  weight changes on state (they change text width). Ended rows dim to
+  `--faint` (muted mixed toward the background), no dashed borders.
+- **A row without a branch is centred** (one line), never top-heavy.
+- **States never fight**: hover = a dim opaque surface; selected = the full
+  `--surface-hover` surface (no border); mic = a 3px green bar inside the
+  inset, clear of the rounded corners, so it combines with either.
+- **Hover actions are ONE cluster** (key cap + Settle/Remove), vertically
+  centred, laid over the row's right end with a fade from the row surface.
+  Settle always sits at the same x (an unbound key cap keeps its width,
+  invisible). It covers the wait time, so the row tooltip carries it.
 
 ## Geometry as script constants
 

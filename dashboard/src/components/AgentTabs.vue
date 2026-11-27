@@ -34,10 +34,21 @@ const props = withDefaults(
   { thinking: () => [], activity: () => ({}), queued: () => ({}), muted: () => [], meta: null, settledOpen: undefined },
 );
 
-// Geometry knobs: one row height for every state, so nothing shifts. Two
-// lines: the conversation, then where it runs (branch).
-const ROW_PX = 48;
-const PROJECT_HEAD_PX = 24;
+// Geometry knobs. Every heading and row sits on ONE grid - lead | text |
+// meta - so badge, status glyph and chevron share a column, every text
+// starts at the same x, and every count and wait time ends on the same
+// right edge, at any column width. One row height for every state, so
+// nothing shifts. Vertical rhythm in steps of 4px.
+const GRID = {
+  padX: 8, // row inset; the mic edge lives inside it
+  lead: 16, // badge / status glyph / chevron column
+  gap: 8, // between columns
+  meta: 32, // right column: wait time on rows, counts on headings
+  row: 48, // two-line row, every state
+  head: 24, // project and Settled headings
+  groupGap: 16, // space above a heading: a heading sits closer to its rows than to the group above
+};
+const gridVars = Object.fromEntries(Object.entries(GRID).map(([key, px]) => [`--${key}`, `${px}px`]));
 // Waiting times are shown in whole minutes; a coarse clock is enough.
 const CLOCK_TICK_MS = 30_000;
 const clock = ref(Date.now() / 1000);
@@ -46,7 +57,6 @@ onBeforeUnmount(() => clearInterval(clockTimer));
 // The row shows the real key (F16), falling back to "Tab N" when unbound.
 const keyCap = (shortcut: number | null | undefined) => (shortcut ? chordLabel(props.tabKeys?.[shortcut]) || `Tab ${shortcut}` : "");
 const waited = (name: string) => waitLabel(props.meta?.[name]?.waiting_since, props.now ?? clock.value);
-
 
 const emit = defineEmits<{
   select: [name: string];
@@ -115,6 +125,11 @@ const whereLine = (tab: Tab) => {
 const statusText = (name: string, online: boolean) =>
   !online ? "Ended" : props.muted.includes(name) ? "Muted" : props.speaking.includes(name) ? "Speaking"
     : props.thinking.includes(name) ? "Working" : "Ready";
+// The hover actions cover the wait time, so the tooltip carries it.
+const rowTitle = (tab: Tab) => [
+  tab.label, tab.name === props.active ? "Receiving your speech" : "", statusText(tab.name, tab.online),
+  props.activity[tab.name] ?? "", waited(tab.name) ? `Waiting for you ${waited(tab.name)}` : "",
+].filter(Boolean).join(" · ");
 
 // Drag & drop within a project only: a project is where the session runs,
 // not a choice. Settled rows do not drag (their order is when they ended).
@@ -145,31 +160,32 @@ function assignKey(slot: number) {
 </script>
 
 <template>
-  <nav v-if="tabCount" class="tabs" aria-label="Conversations" :style="{ '--tab-row': ROW_PX + 'px', '--project-head': PROJECT_HEAD_PX + 'px' }">
+  <nav v-if="tabCount" class="tabs" aria-label="Conversations" :style="gridVars">
     <template v-for="item in items" :key="item.key">
       <!-- A project heading: badge, name, and how many messages wait for
-           you there (amber, reserved slot). Not a control. -->
-      <div v-if="item.kind === 'project'" class="project-head" :class="{ unknown: !item.project }">
-        <span class="badge" :style="item.project ? { '--hue': projectHue(item.project) } : undefined" aria-hidden="true">{{ item.project ? item.project.charAt(0).toUpperCase() : '?' }}</span>
+           you there (amber, in the meta column). Not a control. -->
+      <div v-if="item.kind === 'project'" class="head project-head" :class="{ unknown: !item.project }">
+        <span class="lead"><span class="badge" :style="item.project ? { '--hue': projectHue(item.project) } : undefined" aria-hidden="true">{{ item.project ? item.project.charAt(0).toUpperCase() : '?' }}</span></span>
         <span class="project-name clip">{{ item.project ?? 'No project' }}</span>
-        <span class="project-waiting" :title="item.waiting ? `${item.waiting} waiting for you` : undefined">{{ item.waiting || '' }}</span>
+        <span class="meta project-waiting" :title="item.waiting ? `${item.waiting} waiting for you` : undefined">{{ item.waiting || '' }}</span>
       </div>
       <button
         v-else-if="item.kind === 'settled'"
-        type="button" class="section toggle" :aria-expanded="settledShown" @click="toggleSettled"
-      ><span class="chev" :class="{ open: settledShown }" aria-hidden="true">▸</span> Settled <b>{{ item.count }}</b></button>
+        type="button" class="head section toggle" :aria-expanded="settledShown" @click="toggleSettled"
+      ><span class="lead chev" :class="{ open: settledShown }" aria-hidden="true">▸</span> <span class="project-name">Settled</span> <b class="meta">{{ item.count }}</b></button>
       <button
         v-else
         class="tab"
         :draggable="!item.tab.settled"
         :aria-pressed="item.tab.name === viewed"
-        :title="[item.tab.label, item.tab.name === active ? 'Receiving your speech' : '', statusText(item.tab.name, item.tab.online), activity[item.tab.name] ?? ''].filter(Boolean).join(' · ')"
+        :title="rowTitle(item.tab)"
         :class="{
           viewing: item.tab.name === viewed,
           mic: item.tab.name === active,
           speaking: speaking.includes(item.tab.name),
           offline: !item.tab.online,
           dragging: item.tab.name === dragging,
+          single: !whereLine(item.tab),
         }"
         @click="$emit('select', item.tab.name)"
         @dragstart="dragging = item.tab.name"
@@ -181,55 +197,45 @@ function assignKey(slot: number) {
         <!-- ONE status glyph, fixed slot, priority ladder (option B):
              MUTE (with or without a count) > SPEAKING (green equalizer) >
              WAIT count (amber - messages waiting to be heard beat the mere
-             "working" pulse) > WORKING (violet) > idle dot. "Who gets the
-             mic" needs no glyph - that's the Mic badge. -->
-        <span class="statusslot">
+             "working" pulse) > WORKING (violet). Idle: an empty slot (a grey
+             dot read like a bullet point). The mic needs no glyph: it is
+             the green edge. -->
+        <span class="lead statusslot">
           <template v-if="muted.includes(item.tab.name)">
-            <span v-if="(queued[item.tab.name] ?? 0) > 0" class="mutecount" :title="`Muted — ${queued[item.tab.name]} waiting`">
-              {{ queued[item.tab.name] }}
-            </span>
-            <svg v-else class="mutespk" viewBox="0 0 14 14" title="Muted" aria-label="muted">
+            <span v-if="(queued[item.tab.name] ?? 0) > 0" class="mutecount" :title="`Muted — ${queued[item.tab.name]} waiting`">{{ queued[item.tab.name] }}</span>
+            <svg v-else class="mutespk" viewBox="0 0 14 14" aria-label="muted">
               <path d="M2 5.2 L5 5.2 L8.2 2.6 L8.2 11.4 L5 8.8 L2 8.8 Z" fill="currentColor" />
               <line x1="10" y1="5" x2="13" y2="9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
               <line x1="13" y1="5" x2="10" y2="9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
             </svg>
           </template>
-          <span v-else-if="speaking.includes(item.tab.name)" class="eq" aria-label="speaking">
-            <i /><i /><i />
-          </span>
-          <span v-else-if="(queued[item.tab.name] ?? 0) > 0" class="waitcount" :title="`${queued[item.tab.name]} waiting`">
-            {{ queued[item.tab.name] }}
-          </span>
+          <span v-else-if="speaking.includes(item.tab.name)" class="eq" aria-label="speaking"><i /><i /><i /></span>
+          <span v-else-if="(queued[item.tab.name] ?? 0) > 0" class="waitcount" :title="`${queued[item.tab.name]} waiting`">{{ queued[item.tab.name] }}</span>
           <span v-else-if="thinking.includes(item.tab.name)" class="dot think" title="Working" />
-          <!-- Idle: an empty slot. A grey dot read like a bullet point. -->
         </span>
-        <span class="lines">
-          <span class="line main">
-            <span class="tab-label">{{ item.tab.label }}</span>
-            <span class="waited" :title="waited(item.tab.name) ? 'Waiting for you' : undefined">{{ waited(item.tab.name) }}</span>
-            <!-- Tab N hotkey, from the daemon's stable order, drawn as a key
-                 so it reads as a shortcut, not a count. A reserved slot. -->
-            <kbd class="shortcut" :class="{ none: !meta?.[item.tab.name]?.shortcut }" :title="meta?.[item.tab.name]?.shortcut ? `Hotkey: Tab ${meta[item.tab.name].shortcut} talks to this conversation` : undefined">{{ keyCap(meta?.[item.tab.name]?.shortcut) }}</kbd>
-          </span>
-          <span class="line where">
-            <svg v-if="whereLine(item.tab)" class="branch-icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="4.5" cy="3.5" r="1.6" /><circle cx="4.5" cy="12.5" r="1.6" /><circle cx="11.5" cy="5.5" r="1.6" /><path d="M4.5 5.1v5.8M11.5 7.1c0 2.4-2.2 3-5.4 4" /></svg>
-            <span class="clip">{{ whereLine(item.tab) }}</span>
-          </span>
+        <span class="tab-label">{{ item.tab.label }}</span>
+        <span class="meta waited">{{ waited(item.tab.name) }}</span>
+        <span v-if="whereLine(item.tab)" class="where">
+          <svg class="branch-icon" viewBox="0 0 16 16" aria-hidden="true"><circle cx="4.5" cy="3.5" r="1.6" /><circle cx="4.5" cy="12.5" r="1.6" /><circle cx="11.5" cy="5.5" r="1.6" /><path d="M4.5 5.1v5.8M11.5 7.1c0 2.4-2.2 3-5.4 4" /></svg>
+          <span class="clip">{{ whereLine(item.tab) }}</span>
         </span>
-        <!-- Settle: hides the conversation, it does not end the session;
-             it comes back when its session speaks. Settling the mic's row
-             hands the mic to the next one (the daemon decides and says so).
-             Shown on hover or focus, laid over the end of line 2, so the
-             title, wait time, Mic and number never move. On a Settled
-             (ended) row the same action removes it from the list; the daemon
-             cannot restore a hidden one on request yet. -->
-        <span
-          class="settle"
-          role="button" tabindex="0" @keydown.enter.stop.prevent="$emit('settle', item.tab.name)" @keydown.space.stop.prevent="$emit('settle', item.tab.name)"
-          :title="item.tab.settled ? 'Remove: drop this ended conversation from the list' : 'Settle: hide it until its session speaks again'"
-          @click.stop="$emit('settle', item.tab.name)"
-          >{{ item.tab.settled ? 'Remove' : 'Settle' }}</span
-        >
+        <!-- Hover/focus actions, one cluster laid over the row's right end:
+             the Tab hotkey as a key cap with the real chord (the user knows
+             their keys, so it stays hidden at rest) and Settle. Settle hides
+             the conversation, it does not end the session; it comes back
+             when its session speaks. Settling the mic's row hands the mic to
+             the next one (the daemon decides and says so). On a Settled
+             (ended) row the same action is Remove; the daemon cannot restore
+             a hidden one on request yet. -->
+        <span class="actions">
+          <kbd class="shortcut" :class="{ none: !meta?.[item.tab.name]?.shortcut }" :title="meta?.[item.tab.name]?.shortcut ? `Hotkey: Tab ${meta[item.tab.name].shortcut} talks to this conversation` : undefined">{{ keyCap(meta?.[item.tab.name]?.shortcut) }}</kbd>
+          <span
+            class="settle"
+            role="button" tabindex="0" @keydown.enter.stop.prevent="$emit('settle', item.tab.name)" @keydown.space.stop.prevent="$emit('settle', item.tab.name)"
+            :title="item.tab.settled ? 'Remove: drop this ended conversation from the list' : 'Settle: hide it until its session speaks again'"
+            @click.stop="$emit('settle', item.tab.name)"
+            >{{ item.tab.settled ? 'Remove' : 'Settle' }}</span>
+        </span>
       </button>
     </template>
     <div v-if="keyMenu" class="keymenu-scrim" @click="keyMenu = null" @contextmenu.prevent="keyMenu = null" />
@@ -246,31 +252,72 @@ function assignKey(slot: number) {
 </template>
 
 <style scoped>
+.tabs {
+  position:relative; display:flex; flex-direction:column; gap:2px; padding:2px;
+  /* Row surfaces are opaque so the hover actions can fade over the text. */
+  --row-hover: color-mix(in srgb, var(--surface-hover) 55%, var(--bg0));
+  --row-selected: var(--surface-hover);
+  --faint: color-mix(in srgb, var(--muted) 72%, var(--bg0));
+}
 
-.tabs { display:flex; flex-direction:column; gap:2px; padding:2px; }
-.tab { position:relative; flex:none; display:flex; align-items:center; gap:8px; width:100%; height:var(--tab-row); padding:0 10px; font:13px var(--sans); text-align:left; color:var(--muted); border:1px solid transparent; border-radius:8px; background:transparent; min-width:0; box-sizing:border-box; }
-.tab:hover { color:var(--ink); background:var(--surface-hover); }
-.tab.viewing { background:var(--surface-hover); border-color:var(--line-strong); color:var(--ink); }
-/* The mic recipient: an inset green edge (a shadow, no size change) on top
-   of the Mic label, so it reads at a glance even in a long list. */
-.tab.mic { box-shadow:inset 2px 0 0 var(--green); }
-.tab.offline { border-style:dashed; }
-.tab.offline .tab-label { opacity:.7; }
-.tab.dragging { opacity:.5; }
-.tab:focus-visible { outline-offset:-2px; }
-/* Explicit, complementary widths avoid max-width's content-size plateau. */
-.lines { flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:5px; }
-.line { display:flex; align-items:center; gap:6px; min-width:0; }
+/* The shared grid: lead | text | meta. */
+.head, .tab { display:grid; grid-template-columns:var(--lead) minmax(0,1fr) var(--meta); column-gap:var(--gap); padding:0 var(--padX); box-sizing:border-box; width:100%; min-width:0; }
+.lead { display:flex; align-items:center; justify-content:center; width:var(--lead); }
+.meta { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
 .clip { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
-.where { display:flex; align-items:center; gap:5px; height:14px; font:10px var(--mono, monospace); color:var(--muted); }
-.waited { flex:none; min-width:22px; text-align:right; font-size:10px; color:var(--amber); }
-.tab-label { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.shortcut { flex:none; min-width:38px; height:16px; padding:0 4px; box-sizing:border-box; font:9px/14px var(--mono, monospace); color:var(--muted); text-align:center; background:var(--panel-solid); border:1px solid var(--line-strong); border-bottom-width:2px; border-radius:4px; }
+
+/* Headings: quieter than the rows they hold. */
+.head { height:var(--head); align-items:center; margin-top:var(--groupGap); font:600 11px/1 var(--sans); letter-spacing:.02em; color:var(--muted); }
+.head:first-child { margin-top:2px; }
+.badge { width:14px; height:14px; border-radius:4px; font:700 9px/14px var(--sans); letter-spacing:0; text-align:center; color:#fff; background:hsl(var(--hue, 0) 45% 42%); }
+.unknown .badge { background:var(--surface-hover); color:var(--muted); }
+.project-waiting { font-weight:600; color:var(--amber); }
+.section { border:0; border-top:1px solid var(--line); border-radius:0; background:none; text-align:left; cursor:pointer; height:calc(var(--head) + 4px); padding-top:4px; }
+.section b { font-weight:600; color:var(--faint); }
+.section:hover { color:var(--ink); }
+.chev { font-size:10px; transition:transform .12s; }
+.chev.open { transform:rotate(90deg); }
+
+/* Rows: two lines, title over where-it-runs. */
+.tab { position:relative; flex:none; height:var(--row); grid-template-rows:18px 15px; row-gap:3px; align-content:center; font:13px/18px var(--sans); text-align:left; color:var(--ink); border:0; border-radius:6px; background:transparent; }
+.tab.single { grid-template-rows:18px; }
+.tab:hover, .tab:focus-within { background:var(--row-hover); }
+.tab.viewing { background:var(--row-selected); }
+.tab:focus-visible { outline-offset:-2px; }
+/* The mic recipient: a short green bar in the row's inset, clear of the
+   rounded corners, independent of the selection surface. */
+.tab.mic::before { content:""; position:absolute; left:2px; top:12px; bottom:12px; width:3px; border-radius:2px; background:var(--green); }
+.tab.offline .tab-label, .tab.offline .where { color:var(--faint); }
+.tab.dragging { opacity:.5; }
+.statusslot { grid-row:1; grid-column:1; height:18px; }
+.tab-label { grid-row:1; grid-column:2; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.waited { grid-row:1; grid-column:3; font-size:11px; color:var(--amber); }
+.where { grid-row:2; grid-column:2 / 4; display:flex; align-items:center; gap:5px; min-width:0; font:11px/15px var(--mono, monospace); color:var(--muted); }
+.branch-icon { flex:none; width:11px; height:11px; fill:none; stroke:currentColor; stroke-width:1.4; stroke-linecap:round; }
+
+/* Status glyphs, one slot. */
+.dot { width:6px; height:6px; border-radius:50%; }
+.think { background:var(--violet); }
+.eq { height:12px; display:flex; gap:2px; align-items:center; }
+.eq i { width:2px; height:9px; background:var(--green); animation:eq 1s ease-in-out infinite; }
+.eq i:nth-child(2) { height:13px; animation-delay:.2s; }
+.waitcount, .mutecount { font:600 11px var(--sans); font-variant-numeric:tabular-nums; }
+.waitcount { color:var(--amber); }
+.mutecount, .mutespk { color:var(--red); }
+.mutespk { width:13px; height:13px; }
+
+/* Hover / focus actions: ONE cluster, centred on the row's right end,
+   laid over it on the z-axis (it covers the wait time; the tooltip keeps
+   it). Settle always sits at the same x; the key cap reserves its width. */
+.actions { position:absolute; top:0; bottom:0; right:0; display:flex; align-items:center; gap:6px; padding:0 var(--padX) 0 20px; border-radius:0 6px 6px 0; background:linear-gradient(to right, transparent, var(--row-hover) 18px); opacity:0; pointer-events:none; }
+.tab.viewing .actions { background:linear-gradient(to right, transparent, var(--row-selected) 18px); }
+.tab:hover .actions, .tab:focus-within .actions { opacity:1; pointer-events:auto; }
+.shortcut { flex:none; min-width:34px; height:20px; padding:0 5px; box-sizing:border-box; font:10px/16px var(--mono, monospace); color:var(--muted); text-align:center; background:var(--panel-solid); border:1px solid var(--line-strong); border-bottom-width:2px; border-radius:4px; }
 .shortcut.none { visibility:hidden; }
-/* Row keys show on hover/focus only: the user set them and knows them. */
-.tab .shortcut { opacity:0; }
-.tab:hover .shortcut, .tab:focus-within .shortcut { opacity:1; }
-.tabs { position:relative; }
+.settle { height:22px; padding:0 10px; box-sizing:border-box; border:1px solid var(--line-strong); border-radius:6px; background:var(--panel-solid); color:var(--ink); font:11px/20px var(--sans); }
+.settle:hover, .settle:focus-visible { border-color:var(--muted); }
+
+/* Right-click: assign a Tab key. */
 .keymenu-scrim { position:fixed; inset:0; z-index:9; }
 .keymenu { position:absolute; z-index:10; min-width:150px; padding:6px; display:flex; flex-direction:column; gap:2px; background:var(--panel-solid); border:1px solid var(--line-strong); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,.35); }
 .keymenu-title { margin:2px 6px 4px; font-size:10px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
@@ -278,34 +325,5 @@ function assignKey(slot: number) {
 .keymenu-item:hover:not(:disabled), .keymenu-item:focus-visible { background:var(--surface-hover); }
 .keymenu-item:disabled { opacity:.45; }
 .keymenu-item span { color:var(--muted); }
-.branch-icon { flex:none; width:11px; height:11px; fill:none; stroke:currentColor; stroke-width:1.4; stroke-linecap:round; }
-.statusslot { display:inline-flex; justify-content:center; align-items:center; width:13px; height:13px; flex:none; align-self:flex-start; margin-top:6px; }
-.dot { width:6px; height:6px; background:var(--muted); border-radius:50%; }
-.think { background:var(--violet); }
-.eq { height:12px; display:flex; gap:2px; align-items:center; }
-.eq i { width:2px; height:9px; background:var(--green); animation:eq 1s ease-in-out infinite; }
-.eq i:nth-child(2) { height:13px; animation-delay:.2s; }
-.waitcount { color:var(--amber); font-size:11px; }
-.mutecount, .mutespk { color:var(--red); }
-.mutespk { width:14px; height:14px; }
-/* Over the end of line 2 (the branch), on the z-axis: nothing reflows. */
-.settle { position:absolute; right:8px; bottom:5px; height:20px; padding:0 10px; border:1px solid var(--line-strong); border-radius:6px; background:var(--panel-solid); box-shadow:-12px 0 8px -2px var(--surface-hover); color:var(--ink); font:11px/18px var(--sans); box-sizing:border-box; opacity:0; pointer-events:none; }
-.tab:hover .settle, .tab:focus-within .settle { opacity:1; pointer-events:auto; }
-.settle:hover, .settle:focus-visible { border-color:var(--muted); }
-/* Project heading: badge + name + amber waiting count in a reserved slot. */
-.project-head { display:flex; align-items:center; gap:8px; height:var(--project-head); margin-top:10px; padding:0 10px; font:600 11px var(--sans); color:var(--ink); }
-.project-head:first-child { margin-top:2px; }
-.project-head.unknown { color:var(--muted); }
-.badge { flex:none; width:13px; height:13px; border-radius:3px; font-size:8px; font-weight:600; line-height:13px; text-align:center; color:#fff; background:hsl(var(--hue, 0) 45% 42%); }
-.unknown .badge { background:var(--surface-hover); color:var(--muted); }
-.project-name { flex:1; }
-.project-waiting { flex:none; min-width:18px; text-align:right; font-size:11px; color:var(--amber); }
-.section { display:flex; align-items:center; gap:6px; margin:14px 10px 4px; padding:0; border:0; background:none; font:10px var(--sans); letter-spacing:.08em; text-transform:uppercase; color:var(--muted); text-align:left; }
-.section b { font-weight:500; color:var(--ink); letter-spacing:0; }
-.toggle { cursor:pointer; }
-.toggle:hover { color:var(--ink); }
-.chev { display:inline-block; font-size:12px; transition:transform .12s; }
-.chev.open { transform:rotate(90deg); }
 @keyframes eq { 50% { transform:scaleY(.5); } }
-
 </style>
