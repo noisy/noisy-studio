@@ -88,4 +88,4 @@ def test_a_talk_key_whose_conversation_is_gone_is_dropped_on_load(registry, path
 def test_snapshot_shows_each_conversations_talk_key(registry):
     registry.set_talk_key("b", "F13")
 
-    assert {k: tab["talk_key"] for k, tab in registry.snapshot().items()} == {"a": "", "b": "F13", "c": ""}
+    assert {k: tab["talk_key"] for k, tab in registry.snapshot().items()} == {"a": None, "b": "F13", "c": None}

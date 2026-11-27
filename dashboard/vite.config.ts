@@ -17,7 +17,7 @@ const DAEMON_PATHS = [
   "/status", "/utterances", "/character", "/drain", "/events", "/delivery",
   "/stream", "/pause", "/resume", "/mute", "/mode", "/settings",
   "/voice", "/active-agent", "/devices", "/speak", "/ptt", "/cancel",
-  "/interrupt", "/playback-pause", "/skip-unheard", "/shutdown", "/shutdown-cancel", "/shutdown-postpone", "/voice-mute", "/credentials", "/dismiss-agent",
+  "/interrupt", "/playback-pause", "/skip-unheard", "/shutdown", "/shutdown-cancel", "/shutdown-postpone", "/voice-mute", "/credentials", "/dismiss-agent", "/conversation-hotkey",
   "/reorder-agents", "/providers", "/stt-lab", "/tests", "/hotkeys",
   // With the slash: /dictation/permission is the API, /dictate is a page.
   "/dictation/",

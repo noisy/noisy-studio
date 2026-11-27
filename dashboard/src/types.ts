@@ -11,6 +11,23 @@ export interface HotkeyState {
   /** Everything the user stored, armed or not. */
   stored?: Record<string, string>;
   problems?: Record<string, HotkeyProblem>;
+  /** Conversations' own talk keys armed in the tap: {conversation key: chord}. */
+  talk_keys?: Record<string, string>;
+  /** Talk keys the tap could not arm: {conversation key: problem}. */
+  talk_key_problems?: Record<string, HotkeyProblem>;
+}
+
+/** POST /conversation-hotkey: a conversation's own talk key, set or cleared.
+ *  A refused chord (problem.kind "collision" | "invalid") leaves the old key
+ *  in `talk_key`; a "system" problem is a warning and the chord is stored. */
+export interface ConversationHotkeyResult {
+  /** The registry key the request resolved to (an alias may be sent). */
+  conversation: string;
+  /** What the conversation owns now; null = no key of its own. */
+  talk_key: string | null;
+  /** The conversation that lost the chord to this one, if it had it. */
+  moved_from: string | null;
+  problem: HotkeyProblem | null;
 }
 
 /** Dictate anywhere: pasting into other apps needs macOS Accessibility. */
@@ -98,7 +115,13 @@ export interface DaemonStatus {
   /** Tab metadata (#11): online state + ordering keys. Absent on old daemons. */
   agents_meta?: Record<
     string,
-    { label: string; online: boolean; activated_at: number; offline_since: number | null; manual_pos?: number | null }
+    {
+      label: string; online: boolean; activated_at: number; offline_since: number | null; manual_pos?: number | null;
+      /** The tabN hotkey that reaches it; null when it has its own talk key. */
+      shortcut?: number | null;
+      /** Its own global talk key (canonical chord); null when it has none. */
+      talk_key?: string | null;
+    }
   >;
   /** Each conversation's voice, so clients can draw a portrait without
    *  fetching /character once per agent. Absent on old daemons. */

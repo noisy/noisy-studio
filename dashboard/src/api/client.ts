@@ -4,7 +4,7 @@
  * at /next, proxied by Vite in development (see vite.config.ts).
  */
 
-import type { Character, DaemonStatus, DictationState, InputDevice, SettingsPatch, Utterance, HotkeyState } from "../types";
+import type { Character, ConversationHotkeyResult, DaemonStatus, DictationState, InputDevice, SettingsPatch, Utterance, HotkeyState } from "../types";
 import { canonicalCharacter } from "../character";
 
 async function getJson<T>(path: string): Promise<T> {
@@ -113,6 +113,13 @@ export async function setActiveAgent(name: string): Promise<string | null> {
     "/active-agent", { name },
   );
   return body.active_agent ?? null;
+}
+
+/** Give a conversation its own global talk key ("" or null clears it).
+ *  Read `problem` and `moved_from` from the result: a refused chord keeps
+ *  the old key, a chord another conversation owned moves here. */
+export function setConversationHotkey(conversation: string, chord: string | null): Promise<ConversationHotkeyResult> {
+  return postJson<ConversationHotkeyResult>("/conversation-hotkey", { conversation, chord });
 }
 
 export function dismissAgent(name: string): Promise<void> {

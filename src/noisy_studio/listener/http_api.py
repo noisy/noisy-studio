@@ -325,7 +325,10 @@ def _hotkeys_snapshot(state: ListenerState) -> dict:
     base = (
         listener.snapshot()
         if listener is not None
-        else {"configured": False, "permission": "unknown", "armed": False, "bindings": {}, "problems": {}}
+        else {
+            "configured": False, "permission": "unknown", "armed": False,
+            "bindings": {}, "problems": {}, "talk_keys": {}, "talk_key_problems": {},
+        }
     )
     base["stored"] = state.hotkeys  # every chord the user set, armed or not
     return base
@@ -345,12 +348,18 @@ def _apply_hotkeys(state: ListenerState, patch: dict[str, str]) -> tuple[dict, d
     warnings are stored and reported. Rearms the tap; a user pick is the
     one moment macOS may prompt for Input Monitoring (#97)."""
     from noisy_studio.listener import hotkey as hotkey_mod
+    from noisy_studio.listener import talk_keys
     from noisy_studio.listener.chords import problems
 
     known = {a: str(t or "") for a, t in patch.items() if a in hotkey_mod.ACTIONS}
     current = state.hotkeys
     proposed = {**current, **known}
-    found = problems({a: t for a, t in proposed.items() if t})
+    # A chord a conversation owns as its talk key is taken, like any other.
+    # Talk keys go first, so the action's report says who already has it.
+    found = problems(
+        {**talk_keys.taken_by_conversations(state.conversations), **{a: t for a, t in proposed.items() if t}},
+        talk_keys.display_names(state.conversations),
+    )
     rejected = {}
     for action in known:
         kind = found.get(action, {}).get("kind")
@@ -368,6 +377,29 @@ def _apply_hotkeys(state: ListenerState, patch: dict[str, str]) -> tuple[dict, d
         controller.request_permission()
     reported = {**problems({a: t for a, t in stored.items() if t}), **rejected}
     return stored, reported
+
+
+def _apply_talk_key(state: ListenerState, conversation: str, chord: str) -> dict:
+    """Set or clear ("") a conversation's own talk key (talk_keys.py) and
+    rearm the tap. A refused chord leaves the old key; a chord another
+    conversation owned moves, and `moved_from` names who lost it."""
+    from noisy_studio.listener import talk_keys
+
+    change = talk_keys.assign(state.conversations, state.hotkeys, conversation, chord)
+    if not change.refused:
+        listener = getattr(state, "hotkey_listener", None)
+        if listener is not None:
+            # Picking a key is the user action that may prompt (#97).
+            listener.configure_talk_keys(state.conversations.talk_keys(), may_prompt=bool(change.talk_key))
+        if change.moved_from is not None:
+            labels = [state.conversations.get(k).label() for k in (change.moved_from, conversation)]
+            state.add_event("agent", f"talk key {change.talk_key} moved from '{labels[0]}' to '{labels[1]}'")
+    return {
+        "conversation": change.conversation,
+        "talk_key": change.talk_key or None,
+        "moved_from": change.moved_from,
+        "problem": change.problem,
+    }
 
 
 def save_settings(state: ListenerState) -> None:
@@ -434,6 +466,8 @@ def _stable_agents_meta(state: ListenerState) -> dict:
     shortcuts = state.tab_shortcuts()
     for name, entry in meta.items():
         entry["shortcut"] = shortcuts.get(name)
+        # Its own global talk key; when set, `shortcut` is None (own key wins).
+        entry["talk_key"] = state.conversations.talk_key(name) or None
         conversation = state.conversations.get(name)
         if conversation is None:
             continue
@@ -844,6 +878,17 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 state.conversations.hide(name)
                 state.add_event("agent", f"'{name}' closed")
                 self._respond({"dismissed": name, "active_agent": state.active_agent})
+            elif self.path == "/conversation-hotkey":
+                body = self._read_json_body()
+                presented = str(body.get("conversation", "")).strip()
+                if not presented:
+                    self._respond({"error": "conversation required"}, status=400)
+                    return
+                key = state.conversations.resolve(presented)
+                if key is None:
+                    self._respond({"error": "unknown conversation"}, status=404)
+                    return
+                self._respond(_apply_talk_key(state, key, str(body.get("chord") or "")))
             elif self.path == "/hotkeys/permission":
                 # The settings GRANT button (#97): request Input Monitoring now
                 # and arm the configured keys if macOS says yes.

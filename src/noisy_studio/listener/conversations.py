@@ -344,7 +344,7 @@ class ConversationRegistry:
                 "last_event_at": c.last_event_at,
                 "created_at": c.created_at,
                 "listening_until": c.listener.expires_at if c.listener else None,
-                "talk_key": self._talk_keys.get(key, ""),
+                "talk_key": self._talk_keys.get(key),
             }
         return out
 
