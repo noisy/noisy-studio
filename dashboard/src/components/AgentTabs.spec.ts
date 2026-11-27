@@ -233,6 +233,30 @@ describe("AgentTabs", () => {
     expect(rows).toEqual([["Second", "2"], ["Extra", ""], ["First", "1"]]);
   });
 
+  it("shows project, branch and how long it waited, and leaves them out when unknown", () => {
+    const base = { online: true, activated_at: 1, offline_since: null };
+    const wrapper = mount(AgentTabs, {
+      props: {
+        agents: { known: "Release notes", bare: "Legacy" },
+        meta: {
+          known: { ...base, label: "Release notes", project: "noisy-studio", branch: "main", waiting_since: 1000 - 240 },
+          bare: { ...base, label: "Legacy", activated_at: 2 },
+        },
+        active: null, viewed: null, speaking: [], now: 1000,
+      },
+    });
+    const rows = wrapper.findAll("button.tab").map((b) => ({
+      project: b.find(".project").exists() ? b.find(".project .clip").text() : null,
+      label: b.find(".tab-label").text(),
+      branch: b.find(".branch").exists() ? b.find(".branch").text() : null,
+      waited: b.find(".waited").text(),
+    }));
+    expect(rows).toEqual([
+      { project: "noisy-studio", label: "Release notes", branch: "main", waited: "4m" },
+      { project: null, label: "Legacy", branch: null, waited: "" },
+    ]);
+  });
+
   it("splits the list into your turn, Working and a collapsed Settled section", async () => {
     localStorage.removeItem("noisy.tabs.settledOpen");
     const wrapper = mount(AgentTabs, {

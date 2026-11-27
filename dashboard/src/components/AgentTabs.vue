@@ -3,6 +3,7 @@ import { sectionAgents } from "./agentOrder";
 import { computed, onBeforeUnmount, ref, watch } from "vue";
 import { interpolateRecipientWeights } from "./recipientTransition";
 import { conversationLabel } from "../conversationLabel";
+import { projectHue, waitLabel } from "./tabDetails";
 
 export interface AgentMeta {
   label: string;
@@ -11,6 +12,9 @@ export interface AgentMeta {
   offline_since: number | null;
   manual_pos?: number | null;
   shortcut?: number | null; // the Tab N hotkey that reaches it (daemon-numbered)
+  project?: string | null; // git repository (or folder) the session runs in
+  branch?: string | null;
+  waiting_since?: number | null; // epoch s; set while it is your move
 }
 
 const props = withDefaults(
@@ -27,12 +31,20 @@ const props = withDefaults(
     muted?: string[]; // per-conversation mute (future daemon feature)
     workingOpen?: boolean; // initial Working state; omit for the remembered one
     settledOpen?: boolean; // initial Settled state; omit for the remembered one
+    now?: number; // epoch s; omit to use the row clock (stories/tests pin it)
   }>(),
   { thinking: () => [], working: () => [], activity: () => ({}), queued: () => ({}), muted: () => [], meta: null, workingOpen: undefined, settledOpen: undefined },
 );
 
-// Geometry knob: one row height for every state, so nothing shifts.
-const ROW_PX = 34;
+// Geometry knob: one row height for every state, so nothing shifts. Three
+// lines like T3: project, conversation, branch.
+const ROW_PX = 54;
+// Waiting times are shown in whole minutes; a coarse clock is enough.
+const CLOCK_TICK_MS = 30_000;
+const clock = ref(Date.now() / 1000);
+const clockTimer = setInterval(() => { clock.value = Date.now() / 1000; }, CLOCK_TICK_MS);
+onBeforeUnmount(() => clearInterval(clockTimer));
+const waited = (name: string) => waitLabel(props.meta?.[name]?.waiting_since, props.now ?? clock.value);
 
 // One clock redistributes the existing Mic space, including interrupted moves.
 const tabStrip = ref<HTMLElement | null>(null);
@@ -184,8 +196,18 @@ function onDrop(target: Tab) {
           <span v-else-if="thinking.includes(item.tab.name)" class="dot think" title="Working" />
           <span v-else class="dot" />
         </span>
-        <span class="tab-label">{{ item.tab.label }}</span>
-        <span v-if="item.tab.section === 'working' && activity[item.tab.name]" class="activity">{{ activity[item.tab.name] }}</span>
+        <span class="lines">
+          <span v-if="meta?.[item.tab.name]?.project" class="line project">
+            <span class="badge" :style="{ '--hue': projectHue(meta[item.tab.name].project!) }" aria-hidden="true">{{ meta[item.tab.name].project!.charAt(0).toUpperCase() }}</span>
+            <span class="clip">{{ meta[item.tab.name].project }}</span>
+          </span>
+          <span class="line main">
+            <span class="tab-label">{{ item.tab.label }}</span>
+            <span v-if="item.tab.section === 'working' && activity[item.tab.name]" class="activity">{{ activity[item.tab.name] }}</span>
+          </span>
+          <span v-if="meta?.[item.tab.name]?.branch" class="line branch clip">{{ meta[item.tab.name].branch }}</span>
+        </span>
+        <span class="waited" :title="waited(item.tab.name) ? 'Waiting for you' : undefined">{{ waited(item.tab.name) }}</span>
         <span class="mic-recipient" :style="{ '--mic-weight': recipientWeights[item.tab.name] ?? 0 }" :aria-hidden="item.tab.name !== active" title="Receiving your speech">Mic</span>
         <!-- Tab N hotkey number, from the daemon's stable order: sections
              move rows, never the key. A reserved slot, empty when none. -->
@@ -220,6 +242,13 @@ function onDrop(target: Tab) {
 .tab:focus-visible { outline-offset:-2px; }
 /* Explicit, complementary widths avoid max-width's content-size plateau. */
 .mic-recipient { font-size:10px; color:var(--green); flex:none; width:calc(3ch * var(--mic-weight)); margin-left:calc(-8px * (1 - var(--mic-weight))); overflow:hidden; white-space:nowrap; opacity:var(--mic-weight); }
+.lines { flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; gap:1px; }
+.line { display:flex; align-items:center; gap:6px; min-width:0; }
+.clip { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+.project, .branch { font-size:10px; color:var(--muted); }
+.branch { font-family:var(--mono, monospace); }
+.badge { flex:none; width:12px; height:12px; border-radius:3px; font-size:8px; font-weight:600; line-height:12px; text-align:center; color:#fff; background:hsl(var(--hue) 45% 42%); }
+.waited { flex:none; align-self:flex-start; margin-top:6px; min-width:22px; text-align:right; font-size:10px; color:var(--amber); }
 .tab-label { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .activity { flex:none; max-width:84px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:10px; color:var(--violet-dim); }
 .shortcut { flex:none; width:14px; font:10px var(--mono, monospace); color:var(--muted); text-align:center; background:none; border:0; padding:0; }
