@@ -154,3 +154,9 @@ export const SectionsSettledOpen: StoryObj<typeof AgentTabs> = {
   args: sectionsArgs(true),
   decorators: [() => ({ template: '<div style="width:268px"><story /></div>' })],
 };
+/** Working folded: only its heading stays (plus the viewed/mic row, if it
+ *  is working). */
+export const SectionsWorkingFolded: StoryObj<typeof AgentTabs> = {
+  args: { ...sectionsArgs(false), workingOpen: false },
+  decorators: [() => ({ template: '<div style="width:268px"><story /></div>' })],
+};

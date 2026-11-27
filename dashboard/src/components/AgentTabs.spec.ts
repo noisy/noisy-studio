@@ -233,10 +233,11 @@ describe("AgentTabs", () => {
     });
     const labels = () => wrapper.findAll("button.tab").map((b) => b.find(".tab-label").text());
     expect(labels()).toEqual(["Release notes", "Bug fixing"]);
-    expect(wrapper.find(".section").text()).toBe("Working 1");
+    expect(wrapper.find(".section").text()).toBe("▸ Working 1");
+    expect(wrapper.find(".section").attributes("aria-expanded")).toBe("true");
     expect(wrapper.findAll("button.tab")[1].find(".activity").text()).toBe("Bash · pytest");
 
-    const settled = wrapper.get("button.toggle");
+    const settled = wrapper.findAll("button.toggle")[1];
     expect(settled.attributes("aria-expanded")).toBe("false");
     await settled.trigger("click");
     expect(labels()).toEqual(["Release notes", "Bug fixing", "Old spike"]);
@@ -258,6 +259,23 @@ describe("AgentTabs", () => {
     expect(wrapper.get("button.toggle").attributes("aria-expanded")).toBe("true");
     expect(wrapper.findAll("button.tab").map((b) => b.find(".tab-label").text())).toEqual(["Release notes", "Old spike"]);
     localStorage.removeItem("noisy.tabs.settledOpen");
+  });
+
+  it("folds Working on click, remembers it, and keeps the viewed row in sight", async () => {
+    localStorage.removeItem("noisy.tabs.workingOpen");
+    const wrapper = mount(AgentTabs, {
+      props: {
+        agents: { a: "Release notes", b: "Bug fixing", c: "Docs pass" },
+        active: "a", viewed: "b", speaking: [], thinking: ["b", "c"], working: ["b", "c"],
+      },
+    });
+    const labels = () => wrapper.findAll("button.tab").map((t) => t.find(".tab-label").text());
+    expect(labels()).toEqual(["Release notes", "Bug fixing", "Docs pass"]);
+    await wrapper.get("button.toggle").trigger("click");
+    expect(wrapper.get("button.toggle").attributes("aria-expanded")).toBe("false");
+    expect(labels()).toEqual(["Release notes", "Bug fixing"]);
+    expect(localStorage.getItem("noisy.tabs.workingOpen")).toBe("0");
+    localStorage.removeItem("noisy.tabs.workingOpen");
   });
 
   it("brings a working conversation back to the top when it has something for you", () => {

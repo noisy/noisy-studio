@@ -24,9 +24,10 @@ const props = withDefaults(
     activity?: Record<string, string>; // live activity text per agent
     queued?: Record<string, number>; // waiting messages per agent
     muted?: string[]; // per-conversation mute (future daemon feature)
+    workingOpen?: boolean; // initial Working state; omit for the remembered one
     settledOpen?: boolean; // initial Settled state; omit for the remembered one
   }>(),
-  { thinking: () => [], working: () => [], activity: () => ({}), queued: () => ({}), muted: () => [], meta: null, settledOpen: undefined },
+  { thinking: () => [], working: () => [], activity: () => ({}), queued: () => ({}), muted: () => [], meta: null, workingOpen: undefined, settledOpen: undefined },
 );
 
 // Geometry knob: one row height for every state, so nothing shifts.
@@ -61,15 +62,24 @@ const emit = defineEmits<{
   reorder: [names: string[]];
 }>();
 
-// Settled starts collapsed; the reader's choice is remembered per browser.
-const SETTLED_OPEN_KEY = "noisy.tabs.settledOpen";
-function storedSettledOpen(): boolean {
-  try { return localStorage.getItem(SETTLED_OPEN_KEY) === "1"; } catch { return false; }
+// Both lower sections fold. Working starts open, Settled closed; the
+// reader's choice is remembered per browser.
+type Foldable = "working" | "settled";
+const OPEN_KEYS: Record<Foldable, string> = { working: "noisy.tabs.workingOpen", settled: "noisy.tabs.settledOpen" };
+const OPEN_BY_DEFAULT: Record<Foldable, boolean> = { working: true, settled: false };
+function storedOpen(section: Foldable): boolean {
+  try {
+    const saved = localStorage.getItem(OPEN_KEYS[section]);
+    return saved === null ? OPEN_BY_DEFAULT[section] : saved === "1";
+  } catch { return OPEN_BY_DEFAULT[section]; }
 }
-const settledOpen = ref(props.settledOpen ?? storedSettledOpen());
-function toggleSettled() {
-  settledOpen.value = !settledOpen.value;
-  try { localStorage.setItem(SETTLED_OPEN_KEY, settledOpen.value ? "1" : "0"); } catch { /* session only */ }
+const open = ref<Record<Foldable, boolean>>({
+  working: props.workingOpen ?? storedOpen("working"),
+  settled: props.settledOpen ?? storedOpen("settled"),
+});
+function toggle(section: Foldable) {
+  open.value[section] = !open.value[section];
+  try { localStorage.setItem(OPEN_KEYS[section], open.value[section] ? "1" : "0"); } catch { /* session only */ }
 }
 
 type Section = "yourTurn" | "working" | "settled";
@@ -100,9 +110,10 @@ const items = computed<Item[]>(() => {
   return [
     ...rows(yourTurn, "yourTurn"),
     ...(working.length ? [{ kind: "heading", key: "h-working", section: "working", count: working.length } as Item] : []),
-    ...rows(working, "working"),
+    // Folded Working still shows the row you look at or talk to.
+    ...rows(open.value.working ? working : working.filter((name) => name === props.viewed || name === props.active), "working"),
     ...(settled.length ? [{ kind: "heading", key: "h-settled", section: "settled", count: settled.length } as Item] : []),
-    ...(settledOpen.value ? rows(settled, "settled") : []),
+    ...(open.value.settled ? rows(settled, "settled") : []),
   ];
 });
 
@@ -124,11 +135,10 @@ function onDrop(target: Tab) {
 <template>
   <nav v-if="tabCount" ref="tabStrip" class="tabs" aria-label="Conversations" :style="{ '--tab-row': ROW_PX + 'px' }">
     <template v-for="item in items" :key="item.key">
-      <div v-if="item.kind === 'heading' && item.section === 'working'" class="section">Working <b>{{ item.count }}</b></div>
       <button
-        v-else-if="item.kind === 'heading'"
-        type="button" class="section toggle" :aria-expanded="settledOpen" @click="toggleSettled"
-      ><span class="chev" :class="{ open: settledOpen }" aria-hidden="true">▸</span> Settled <b>{{ item.count }}</b></button>
+        v-if="item.kind === 'heading'"
+        type="button" class="section toggle" :aria-expanded="open[item.section]" @click="toggle(item.section)"
+      ><span class="chev" :class="{ open: open[item.section] }" aria-hidden="true">▸</span> {{ item.section === 'working' ? 'Working' : 'Settled' }} <b>{{ item.count }}</b></button>
       <button
         v-else
         class="tab"

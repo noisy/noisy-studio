@@ -52,8 +52,9 @@ width = the bubbles column only, never under the rail.
 
 The conversations are a vertical list in the left column, T3-style (2026-11-27):
 what needs you stays on top with no heading; "Working" (sustained work,
-10 s, nothing waiting) and "Settled" (ended, collapsed by default) sit
-below. The selected row is highlighted, NOT fused with the frame - fusing
+10 s, nothing waiting; foldable, open by default) and "Settled" (ended;
+folded by default) sit below. A folded section never hides the viewed or
+mic row. The selected row is highlighted, NOT fused with the frame - fusing
 breaks as soon as the list scrolls. Sectioning lives in `agentOrder.ts`.
 
 ## Geometry as script constants
