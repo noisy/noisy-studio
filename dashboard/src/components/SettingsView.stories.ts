@@ -39,7 +39,7 @@ export const AppearanceTab: StoryObj<typeof SettingsView> = {
 // Settings > Hotkeys (#104): the tab is HUD/Hotkeys tab; here only the
 // pointer in Audio and the tab switch are of interest.
 export const HotkeysTab: StoryObj<typeof SettingsView> = {
-  args: { apiKeyHint: "····kRc9", hotkeys: { configured: true, permission: "granted", armed: true, stored: { hold: "F8", toggle: "F15", scratch: "escape", tab1: "F1" }, problems: {} } },
+  args: { apiKeyHint: "····kRc9", hotkeys: { configured: true, permission: "granted", armed: true, stored: { hold: "F8", toggle: "F15", scratch: "escape", tab1: "F1", dictate: "F13" }, problems: {} }, dictation: { permission: "granted", active: false } },
   render: (args) => ({
     components: { SettingsView },
     setup: () => ({ args }),

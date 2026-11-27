@@ -4,7 +4,7 @@
  * at /next, proxied by Vite in development (see vite.config.ts).
  */
 
-import type { Character, DaemonStatus, InputDevice, SettingsPatch, Utterance, HotkeyState } from "../types";
+import type { Character, DaemonStatus, DictationState, InputDevice, SettingsPatch, Utterance, HotkeyState } from "../types";
 import { canonicalCharacter } from "../character";
 
 async function getJson<T>(path: string): Promise<T> {
@@ -263,6 +263,11 @@ export function setProviders(patch: {
 /** Ask macOS for Input Monitoring now (the settings GRANT button, #97). */
 export function requestHotkeyPermission(): Promise<HotkeyState> {
   return postJson<HotkeyState>("/hotkeys/permission", {});
+}
+
+/** Ask macOS for Accessibility now (dictation's GRANT button). */
+export function requestDictationPermission(): Promise<DictationState> {
+  return postJson<DictationState>("/dictation/permission", {});
 }
 
 export interface SpeechEngine {

@@ -18,7 +18,7 @@ const DAEMON_PATHS = [
   "/stream", "/pause", "/resume", "/mute", "/mode", "/settings",
   "/voice", "/active-agent", "/devices", "/speak", "/ptt", "/cancel",
   "/interrupt", "/playback-pause", "/skip-unheard", "/shutdown", "/shutdown-cancel", "/shutdown-postpone", "/voice-mute", "/credentials", "/dismiss-agent",
-  "/reorder-agents", "/providers", "/stt-lab", "/tests",
+  "/reorder-agents", "/providers", "/stt-lab", "/tests", "/hotkeys", "/dictation",
   // Prefix match, so this covers /speech-settings/preview and /transcribe.
   // Left out when the endpoint was added, and the failure is silent: Vite
   // answers an unproxied path with index.html, the client sees HTTP 200,

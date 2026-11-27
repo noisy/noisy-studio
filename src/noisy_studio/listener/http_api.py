@@ -331,6 +331,13 @@ def _hotkeys_snapshot(state: ListenerState) -> dict:
     return base
 
 
+def _dictation_snapshot(state: ListenerState) -> dict:
+    controller = getattr(state, "dictation", None)
+    if controller is None:
+        return {"permission": "unknown", "active": False}
+    return controller.snapshot()
+
+
 def _apply_hotkeys(state: ListenerState, patch: dict[str, str]) -> tuple[dict, dict]:
     """Merge a hotkey patch (#104). A chord that would collide with another
     action, or cannot be parsed, is NOT stored - the user sees the problem
@@ -354,6 +361,11 @@ def _apply_hotkeys(state: ListenerState, patch: dict[str, str]) -> tuple[dict, d
     listener = getattr(state, "hotkey_listener", None)
     if listener is not None:
         listener.configure_bindings(stored, may_prompt=True)
+    controller = getattr(state, "dictation", None)
+    if known.get("dictate") and stored.get("dictate") and controller is not None:
+        # Binding the dictate key is the user action that may show the
+        # Accessibility prompt, as picking a key does for Input Monitoring.
+        controller.request_permission()
     reported = {**problems({a: t for a, t in stored.items() if t}), **rejected}
     return stored, reported
 
@@ -513,6 +525,9 @@ def status_payload(state: ListenerState) -> dict:
                             # input_device while the pick is unavailable (#41).
                             "active_input_device": state.active_input_device,
                             "hotkeys": _hotkeys_snapshot(state),
+                            # Dictate anywhere: whether macOS lets us paste
+                            # (Accessibility) and whether a session is on.
+                            "dictation": _dictation_snapshot(state),
                             "activity": state.activity,
                             "nudge_clocks": state.nudge_clocks(),
                             "language": state.language,
@@ -822,6 +837,11 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 # and arm the configured keys if macOS says yes.
                 listener = getattr(state, "hotkey_listener", None)
                 self._respond(listener.request_permission() if listener is not None else {})
+            elif self.path == "/dictation/permission":
+                # The settings GRANT button for dictation: request
+                # Accessibility now (macOS prompts once).
+                controller = getattr(state, "dictation", None)
+                self._respond(controller.request_permission() if controller is not None else {})
             elif self.path == "/mute-agent":
                 body = self._read_json_body()
                 name = str(body.get("agent", "")).strip()

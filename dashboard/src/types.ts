@@ -1,6 +1,6 @@
 /** Shapes of the listener daemon's HTTP API responses. */
 
-export type HotkeyAction = "hold" | "toggle" | "scratch" | "tab1" | "tab2" | "tab3" | "tab4";
+export type HotkeyAction = "hold" | "toggle" | "scratch" | "tab1" | "tab2" | "tab3" | "tab4" | "dictate";
 export interface HotkeyProblem { kind: "collision" | "system" | "invalid"; detail: string }
 export interface HotkeyState {
   configured: boolean;
@@ -11,6 +11,13 @@ export interface HotkeyState {
   /** Everything the user stored, armed or not. */
   stored?: Record<string, string>;
   problems?: Record<string, HotkeyProblem>;
+}
+
+/** Dictate anywhere: pasting into other apps needs macOS Accessibility. */
+export interface DictationState {
+  permission: "granted" | "missing" | "unavailable" | "unknown";
+  /** A dictation session is recording right now. */
+  active: boolean;
 }
 
 export interface ProviderQuota {
@@ -71,6 +78,7 @@ export interface DaemonStatus {
   input_device: string;
   /** Global push-to-talk keys and the macOS Input Monitoring permission they need (#97). */
   hotkeys?: HotkeyState;
+  dictation?: DictationState;
   /** Live per-endpoint xAI check results — partial while checks run. */
   diagnostic_checks?: Record<string, { ok?: boolean; ms?: number; detail?: string; pending?: boolean }> | null;
   activity: Record<string, { text: string; at: number }>;

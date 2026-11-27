@@ -196,6 +196,12 @@ class ListenerState:
         # the dashboard banner.
         self._shutdown_at = 0.0
         self._detection_mode = "auto"  # auto (VAD) | ptt (push-to-talk)
+        # Dictate anywhere: the running dictation session's number (0 = off).
+        # The audio loop stamps utterances it opens meanwhile with it, and
+        # their transcripts go to `dictation` (the controller the daemon
+        # attaches) instead of to any conversation.
+        self._dictation_session = 0
+        self.dictation = None
         self._ptt_last_hold = float("-inf")  # monotonic time of last lease renewal
         self._last_ptt_end = float("-inf")
         self._language = ""  # "" = auto-detect
@@ -625,6 +631,15 @@ class ListenerState:
                 self._detection_mode = mode
             return self._detection_mode
 
+    @property
+    def dictation_session(self) -> int:
+        with self._lock:
+            return self._dictation_session
+
+    def set_dictation_session(self, session: int) -> None:
+        with self._lock:
+            self._dictation_session = session
+
     def refresh_ptt_hold(self) -> bool:
         with self._lock:
             now = time.monotonic()
@@ -806,36 +821,42 @@ class ListenerState:
         agent: str | None = None,
         speaker: str | None = None,
         voice: str | None = None,
+        dictation: int = 0,
     ) -> int:
+        """`dictation`: the session number of a dictate-anywhere utterance.
+        It belongs to no conversation and its transcript is never queued."""
+        if dictation:
+            agent = ""
         with self._lock:
             self._utterance_seq += 1
-            self._utterances.append(
-                {
-                    "id": self._utterance_seq,
-                    "role": role,
-                    "status": status,
-                    "text": text,
-                    "detail": "",
-                    "cost_usd": 0.0,
-                    # Which agent this utterance belongs to. Claude's speech
-                    # passes its own agent explicitly (it may no longer be the
-                    # active one by the time it speaks); user speech defaults
-                    # to the active agent it was delivered to.
-                    "agent": agent if agent is not None else self._active_agent,
-                    # #22: a subagent's speech stays in the parent conversation
-                    # but carries its own persona (name shown in the header +
-                    # the voice whose portrait the bubble renders).
-                    "speaker": speaker or "",
-                    "voice": voice or "",
-                    "started_at": time.time(),
-                    "updated_at": time.time(),
-                    # When the message ENTERED the conversation, iMessage
-                    # style: Claude's (and system rows') counts on arrival;
-                    # the user's counts when their utterance is finished
-                    # (0 until then — still in the composer).
-                    "committed_at": 0.0 if role == "user" else time.time(),
-                }
-            )
+            row = {
+                "id": self._utterance_seq,
+                "role": role,
+                "status": status,
+                "text": text,
+                "detail": "",
+                "cost_usd": 0.0,
+                # Which agent this utterance belongs to. Claude's speech
+                # passes its own agent explicitly (it may no longer be the
+                # active one by the time it speaks); user speech defaults
+                # to the active agent it was delivered to.
+                "agent": agent if agent is not None else self._active_agent,
+                # #22: a subagent's speech stays in the parent conversation
+                # but carries its own persona (name shown in the header +
+                # the voice whose portrait the bubble renders).
+                "speaker": speaker or "",
+                "voice": voice or "",
+                "started_at": time.time(),
+                "updated_at": time.time(),
+                # When the message ENTERED the conversation, iMessage
+                # style: Claude's (and system rows') counts on arrival;
+                # the user's counts when their utterance is finished
+                # (0 until then — still in the composer).
+                "committed_at": 0.0 if role == "user" else time.time(),
+            }
+            if dictation:
+                row["dictation"] = dictation
+            self._utterances.append(row)
             return self._utterance_seq
 
     def update_transcription_partial(self, utterance_id: int, text: str) -> None:
@@ -1015,6 +1036,10 @@ class ListenerState:
         return items
 
     def add_transcript(self, text: str, utterance_id: int = 0, addressee: str = "") -> None:
+        session = self._dictation_of(utterance_id)
+        if session:
+            self._deliver_dictation(text, utterance_id, session)
+            return
         with self._lock:
             now = time.time()
             # Address the transcript to the agent stamped on its utterance
@@ -1067,6 +1092,29 @@ class ListenerState:
 
         # Provider calls may perform I/O. Never hold the audio/state lock across them.
         self.submit_speech(Speech(utterance_id, addressee, text, now))
+
+    def _dictation_of(self, utterance_id: int) -> int:
+        if not utterance_id:
+            return 0
+        with self._lock:
+            for utterance in reversed(self._utterances):
+                if utterance["id"] == utterance_id:
+                    return int(utterance.get("dictation") or 0)
+        return 0
+
+    def _deliver_dictation(self, text: str, utterance_id: int, session: int) -> None:
+        """Dictate anywhere: the text goes into the focused app, never to an
+        agent's queue - not even when the controller is missing."""
+        with self._lock:
+            self._last_transcript_at = time.time()
+            self._add_event_locked("dictation_transcript", text)
+            self._update_utterance_locked(
+                utterance_id, status="dictation — inserting…", text=text, committed_at=time.time()
+            )
+        if self.dictation is None:
+            self.update_utterance(utterance_id, status="dictation — not inserted: dictation is off")
+            return
+        self.dictation.deliver(text, utterance_id, session)
 
     def submit_speech(self, speech: Speech) -> Receipt:
         receipt = self.conversations.providers.submit(speech)

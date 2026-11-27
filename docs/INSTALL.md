@@ -9,6 +9,8 @@ Choose speech providers in the app. Enter credentials only in its settings.
 For local providers, allow the initial model download; cached models work
 offline. Grant microphone access to **Noisy Studio Engine** when prompted.
 Input Monitoring is needed for the optional global hotkey, not ordinary startup.
+Accessibility is needed only for the optional dictate key, which pastes speech
+into the focused app.
 Select the intended microphone and speaker and verify their levels.
 
 ## Claude Code

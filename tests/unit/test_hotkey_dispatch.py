@@ -129,3 +129,53 @@ def test_global_toggle_closes_a_lease_a_tab_key_opened(armed):
     assert st.log == ["hold", "release"]
     press(lst, "F15"); press(lst, "F17")   # toggle open, tab key hands over
     assert st.log[-3:] == ["hold", "release", "hold"]
+
+
+class _Dictation:
+    def __init__(self, allowed=True):
+        self.allowed = allowed
+        self.calls: list[str] = []
+
+    def start(self):
+        self.calls.append("start")
+        return self.allowed
+
+    def stop(self):
+        self.calls.append("stop")
+
+
+def _with_dictation(armed, allowed=True):
+    lst, st = armed
+    dictation = _Dictation(allowed)
+    lst._dictation = dictation
+    lst.configure_bindings({"dictate": "F13", "toggle": "F15", "scratch": "escape"})
+    return lst, st, dictation
+
+
+def test_dictate_key_toggles_a_dictation_on_the_talk_lease(armed):
+    lst, st, dictation = _with_dictation(armed)
+    press(lst, "F13")
+    press(lst, "F13")
+    assert (st.log, dictation.calls) == (["hold", "release"], ["start", "stop"])
+
+
+def test_a_refused_dictation_leaves_an_open_talk_lease_alone(armed):
+    lst, st, dictation = _with_dictation(armed, allowed=False)
+    press(lst, "F15")                           # talking to the agent
+    press(lst, "F13")                           # no permission: nothing changes
+    assert (st.log, dictation.calls) == (["hold"], ["start"])
+
+
+def test_dictate_ends_a_talk_lease_and_toggle_ends_the_dictation(armed):
+    lst, st, dictation = _with_dictation(armed)
+    press(lst, "F15")
+    press(lst, "F13")
+    press(lst, "F15")
+    assert (st.log, dictation.calls) == (["hold", "release", "hold", "release"], ["start", "stop"])
+
+
+def test_scratch_drops_the_dictation(armed):
+    lst, st, dictation = _with_dictation(armed)
+    press(lst, "F13")
+    press(lst, "escape")
+    assert (st.log, dictation.calls) == (["hold", "abort", "release"], ["start", "stop"])

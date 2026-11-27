@@ -97,3 +97,22 @@ def test_the_stop_button_settles_the_clip_as_skipped_not_unheard():
     assert card["status"] == "skipped — stopped by you"
     assert state.utterance_is_unheard(clip) is False          # never counted for catch-up
     assert state.consume_interrupted(clip) == "skipped — stopped by you"  # and stays so after bookkeeping
+
+
+def test_dictation_barge_in_lets_the_cut_clip_play_again_later(monkeypatch):
+    # Dictation addresses no conversation, so even the active tab's message
+    # stays valid: it waits and resumes once the user has finished.
+    from noisy_studio.listener import daemon
+    resubmitted = []
+    monkeypatch.setattr(daemon.speech, "submit", lambda *a, **k: resubmitted.append(k["agent"]))
+    state = ListenerState()
+    state.register_agent("tab-a", "Alpha")
+    state.set_active_agent("tab-a")
+    clip = state.create_utterance("claude", "playing through speakers…", text="answer", agent="tab-a")
+    state.set_playing_utterance_id(clip)
+    state.set_paused(True)
+
+    assert _ptt_barge_in(state, dictating=True) is True
+
+    card = next(u for u in state.utterances() if u["id"] == clip)
+    assert (card["status"], resubmitted) == ("unheard — waiting — you were speaking", ["tab-a"])
