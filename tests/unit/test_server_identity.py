@@ -122,3 +122,33 @@ async def test_task_report_without_hook_identity_never_submits(monkeypatch):
     result = await server.report_task("task-1", "Prepare design", "working")
 
     assert ("identity is missing" in result["error"], route.called) == (True, False)
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_speak_never_resends_a_request_the_daemon_already_received(monkeypatch):
+    # The daemon held the reply while the user dictated for 278 s; the client
+    # timed out and resent, so the same message was queued and played twice.
+    monkeypatch.setenv("NOISY_STUDIO_LISTENER_PORT", "12345")
+    respawns = []
+    monkeypatch.setattr(server, "_ensure_daemon", lambda: respawns.append(1))
+    route = respx.post("http://127.0.0.1:12345/speak").mock(
+        side_effect=httpx.ReadTimeout("held for the user's turn"))
+
+    result = await server.speak("reply", agent_id="session-1")
+
+    assert (len(route.calls), respawns, result) == (1, [], server.UNCONFIRMED_MESSAGE)
+
+
+@pytest.mark.asyncio
+@respx.mock
+async def test_speak_resends_once_when_the_daemon_was_not_reachable(monkeypatch):
+    monkeypatch.setenv("NOISY_STUDIO_LISTENER_PORT", "12345")
+    respawns = []
+    monkeypatch.setattr(server, "_ensure_daemon", lambda: respawns.append(1))
+    route = respx.post("http://127.0.0.1:12345/speak").mock(side_effect=[
+        httpx.ConnectError("refused"), httpx.Response(200, json={"voice": "eve"})])
+
+    result = await server.speak("reply", agent_id="session-1")
+
+    assert (len(route.calls), respawns, result) == (2, [1], "Spoke the message aloud with voice 'eve'.")

@@ -26,6 +26,11 @@ DAEMON_DOWN_MESSAGE = (
     "Deliver the message in writing instead."
 )
 
+UNCONFIRMED_MESSAGE = (
+    "The voice daemon accepted the message but did not confirm playback in time. "
+    "It stays queued and will be spoken once; do not send it again."
+)
+
 mcp = FastMCP("noisy-studio")
 
 
@@ -74,9 +79,15 @@ async def _daemon_speak(body: dict, agent_id: str | None = None) -> dict | None:
                     f"http://127.0.0.1:{port}/speak", json=body
                 )
                 return response.json()
-        except (httpx.HTTPError, ValueError):
+        except (httpx.ConnectError, httpx.ConnectTimeout):
+            # The request never reached the daemon: safe to spawn and resend.
             if attempt == 0:
                 await asyncio.to_thread(_ensure_daemon)
+        except (httpx.HTTPError, ValueError):
+            # The daemon HAS the message (a read timeout while it waits for
+            # the user's turn, a dropped reply). /speak is not idempotent:
+            # resending queues a second card and the user hears it twice.
+            return {"unconfirmed": True}
     return None
 
 
@@ -86,6 +97,8 @@ def _speak_result_message(result: dict | None) -> str | None:
         return DAEMON_DOWN_MESSAGE
     if "error" in result:
         return f"Speech failed: {result['error']}"
+    if result.get("unconfirmed"):
+        return UNCONFIRMED_MESSAGE
     return None
 
 
