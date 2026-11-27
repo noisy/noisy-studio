@@ -524,7 +524,8 @@ def run(config: VadConfig | None = None) -> None:
     hotkeys = HotkeyListener(state, _log, state.dictation)
     state.hotkey_listener = hotkeys
     state.fill_default_hotkeys(hotkey_mod.DEFAULT_HOTKEYS)  # never overrides a stored value
-    hotkeys.configure_bindings(state.hotkeys)  # boot never prompts (#97)
+    # Boot never prompts (#97); conversations' own talk keys arm with the rest.
+    hotkeys.configure_bindings(state.hotkeys, talk_keys=state.conversations.talk_keys())
 
     def _parent_watchdog() -> None:
         # The app that spawned us may die without SIGTERM (crash, force

@@ -741,10 +741,31 @@ class ListenerState:
     def tab_shortcuts(self) -> dict[str, int]:
         """Which conversation each tabN hotkey reaches: the visible ones in
         their stable registry order, numbered from 1. The dashboard shows
-        these numbers, so the list's sections never change what a key does."""
+        these numbers, so the list's sections never change what a key does.
+
+        A conversation with its own talk key is skipped (talk_keys.py): its
+        own key wins, and the positional keys go to those without one."""
         registry = getattr(self, "conversations", None)
-        keys = registry.visible_keys() if registry is not None else []
+        keys = (
+            [k for k in registry.visible_keys() if not registry.talk_key(k)]
+            if registry is not None
+            else []
+        )
         return {key: number for number, key in enumerate(keys[:TAB_SHORTCUT_COUNT], start=1)}
+
+    def talk_to_conversation(self, presented: str) -> bool:
+        """A conversation's own talk key: hand it the mic wherever it sits.
+        A closed (hidden) conversation comes back as itself - the user
+        reached for it on purpose. False when the registry does not know it."""
+        registry = self.conversations
+        key = registry.resolve(presented)
+        conversation = registry.get(key) if key else None
+        if conversation is None:
+            return False
+        if conversation.hidden or key not in self.agents:
+            registry.unhide(key)
+            self.register_agent(key, conversation.label())
+        return self.set_active_agent(key) == key
 
     def talk_to_tab(self, index: int) -> bool:
         """The tabN hotkey: hand the mic to the conversation numbered index.

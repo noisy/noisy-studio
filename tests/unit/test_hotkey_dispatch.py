@@ -20,6 +20,9 @@ class _State:
     def talk_to_tab(self, index):
         self.selected.append(index)
         return index <= self.tabs
+    def talk_to_conversation(self, key):
+        self.selected.append(key)
+        return key != "gone"
 
 
 @pytest.fixture
@@ -179,3 +182,58 @@ def test_scratch_drops_the_dictation(armed):
     press(lst, "F13")
     press(lst, "escape")
     assert (st.log, dictation.calls) == (["hold", "abort", "release"], ["start", "stop"])
+
+
+def test_talk_key_hands_the_mic_to_its_own_conversation_and_toggles(armed):
+    lst, st = armed
+    lst.configure_bindings({}, talk_keys={"conv-a": "F13"})
+
+    press(lst, "F13")
+    press(lst, "F13")
+
+    assert (st.selected, st.log) == (["conv-a"], ["hold", "release"])
+
+
+def test_talk_keys_and_tab_keys_hand_the_mic_over_to_each_other(armed):
+    lst, st = armed
+    lst.configure_bindings({"tab1": "F16"}, talk_keys={"conv-a": "F13", "conv-b": "F14"})
+
+    press(lst, "F13")
+    press(lst, "F14")
+    press(lst, "F16")
+
+    assert (st.selected, st.log) == (["conv-a", "conv-b", 1], ["hold", "release", "hold", "release", "hold"])
+
+
+def test_talk_key_of_a_vanished_conversation_does_nothing(armed):
+    lst, st = armed
+    lst.configure_bindings({}, talk_keys={"gone": "F13"})
+
+    press(lst, "F13")
+
+    assert st.log == ["hotkey: the talk key's conversation is gone"]
+
+
+def test_snapshot_reports_talk_keys_apart_from_the_action_bindings(armed):
+    lst, _ = armed
+    lst.configure_bindings({"hold": "F8", "toggle": "F13"}, talk_keys={"conv-a": "f13", "conv-b": "F14"})
+
+    snap = lst.snapshot()
+
+    assert (snap["bindings"], snap["talk_keys"], snap["problems"], snap["talk_key_problems"]) == (
+        {"hold": "F8"},
+        {"conv-b": "F14"},
+        {"toggle": {"kind": "collision", "detail": "F13 is also bound to a conversation's talk key"}},
+        {"conv-a": {"kind": "collision", "detail": "F13 is already bound to toggle"}},
+    )
+
+
+def test_configuring_actions_keeps_the_talk_keys_and_vice_versa(armed):
+    lst, _ = armed
+    lst.configure_bindings({"hold": "F8"}, talk_keys={"conv-a": "F13"})
+
+    lst.configure_bindings({"hold": "F9"})
+    lst.configure_talk_keys({"conv-b": "F14"})
+
+    snap = lst.snapshot()
+    assert (snap["bindings"], snap["talk_keys"]) == ({"hold": "F9"}, {"conv-b": "F14"})

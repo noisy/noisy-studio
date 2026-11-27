@@ -176,11 +176,16 @@ def matches(chord: Chord, keycode: int, flags: int) -> bool:
 
 # -- problems -------------------------------------------------------------
 
-def problems(bindings: dict[str, str]) -> dict[str, dict[str, str]]:
+def problems(
+    bindings: dict[str, str], names: dict[str, str] | None = None
+) -> dict[str, dict[str, str]]:
     """Per action: {"kind": "collision"|"system"|"invalid", "detail": ...}.
 
     A collision names the OTHER action holding the same chord; both sides
-    get it, the UI decides which to keep. A system warning never blocks."""
+    get it, the UI decides which to keep. A system warning never blocks.
+    `names` words an action in a detail ("the conversation 'Foo'") when its
+    key is not fit for the screen; the action's own key is used otherwise."""
+    names = names or {}
     out: dict[str, dict[str, str]] = {}
     seen: dict[str, str] = {}
     canon: dict[str, str] = {}
@@ -195,8 +200,8 @@ def problems(bindings: dict[str, str]) -> dict[str, dict[str, str]]:
         base = format_chord(parse_chord(chord).base)  # F8 and "F8 x2" cannot coexist
         if base in seen:
             other = seen[base]
-            out[action] = {"kind": "collision", "detail": f"{chord} is already bound to {other}"}
-            out.setdefault(other, {"kind": "collision", "detail": f"{chord} is also bound to {action}"})
+            out[action] = {"kind": "collision", "detail": f"{chord} is already bound to {names.get(other, other)}"}
+            out.setdefault(other, {"kind": "collision", "detail": f"{chord} is also bound to {names.get(action, action)}"})
         else:
             seen[base] = action
     for action, chord in canon.items():
