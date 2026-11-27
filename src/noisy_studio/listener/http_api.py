@@ -23,6 +23,7 @@ from noisy_studio.listener import pricing, speech
 from noisy_studio.listener.dashboard import DASHBOARD_HTML
 from noisy_studio.listener.identity import canonical_identity
 from noisy_studio.listener.state import ListenerState
+from noisy_studio.listener.summary_request import summary_request
 
 _PRERELEASE_WORDS = {"a": "alpha", "b": "beta", "rc": "rc"}
 
@@ -1207,6 +1208,19 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
                 if count:
                     state.add_event("agent", f"skipped {count} unheard message(s)")
                 self._respond({"skipped": count})
+            elif self.path == "/summarize-unheard":
+                body = self._read_json_body()
+                agent = str(body.get("agent") or "") or state.active_agent or ""
+                if not agent or not state.agent_alive(agent):
+                    # Settling the cards with nobody home would lose them:
+                    # the request would wait in a queue no session drains.
+                    self._respond({"error": "this conversation's session is offline"}, status=409)
+                    return
+                texts = state.summarize_unheard(agent)
+                if texts:
+                    state.add_transcript(summary_request(texts), addressee=agent)
+                    state.add_event("agent", f"asked for a summary of {len(texts)} unheard message(s)")
+                self._respond({"summarized": len(texts)})
             elif self.path == "/playback-pause":
                 # Transport pause freezes the native player in place.
                 paused = playback.toggle_pause()
@@ -1527,9 +1541,19 @@ def _handler_class(state: ListenerState) -> type[BaseHTTPRequestHandler]:
     return Handler
 
 
+class _HTTPServer(ThreadingHTTPServer):
+    def handle_error(self, request, client_address) -> None:
+        # A hook or dashboard that gives up on a long poll closes its socket
+        # before we answer. That is routine, not a daemon failure: printing a
+        # 30-line traceback per hang-up buried the real logs.
+        if isinstance(sys.exc_info()[1], (BrokenPipeError, ConnectionResetError, ConnectionAbortedError)):
+            return
+        super().handle_error(request, client_address)
+
+
 def start_http_api(state: ListenerState, port: int) -> ThreadingHTTPServer:
     host = os.environ.get(BIND_ENV_VAR, "127.0.0.1")
-    server = ThreadingHTTPServer((host, port), _handler_class(state))
+    server = _HTTPServer((host, port), _handler_class(state))
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
     return server

@@ -18,14 +18,6 @@
 /* Compact desktop controls retain their labels and native hit areas. */
 .hud .col-left > .panel { padding:8px 12px; margin-bottom:6px; }
 .hud .col-left .ptitle { margin-bottom:8px; }
-.hud .col-left .strip { gap:8px; }
-.hud .col-left .bigstate { gap:8px; }
-.hud .col-left .det { margin-top:0; }
-.hud .col-left .costs { display:flex; align-items:center; justify-content:space-between; gap:8px; text-align:left; }
-.hud .col-left .total { font-size:18px; }
-.hud .col-left .split { margin:0; gap:10px; }
-.hud .col-left .split small { margin:0; font-size:9px; }
-.hud .col-left .fuelbar { height:6px; }
 .hud .convo-rail .persona { gap:8px; }
 .hud .convo-rail .gauges { gap:6px; }
 .hud .convo-rail .gauge, .hud .convo-rail .charline { line-height:1.4; }
@@ -87,9 +79,6 @@
 .hud .dbrow .lbl, .hud .dbrow .val { font-size:10px; color:var(--muted); }
 .hud .dbbar { flex:1; height:4px; border-radius:2px; background:var(--line); overflow:hidden; }
 .hud .dbbar i { display:block; height:100%; background:var(--cyan); }
-.hud .catchup-row { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
-.hud .catchup { flex:1; border-color:var(--green); color:var(--green); }
-.hud .skipall { color:var(--muted); }
 .hud footer { flex:none; border-top:1px solid var(--line); display:flex; flex-wrap:wrap; align-items:center; gap:14px; padding:10px 0; color:var(--muted); font-size:10px; }
 .hud footer b { font-weight:500; color:var(--ink); }
 .hud footer .ok { color:var(--green); }

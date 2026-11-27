@@ -60,12 +60,11 @@ describe("SettingsView", () => {
     await w.find(".gate button").trigger("click");
     expect(w.emitted("grantHotkeys")).toHaveLength(1);
   });
-});
 
-it('opens Audio controls from another settings tab', async () => {
-  const wrapper = mount(SettingsView, {props:{apiKeyHint:''},slots:{'audio-controls':'<div>Shared audio controls</div>'}});
-  await wrapper.findAll('.tabbtn').find(b=>b.text()==='System')!.trigger('click');
-  await wrapper.vm.openAudioControls();
-  expect(wrapper.get('[aria-label="Audio controls"]').text()).toContain('Shared audio controls');
-  expect(wrapper.findAll('.tabbtn').find(b=>b.text()==='Audio')!.attributes('aria-pressed')).toBe('true');
+  it("opens the experimental Stage from the Appearance tab", async () => {
+    const wrapper = mount(SettingsView, { props: { apiKeyHint: "" } });
+    await wrapper.findAll(".tabbtn").find((b) => b.text() === "Appearance")!.trigger("click");
+    await wrapper.findAll("button").find((b) => b.text() === "Open Stage ↗")!.trigger("click");
+    expect(wrapper.emitted("openStage")).toHaveLength(1);
+  });
 });

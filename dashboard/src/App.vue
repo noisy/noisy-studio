@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import "./styles/dashboard.css";
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
-import { cancelTranscript, getDevices, runDiagnostics, saveApiKey, setAgentMuted, setMode, setMuted, setPtt, setSettings, setVoiceMuted, speakText, stopPlayback, type DiagnosticChecks, togglePlaybackPause, interruptPlayback, skipUnheard, scheduleShutdown, cancelShutdown, postponeShutdown, requestHotkeyPermission } from "./api/client";
+import { cancelTranscript, getDevices, runDiagnostics, saveApiKey, setAgentMuted, setMode, setMuted, setPtt, setSettings, setVoiceMuted, speakText, stopPlayback, type DiagnosticChecks, togglePlaybackPause, interruptPlayback, scheduleShutdown, cancelShutdown, postponeShutdown, requestHotkeyPermission } from "./api/client";
 import type { InputDevice } from "./types";
 import { replaySpeechText } from "./components/bubbleStatus";
 import type { Character, Utterance } from "./types";
 import ActivityLine from "./components/ActivityLine.vue";
 import AgentTabs from "./components/AgentTabs.vue";
+import CatchUpBar from "./components/CatchUpBar.vue";
 import VoicePersona from "./components/VoicePersona.vue";
 import { provideTaskProgress } from "./composables/useTaskProgress";
 provideTaskProgress();
@@ -18,10 +19,8 @@ import SpeechSettings from "./components/SpeechSettings.vue";
 import HudPanel from "./components/HudPanel.vue";
 import Oscilloscope from "./components/Oscilloscope.vue";
 import TurnHistory from "./components/TurnHistory.vue";
-import ProviderLimits from "./components/ProviderLimits.vue";
 import AudioControls from "./components/AudioControls.vue";
 import { AUDIO_PANEL_WIDTH, type AudioChange } from "./components/audioControls";
-import { useAudioControlVisibility } from "./composables/useAudioControlVisibility";
 import StageLive from "./components/StageLive.vue";
 import TaskProgressPanel from "./components/task-progress/TaskProgressPanel.vue";
 import TaskReviewPage from "./components/task-progress/TaskReviewPage.vue";
@@ -37,13 +36,13 @@ import SettingsView from "./components/SettingsView.vue";
 import ShutdownBanner from "./components/ShutdownBanner.vue";
 import { useTabStatus } from "./composables/useTabStatus";
 import SpectrumBars from "./components/SpectrumBars.vue";
-import StatusStrip from "./components/StatusStrip.vue";
 import CompanionFloat from "./components/CompanionFloat.vue";
 import VersionBadge from "./components/VersionBadge.vue";
 import type { CueName } from "./composables/cueEvents";
 import { useAudioCues } from "./composables/useAudioCues";
 import { useDaemonState } from "./composables/useDaemonState";
 import { useMicStream } from "./composables/useMicStream";
+import { useUnheardBacklog } from "./composables/useUnheardBacklog";
 
 const { status, utterances, allUtterances, utterancesFor, character, characterPending, characterError, changeCharacter, offline, viewedAgent, errors, clearErrors, selectAgent, dismissAgent, reorderAgents } =
   useDaemonState();
@@ -113,34 +112,8 @@ const replay = (utterance: Utterance) => {
 };
 const cancel = (utterance: Utterance) => cancelTranscript(utterance.id).catch(swallow);
 
-const unheard = computed(() =>
-  utterances.value.filter((u) => u.role === "claude" && u.status.includes("unheard")),
-);
 const toggleVoiceMute = () => setVoiceMuted(!status.value?.voice_muted).catch(swallow);
-// Catch up: unmute FIRST (or the replays would park as unheard again) —
-// BOTH the global voice mute and this conversation's own mute — then
-// queue every parked message in arrival order; the playback queue
-// serializes them, each stoppable with its ⏹.
-// Skip-all: the mirror of catch-up - settle the parked queue unplayed.
-// One daemon call; the next status poll empties the counter.
-const skipAll = () => skipUnheard(viewedAgent.value ?? undefined).catch(swallow);
-
-async function catchUp() {
-  await setVoiceMuted(false).catch(swallow);
-  const agent = viewedAgent.value;
-  if (agent && (status.value?.muted_agents ?? []).includes(agent)) {
-    await setAgentMuted(agent, false).catch(swallow);
-  }
-  // Sequential awaits + interrupt:false — parallel POSTs can arrive out of
-  // order and an interrupting replay would jump the queue, so a batch
-  // catch-up must do neither (it played last-before-previous once).
-  const parked = [...unheard.value].sort(
-    (a, b) => (a.committed_at || a.started_at) - (b.committed_at || b.started_at),
-  );
-  for (const u of parked) {
-    await speakText(replaySpeechText(u.text), u.id, undefined, { interrupt: false }).catch(swallow);
-  }
-}
+const { unheard, catchUp, skipAll, summarize, canSummarize } = useUnheardBacklog(status, utterances, viewedAgent);
 
 // Push-to-talk: while the button (or the space bar) is physically held we
 // renew the daemon's hold lease (it expires by itself if we die mid-hold).
@@ -196,12 +169,14 @@ onUnmounted(() => {
 const keyInput = ref("");
 const showSettings = ref(false);
 const showStage = ref(false);
-const stageButton = ref<HTMLButtonElement | null>(null);
+// Stage is opened from Settings > Appearance; leaving it returns focus to
+// the Settings toggle, the nearest control that is always on screen.
+const settingsToggle = ref<HTMLButtonElement | null>(null);
 async function closeStage() {
   stopPtt();
   showStage.value = false;
   await nextTick();
-  stageButton.value?.focus();
+  settingsToggle.value?.focus();
 }
 // The gate must not blink away mid-verification OR right after a
 // rejection: the daemon stores the candidate key while it live-checks it,
@@ -333,13 +308,6 @@ const grantHotkeys = () => requestHotkeyPermission().catch(swallow);
 // next snapshot carries the stored map plus any problem to show (#104).
 const setHotkey = (action: string, chord: string) => setSettings({ hotkeys: { [action]: chord } }).catch(swallow);
 
-const visibleAudioControls = useAudioControlVisibility();
-const settingsView = ref<InstanceType<typeof SettingsView> | null>(null);
-async function openAudioSettings() {
-  showSettings.value = true;
-  await nextTick();
-  await settingsView.value?.openAudioControls();
-}
 function changeAudio({id,value}: AudioChange) {
   if (id === 'cues') { cuesEnabled.value = value === 'on'; return; }
   if (id === 'recognition') { setMode(value as 'batch' | 'live').catch(swallow); return; }
@@ -454,8 +422,7 @@ function changeAudio({id,value}: AudioChange) {
           </div>
 
           <div class="sysstate">
-            <button ref="stageButton" class="ctl header-action" :disabled="unconfigured" @click="showStage = true">Stage ↗</button>
-            <button class="ctl header-action settings-toggle" :aria-pressed="showSettings" @click="showSettings = !showSettings">Settings</button>
+            <button ref="settingsToggle" class="ctl header-action settings-toggle" :aria-pressed="showSettings" @click="showSettings = !showSettings">Settings</button>
             <button
               class="ctl header-action header-mute" :disabled="offline" :aria-pressed="!!status?.voice_muted"
               :title="status?.voice_muted ? 'Resume agent playback' : 'Mute playback and keep replies for later'"
@@ -507,16 +474,7 @@ function changeAudio({id,value}: AudioChange) {
         <HudPanel index="02" title="Audio spectrum" class="spectrum-panel">
           <SpectrumBars :level="level" />
         </HudPanel>
-        <HudPanel index="03" :class="{ locked: unconfigured }">
-          <AudioControls :status="status" :devices="devices" :cues-enabled="cuesEnabled" :visible="visibleAudioControls" @change="changeAudio" @refresh-devices="loadDevices" @open-settings="openAudioSettings" />
-        </HudPanel>
-        <!-- Global, machine-wide cost/state: deliberately OUTSIDE the
-             conversation frame — the daemon meters all conversations. -->
-        <ProviderLimits :providers="status?.provider_usage ?? []" :offline="offline" />
         <TaskProgressPanel :status="status" :offline="offline" :utterances="allUtterances" @review-open="taskReviewOpen = $event" @start-ptt="startPtt" @stop-ptt="stopPtt" />
-        <HudPanel index="05" title="Session usage">
-          <StatusStrip :status="status" :offline="offline" />
-        </HudPanel>
       </div>
 
       <div class="col-mid" :class="{ locked: unconfigured }">
@@ -524,7 +482,6 @@ function changeAudio({id,value}: AudioChange) {
         <HudPanel v-if="showSettings" index="08" title="Settings">
           <button class="settings-x" title="Close settings" @click="showSettings = false">✕</button>
           <SettingsView
-            ref="settingsView"
             :api-key-hint="status?.api_key_hint ?? ''"
             :devices="devices"
             :selected-device="status?.input_device ?? ''"
@@ -540,8 +497,9 @@ function changeAudio({id,value}: AudioChange) {
             @toggle-cue="setCue"
             @set-hum="setHum"
             @run-checks="runChecks"
+            @open-stage="showStage = true"
           >
-            <template #audio-controls><AudioControls settings :status="status" :devices="devices" :cues-enabled="cuesEnabled" :visible="visibleAudioControls" @change="changeAudio" @refresh-devices="loadDevices" @visibility="visibleAudioControls = $event" /></template>
+            <template #audio-controls><AudioControls :status="status" :devices="devices" :cues-enabled="cuesEnabled" @change="changeAudio" @refresh-devices="loadDevices" /></template>
           </SettingsView>
         </HudPanel>
         <!-- Tabs live OUTSIDE the conversation frame, protruding above it
@@ -575,14 +533,7 @@ function changeAudio({id,value}: AudioChange) {
             <div class="convo-main">
               <!-- Catch-up spans the bubbles column only, like telemetry —
                    never the rail. -->
-              <div v-if="unheard.length" class="catchup-row">
-                <button class="ctl catchup" @click="catchUp">
-                  ▶ Catch up ({{ unheard.length }} unheard)
-                </button>
-                <button class="ctl skipall" title="Dismiss all unheard messages without playing them" @click="skipAll">
-                  Skip all
-                </button>
-              </div>
+              <CatchUpBar :count="unheard.length" :can-summarize="canSummarize" @catch-up="catchUp" @summarize="summarize" @skip="skipAll" />
               <ConversationLog
                 :utterances="utterances"
                 :history-trimmed="(status?.history_trimmed?.[viewedAgent ?? ''] ?? 0) > 0"

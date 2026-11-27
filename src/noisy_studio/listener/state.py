@@ -1006,18 +1006,19 @@ class ListenerState:
             items = [u for u in items if u.get("agent") == agent]
         return items
 
-    def add_transcript(self, text: str, utterance_id: int = 0) -> None:
+    def add_transcript(self, text: str, utterance_id: int = 0, addressee: str = "") -> None:
         with self._lock:
             now = time.time()
             # Address the transcript to the agent stamped on its utterance
             # card — that card was created at RECORDING START, so this is
             # "who the user started talking to" (#17), not whoever's tab is
-            # active by the time transcription finishes.
-            addressee = ""
-            for utterance in self._utterances:
-                if utterance["id"] == utterance_id:
-                    addressee = str(utterance.get("agent") or "")
-                    break
+            # active by the time transcription finishes. A daemon note has
+            # no card; its caller names the conversation instead.
+            if not addressee:
+                for utterance in self._utterances:
+                    if utterance["id"] == utterance_id:
+                        addressee = str(utterance.get("agent") or "")
+                        break
             if not addressee:
                 addressee = self._active_agent or ""
             self._transcripts.append(
@@ -1527,6 +1528,10 @@ class ListenerState:
         with self._lock:
             return dict(self._latency_ms)
 
+    def agent_alive(self, agent: str) -> bool:
+        with self._lock:
+            return self._agent_alive_locked(agent, time.time())
+
     def _agent_alive_locked(self, agent: str, now: float) -> bool:
         """Is anyone home on this tab? Call with the lock held.
 
@@ -1636,20 +1641,39 @@ class ListenerState:
         how many cards were settled.
         """
         with self._lock:
-            target = agent or self._active_agent
-            skipped = 0
-            for utterance in self._utterances:
-                if utterance.get("role") not in ("claude", "daemon"):
-                    continue
-                owner = utterance.get("agent") or self._active_agent
-                if owner != target:
-                    continue
-                if str(utterance.get("status", "")).startswith(("unheard", "queued", "synthesizing", "ready")):
-                    self._update_utterance_locked(utterance["id"], status="skipped — dismissed by you")
-                    skipped += 1
-            # History persistence is the daemon's periodic save - the
-            # status flip above is picked up on its next tick.
-            return skipped
+            return len(self._settle_pending_speech_locked(agent, "skipped — dismissed by you"))
+
+    def summarize_unheard(self, agent: str | None = None) -> list[str]:
+        """Summarize: settle the backlog like skip-all and hand back its words.
+
+        The agent retells them as one squashed message, so the cards
+        themselves never play - they settle under the "skipped" prefix,
+        final and never counted for catch-up again. Oldest first.
+        """
+        with self._lock:
+            settled = self._settle_pending_speech_locked(agent, "skipped — summarized for you")
+        return [text for card in settled if (text := str(card.get("text") or "").strip())]
+
+    def _settle_pending_speech_locked(self, agent: str | None, status: str) -> list[dict]:
+        """Settle one conversation's unheard and still-pending speech.
+
+        Pending cards (queued, synthesizing, ready) go too: left behind, they
+        would park as unheard moments later and reopen the backlog the user
+        just closed. History persistence is the daemon's periodic save - the
+        status flip is picked up on its next tick.
+        """
+        target = agent or self._active_agent
+        settled = []
+        for utterance in self._utterances:  # arrival order
+            if utterance.get("role") not in ("claude", "daemon"):
+                continue
+            owner = utterance.get("agent") or self._active_agent
+            if owner != target:
+                continue
+            if str(utterance.get("status", "")).startswith(("unheard", "queued", "synthesizing", "ready")):
+                self._update_utterance_locked(utterance["id"], status=status)
+                settled.append(dict(utterance))
+        return settled
 
     def utterance_is_unheard(self, utterance_id: int) -> bool:
         with self._lock:

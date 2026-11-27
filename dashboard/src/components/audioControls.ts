@@ -3,7 +3,6 @@ export const AUDIO_PANEL_WIDTH = 268;
 export const AUDIO_CONTROL_IDS = ['microphone', 'language', 'turn', 'agent', 'recognition', 'cues', 'length', 'silence', 'sensitivity', 'smart'] as const;
 export type AudioControlId = typeof AUDIO_CONTROL_IDS[number];
 export type AudioChange = { id: AudioControlId; value: string };
-export const DEFAULT_AUDIO_CONTROLS: AudioControlId[] = ['microphone', 'language', 'turn'];
 export const END_SILENCE_MS = [0, 500, 1000, 1500, 2000, 3000, 4000, 5000, 6000, 7000, 8000, 9000, 10000];
 const languages = { '': 'Auto-detect', en: 'English', pl: 'Polski', de: 'Deutsch', es: 'Español', fr: 'Français', 'pt-BR': 'Português (BR)', it: 'Italiano', ja: '日本語', zh: '中文' };
 const choices = (values: Record<string, string>) => Object.entries(values).map(([value, label]) => ({value, label, disabled: false}));

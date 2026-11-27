@@ -167,6 +167,13 @@ export function skipUnheard(agent?: string): Promise<{ skipped: number }> {
   return postJson<{ skipped: number }>("/skip-unheard", agent ? { agent } : {});
 }
 
+/** Summarize: settle the conversation's unheard cards and ask its agent to
+ * retell them as ONE squashed message. Rejects when the session is offline
+ * (nobody could answer, so the cards stay unheard). */
+export function summarizeUnheard(agent?: string): Promise<{ summarized: number }> {
+  return postJson<{ summarized: number }>("/summarize-unheard", agent ? { agent } : {});
+}
+
 /** Recall a transcript that still waits in the queue (AWAITING CLAUDE). */
 export function cancelTranscript(utteranceId: number): Promise<void> {
   return post("/cancel", { utterance_id: utteranceId });
