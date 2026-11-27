@@ -438,7 +438,7 @@ function changeAudio({id,value}: AudioChange) {
           :queued="status?.queued_by_agent ?? {}"
           :muted="status?.muted_agents ?? []"
           @select="selectAgent"
-          @dismiss="dismissAgent"
+          @settle="dismissAgent"
           @reorder="reorderAgents"
         />
         <TaskProgressPanel :status="status" :offline="offline" :utterances="allUtterances" @review-open="taskReviewOpen = $event" @start-ptt="startPtt" @stop-ptt="stopPtt" />

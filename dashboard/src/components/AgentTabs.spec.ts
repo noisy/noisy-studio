@@ -132,7 +132,7 @@ describe("AgentTabs", () => {
     expect(labels).toEqual(["old title", "young title", "dead2 title", "dead1 title"]);
   });
 
-  it("greys out ended tabs, and every tab can be closed - the mic's too", async () => {
+  it("greys out ended tabs; every live row settles - the mic's too - and Settled rows offer nothing", async () => {
     const wrapper = mount(AgentTabs, {
       props: {
         agents: { live: "live", other: "other", gone: "gone" },
@@ -150,16 +150,15 @@ describe("AgentTabs", () => {
 
     const [live, other, gone] = wrapper.findAll("button.tab");
     expect(live.classes()).not.toContain("offline");
-    // Every tab closes like a browser tab, including the one receiving the
-    // mic (the daemon hands the mic on and says where it went).
-    expect(live.find(".dismiss").exists()).toBe(true);
-    expect(other.find(".dismiss").exists()).toBe(true);
     expect(gone.classes()).toContain("offline");
+    // The daemon cannot un-hide a conversation on request, so no Restore.
+    expect(gone.find(".settle").exists()).toBe(false);
+    expect(live.get(".settle").attributes("tabindex")).toBe("0");
 
-    await gone.find(".dismiss").trigger("click");
-    await other.find(".dismiss").trigger("click");
-    expect(wrapper.emitted("dismiss")).toEqual([["gone"], ["other"]]);
-    expect(wrapper.emitted("select")).toBeUndefined(); // ✕ must not also select
+    await other.get(".settle").trigger("click");
+    await live.get(".settle").trigger("keydown", { key: "Enter" });
+    expect(wrapper.emitted("settle")).toEqual([["other"], ["live"]]);
+    expect(wrapper.emitted("select")).toBeUndefined(); // Settle must not also select
   });
 
   it("puts user-pinned tabs first within their group, in pinned order", () => {

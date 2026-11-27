@@ -70,7 +70,7 @@ onBeforeUnmount(() => cancelAnimationFrame(recipientFrame));
 
 const emit = defineEmits<{
   select: [name: string];
-  dismiss: [name: string];
+  settle: [name: string]; // hide it from the list (the daemon's /dismiss-agent)
   reorder: [names: string[]];
 }>();
 
@@ -217,17 +217,19 @@ function onDrop(target: Tab) {
           </span>
           <span class="line where clip">{{ whereLine(item.tab) }}</span>
         </span>
-        <!-- Close, on every row, like a browser tab: it hides the
-             conversation, it does not end the session. Closing the mic's
-             row hands the mic to the next one (the daemon decides and says
-             so). A real flex slot, always reserved, revealed on hover or
-             focus - the row never shifts. -->
+        <!-- Settle: hides the conversation, it does not end the session;
+             it comes back when its session speaks. Settling the mic's row
+             hands the mic to the next one (the daemon decides and says so).
+             Shown on hover or focus, laid over the end of line 2, so the
+             title, wait time, Mic and number never move. Settled rows have
+             no action: the daemon cannot bring a hidden one back yet. -->
         <span
-          class="dismiss"
-          role="button" tabindex="0" @keydown.enter.stop.prevent="$emit('dismiss', item.tab.name)" @keydown.space.stop.prevent="$emit('dismiss', item.tab.name)"
-          title="Close this conversation"
-          @click.stop="$emit('dismiss', item.tab.name)"
-          >✕</span
+          v-if="!item.tab.settled"
+          class="settle"
+          role="button" tabindex="0" @keydown.enter.stop.prevent="$emit('settle', item.tab.name)" @keydown.space.stop.prevent="$emit('settle', item.tab.name)"
+          title="Settle: hide it until its session speaks again"
+          @click.stop="$emit('settle', item.tab.name)"
+          >Settle</span
         >
       </button>
     </template>
@@ -265,9 +267,10 @@ function onDrop(target: Tab) {
 .waitcount { color:var(--amber); font-size:11px; }
 .mutecount, .mutespk { color:var(--red); }
 .mutespk { width:14px; height:14px; }
-.dismiss { flex:none; width:16px; text-align:center; padding:2px 0; color:var(--muted); line-height:1; opacity:0; }
-.tab:hover .dismiss, .tab:focus-within .dismiss, .tab.viewing .dismiss { opacity:1; }
-.dismiss:hover, .dismiss:focus-visible { color:var(--red); }
+/* Over the end of line 2 (the branch), on the z-axis: nothing reflows. */
+.settle { position:absolute; right:8px; bottom:3px; height:15px; padding:0 7px; border:1px solid var(--line-strong); border-radius:6px; background:var(--panel-solid); box-shadow:-12px 0 8px -2px var(--surface-hover); color:var(--ink); font:10px/13px var(--sans); box-sizing:border-box; opacity:0; pointer-events:none; }
+.tab:hover .settle, .tab:focus-within .settle { opacity:1; pointer-events:auto; }
+.settle:hover, .settle:focus-visible { border-color:var(--muted); }
 /* Project heading: badge + name + amber waiting count in a reserved slot. */
 .project-head { display:flex; align-items:center; gap:8px; height:var(--project-head); margin-top:10px; padding:0 10px; font:600 11px var(--sans); color:var(--ink); }
 .project-head:first-child { margin-top:2px; }
