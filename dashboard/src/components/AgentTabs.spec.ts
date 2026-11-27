@@ -1,4 +1,4 @@
-import { mount } from "@vue/test-utils";
+import { flushPromises, mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
 import AgentTabs from "./AgentTabs.vue";
 
@@ -352,25 +352,28 @@ describe("AgentTabs", () => {
     expect(wrapper.findAll(".shortcut").map((k) => k.text())).toEqual(["F16", "Tab 2"]);
   });
 
-  it("right-click gives a conversation a Tab key by swapping it with the holder", async () => {
+  it("right-click captures a conversation's own talk key and shows a refusal", async () => {
     const base = { online: true, offline_since: null };
+    const calls: [string, string][] = [];
+    const setTalkKey = async (name: string, chord: string) => { calls.push([name, chord]); return chord === "f" ? "Already used by Hold" : null; };
     const wrapper = mount(AgentTabs, {
       props: {
         agents: { a: "A", b: "B" },
-        meta: { a: { ...base, label: "A", activated_at: 1, manual_pos: 0, shortcut: 1 }, b: { ...base, label: "B", activated_at: 2, manual_pos: 1, shortcut: 2 } },
-        active: null, viewed: null, speaking: [], tabKeys: { 1: "F16", 2: "F17" },
+        meta: { a: { ...base, label: "A", activated_at: 1, shortcut: 1 }, b: { ...base, label: "B", activated_at: 2, shortcut: null, talk_key: "F13" } },
+        active: null, viewed: null, speaking: [], tabKeys: { 1: "F16" }, setTalkKey,
       },
       attachTo: document.body,
     });
+    const keys = wrapper.findAll(".shortcut").map((k) => k.text());
 
-    await wrapper.findAll("button.tab")[1].trigger("contextmenu");
-    const items = wrapper.findAll(".keymenu-item");
-    const labels = items.map((i) => [i.find("kbd").text(), i.attributes("disabled") !== undefined]);
-    await items[0].trigger("click");
+    await wrapper.findAll("button.tab")[0].trigger("contextmenu");
+    await wrapper.find(".keymenu-item").trigger("click");
+    window.dispatchEvent(new KeyboardEvent("keydown", { code: "KeyF" }));
+    await new Promise((r) => setTimeout(r, 400)); // the double-tap window
+    await flushPromises();
+    const problem = wrapper.find(".keymenu-problem").text();
 
-    expect([labels, wrapper.emitted("reorder"), wrapper.find(".keymenu").exists()]).toEqual([
-      [["F16", false], ["F17", true], ["Tab 3", true], ["Tab 4", true]], [[["b", "a"]]], false,
-    ]);
+    expect([keys, calls, problem]).toEqual([["F16", "F13"], [["a", "f"]], "Already used by Hold"]);
     wrapper.unmount();
   });
 });

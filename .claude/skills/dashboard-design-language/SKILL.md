@@ -65,8 +65,9 @@ never hides the viewed or mic row, nor one with messages for you. The mic
 row carries a green bar in the row's inset (no "Mic" word: the bar says it).
 The Tab hotkey is drawn as a key with the real chord ("F17"), never a bare
 number that reads as a count; on rows it shows on hover/focus only (the user
-knows their keys), and right-click assigns one (a position swap: the daemon
-numbers by position). An idle row has an EMPTY status slot - a grey dot read
+knows their keys). Right-click a row to capture its OWN talk key (any chord,
+the same capture as Settings; the daemon refuses one another action uses and
+the menu says why). A conversation's own key replaces its positional Tab N. An idle row has an EMPTY status slot - a grey dot read
 as a bullet. The selected row is highlighted, NOT fused with the frame -
 fusing breaks as soon as the list scrolls. Grouping and order live in
 `agentOrder.ts` (the widget uses the same order); drag-and-drop reorders

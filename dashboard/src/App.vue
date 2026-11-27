@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import "./styles/dashboard.css";
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
-import { cancelTranscript, getDevices, runDiagnostics, saveApiKey, setAgentMuted, setMode, setMuted, setPtt, setSettings, setVoiceMuted, speakText, stopPlayback, type DiagnosticChecks, togglePlaybackPause, interruptPlayback, scheduleShutdown, cancelShutdown, postponeShutdown, requestHotkeyPermission, requestDictationPermission } from "./api/client";
+import { cancelTranscript, getDevices, runDiagnostics, saveApiKey, setAgentMuted, setMode, setMuted, setPtt, setSettings, setVoiceMuted, speakText, stopPlayback, type DiagnosticChecks, togglePlaybackPause, interruptPlayback, scheduleShutdown, cancelShutdown, postponeShutdown, requestHotkeyPermission, requestDictationPermission, setConversationHotkey } from "./api/client";
 import type { InputDevice } from "./types";
 import { replaySpeechText } from "./components/bubbleStatus";
 import type { Character, Utterance } from "./types";
@@ -53,6 +53,17 @@ const { status, utterances, allUtterances, utterancesFor, character, characterPe
 const { thinking: thinkingAgents, activityText } = useAgentActivity(status);
 // Left column: the conversation list and machine-global controls.
 const leftColumn = useColumnWidth();
+// Right-click a conversation -> its own talk key. The daemon refuses a chord
+// another action uses; the menu shows why. A chord another conversation had
+// moves here (the daemon says which), which the next /status shows.
+async function setTalkKey(name: string, chord: string): Promise<string | null> {
+  try {
+    const result = await setConversationHotkey(name, chord);
+    return result.problem && result.problem.kind !== "system" ? result.problem.detail : null;
+  } catch {
+    return "The voice service did not answer. Try again.";
+  }
+}
 // Each Tab N hotkey's armed chord (else the stored one), for the list rows.
 const tabKeys = computed(() => {
   const chords = { ...(status.value?.hotkeys?.stored ?? {}), ...(status.value?.hotkeys?.bindings ?? {}) };
@@ -436,6 +447,7 @@ function changeAudio({id,value}: AudioChange) {
           :agents="status?.agent_labels ?? {}"
           :meta="status?.agents_meta ?? null"
           :tab-keys="tabKeys"
+          :set-talk-key="setTalkKey"
           :active="status?.active_agent ?? null"
           :viewed="viewedAgent"
           :speaking="status?.speaking_agents ?? []"

@@ -133,7 +133,7 @@ export const ListBesideWindow: StoryObj<typeof AgentTabs> = {
  *  badges, glyphs and the Settled chevron share a column and every count and
  *  wait time ends on the same right edge (see Lab/ConversationListDesign). */
 /** Hover a row to see its talk key and Settle, as one cluster over the
- *  row's right end; right-click it to give it another key (F16-F19 here).
+ *  row's right end; right-click it to capture its own talk key (any chord).
  *  Idle rows have an empty status slot. */
 export const Projects: StoryObj<typeof AgentTabs> = {
   args: projectArgs(false),

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { assignShortcut, groupAgents, moveWithinProject, type ProjectGroup } from "./agentOrder";
+import { groupAgents, moveWithinProject, type ProjectGroup } from "./agentOrder";
 import { computed, onBeforeUnmount, ref } from "vue";
 import { conversationLabel } from "../conversationLabel";
 import { chordLabel, projectHue, waitLabel } from "./tabDetails";
+import { useKeyCapture } from "../composables/useKeyCapture";
 
 export interface AgentMeta {
   label: string;
@@ -11,6 +12,7 @@ export interface AgentMeta {
   offline_since: number | null;
   manual_pos?: number | null;
   shortcut?: number | null; // the Tab N hotkey that reaches it (daemon-numbered)
+  talk_key?: string | null; // its own global talk key, which replaces the Tab N one
   project?: string | null; // git repository (or folder) the session runs in
   branch?: string | null;
   waiting_since?: number | null; // epoch s; set while it is your move
@@ -30,6 +32,9 @@ const props = withDefaults(
     settledOpen?: boolean; // initial Settled state; omit for the remembered one
     now?: number; // epoch s; omit to use the row clock (stories/tests pin it)
     tabKeys?: Record<number, string>; // Tab N hotkey -> its chord ("F16"), shown on the row
+    // Give a conversation its own talk key ("" clears); resolves to the
+    // daemon's refusal text, or null when it took the key.
+    setTalkKey?: (name: string, chord: string) => Promise<string | null>;
   }>(),
   { thinking: () => [], activity: () => ({}), queued: () => ({}), muted: () => [], meta: null, settledOpen: undefined },
 );
@@ -56,6 +61,8 @@ const clockTimer = setInterval(() => { clock.value = Date.now() / 1000; }, CLOCK
 onBeforeUnmount(() => clearInterval(clockTimer));
 // The row shows the real key (F16), falling back to "Tab N" when unbound.
 const keyCap = (shortcut: number | null | undefined) => (shortcut ? chordLabel(props.tabKeys?.[shortcut]) || `Tab ${shortcut}` : "");
+// A row's key: its own talk key, else its positional Tab N key.
+const rowKey = (name: string) => chordLabel(props.meta?.[name]?.talk_key) || keyCap(props.meta?.[name]?.shortcut);
 const waited = (name: string) => waitLabel(props.meta?.[name]?.waiting_since, props.now ?? clock.value);
 
 const emit = defineEmits<{
@@ -142,21 +149,26 @@ function onDrop(target: Tab) {
   if (order) emit("reorder", order);
 }
 
-// Right-click a row: give it one of the Tab hotkeys. The daemon numbers
-// conversations by position, so this is a reorder (swap with the holder).
-const TAB_SLOTS = [1, 2, 3, 4];
-const keyMenu = ref<{ name: string; x: number; y: number } | null>(null);
+// Right-click a row: give it its own global talk key, captured the same
+// way Settings captures hotkeys (press the chord; Delete clears).
+const keyMenu = ref<{ name: string; x: number; y: number; problem: string | null } | null>(null);
 function openKeyMenu(name: string, event: MouseEvent) {
   const nav = (event.currentTarget as HTMLElement).closest("nav")!.getBoundingClientRect();
-  keyMenu.value = { name, x: event.clientX - nav.left, y: event.clientY - nav.top };
+  keyMenu.value = { name, x: event.clientX - nav.left, y: event.clientY - nav.top, problem: null };
 }
-function assignKey(slot: number) {
-  const menu = keyMenu.value;
+function closeKeyMenu() {
+  capture.stop();
   keyMenu.value = null;
-  if (!menu) return;
-  const order = assignShortcut(Object.keys(props.agents), props.meta ?? {}, menu.name, slot);
-  if (order) emit("reorder", order);
 }
+async function applyTalkKey(name: string, chord: string) {
+  const problem = (await props.setTalkKey?.(name, chord)) ?? null;
+  if (problem && keyMenu.value?.name === name) keyMenu.value = { ...keyMenu.value, problem };
+  else if (!problem) keyMenu.value = null;
+}
+const capture = useKeyCapture((name, result) => {
+  if (result.kind === "chord") void applyTalkKey(name, result.chord);
+  else if (result.kind === "clear") void applyTalkKey(name, "");
+});
 </script>
 
 <template>
@@ -228,7 +240,7 @@ function assignKey(slot: number) {
              (ended) row the same action is Remove; the daemon cannot restore
              a hidden one on request yet. -->
         <span class="actions">
-          <kbd class="shortcut" :class="{ none: !meta?.[item.tab.name]?.shortcut }" :title="meta?.[item.tab.name]?.shortcut ? `Hotkey: Tab ${meta[item.tab.name].shortcut} talks to this conversation` : undefined">{{ keyCap(meta?.[item.tab.name]?.shortcut) }}</kbd>
+          <kbd class="shortcut" :class="{ none: !rowKey(item.tab.name) }" :title="rowKey(item.tab.name) ? `Hotkey ${rowKey(item.tab.name)} talks to this conversation · right-click to change` : 'Right-click to give it a talk key'">{{ rowKey(item.tab.name) }}</kbd>
           <span
             class="settle"
             role="button" tabindex="0" @keydown.enter.stop.prevent="$emit('settle', item.tab.name)" @keydown.space.stop.prevent="$emit('settle', item.tab.name)"
@@ -238,15 +250,15 @@ function assignKey(slot: number) {
         </span>
       </button>
     </template>
-    <div v-if="keyMenu" class="keymenu-scrim" @click="keyMenu = null" @contextmenu.prevent="keyMenu = null" />
-    <div v-if="keyMenu" class="keymenu" role="menu" aria-label="Talk key" :style="{ left: keyMenu.x + 'px', top: keyMenu.y + 'px' }" @keydown.escape="keyMenu = null">
-      <p class="keymenu-title">Talk to it with</p>
-      <button
-        v-for="slot in TAB_SLOTS" :key="slot" type="button" role="menuitem" class="keymenu-item"
-        :aria-checked="meta?.[keyMenu.name]?.shortcut === slot"
-        :disabled="!assignShortcut(Object.keys(agents), meta ?? {}, keyMenu.name, slot)"
-        @click="assignKey(slot)"
-      ><kbd class="shortcut">{{ keyCap(slot) }}</kbd><span v-if="meta?.[keyMenu.name]?.shortcut === slot">current</span></button>
+    <div v-if="keyMenu" class="keymenu-scrim" @click="closeKeyMenu" @contextmenu.prevent="closeKeyMenu" />
+    <div v-if="keyMenu" class="keymenu" role="menu" aria-label="Talk key" :style="{ left: keyMenu.x + 'px', top: keyMenu.y + 'px' }" >
+      <p class="keymenu-title">Talk key</p>
+      <button type="button" role="menuitem" class="keymenu-item" @click="capture.start(keyMenu.name)">
+        <kbd class="shortcut">{{ capture.capturing.value === keyMenu.name ? "…" : rowKey(keyMenu.name) || "none" }}</kbd>
+        <span>{{ capture.capturing.value === keyMenu.name ? "Press a key · Delete clears" : "Set a key…" }}</span>
+      </button>
+      <button v-if="meta?.[keyMenu.name]?.talk_key" type="button" role="menuitem" class="keymenu-item" @click="applyTalkKey(keyMenu.name, '')"><span>Remove its own key</span></button>
+      <p v-if="keyMenu.problem" class="keymenu-problem" role="alert">{{ keyMenu.problem }}</p>
     </div>
   </nav>
 </template>
@@ -325,5 +337,6 @@ function assignKey(slot: number) {
 .keymenu-item:hover:not(:disabled), .keymenu-item:focus-visible { background:var(--surface-hover); }
 .keymenu-item:disabled { opacity:.45; }
 .keymenu-item span { color:var(--muted); }
+.keymenu-problem { margin:4px 6px 2px; max-width:220px; font-size:10px; line-height:1.35; color:var(--amber); }
 @keyframes eq { 50% { transform:scaleY(.5); } }
 </style>

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assignShortcut, groupAgents, moveWithinProject, orderAgents, projectOrder } from "./agentOrder";
+import { groupAgents, moveWithinProject, orderAgents, projectOrder } from "./agentOrder";
 
 // Two projects interleaved by arrival, one session without a project, one
 // ended session of the first project.
@@ -84,19 +84,3 @@ describe("moveWithinProject", () => {
   });
 });
 
-describe("assignShortcut", () => {
-  const meta = {
-    a: { manual_pos: 0, shortcut: 1 },
-    b: { manual_pos: 1, shortcut: 2 },
-    c: { manual_pos: 2, shortcut: 3 },
-    d: { manual_pos: 3, shortcut: null },
-  };
-
-  it("swaps positions with the conversation holding that key", () => {
-    expect(assignShortcut(["a", "b", "c", "d"], meta, "d", 1)).toEqual(["d", "b", "c", "a"]);
-  });
-
-  it("does nothing for an unheld key or one the conversation already has", () => {
-    expect([assignShortcut(["a", "b", "c", "d"], meta, "d", 4), assignShortcut(["a", "b", "c", "d"], meta, "b", 2)]).toEqual([null, null]);
-  });
-});
