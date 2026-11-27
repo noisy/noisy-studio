@@ -1,8 +1,8 @@
 <script setup lang="ts">
-/** The conversation's unheard backlog and the ways out of it: hear it all
- * (Catch up), hear only where things ended up (Summarize), or drop it
- * (Skip all). Catch up and Summarize share the row equally. Presentational:
- * the daemon calls live in useUnheardBacklog. */
+/** The conversation's unheard backlog and the ways out of it: hear only
+ * where things ended up (Summarize), hear it all (Catch up), or drop it
+ * (Skip all). Summarize is the usual choice, so it gets twice Catch up's
+ * width. Presentational: the daemon calls live in useUnheardBacklog. */
 defineProps<{
   count: number;
   /** False while the conversation's session is offline: nobody to retell. */
@@ -35,10 +35,9 @@ defineEmits<{ catchUp: []; summarize: []; skip: [] }>();
 <style scoped>
 /* `.catchup-row` in front out-ranks the global `.hud .ctl` look. */
 .catchup-row { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:16px; }
-.catchup-row .catchup, .catchup-row .summarize { flex:1 1 0; min-width:150px; }
-.catchup-row .catchup { border-color:var(--green); color:var(--green); }
+.catchup-row .catchup { flex:1 1 0; min-width:150px; border-color:var(--green); color:var(--green); }
 /* Violet = the agent working: Summarize hands the backlog to it. */
-.catchup-row .summarize { border-color:color-mix(in srgb, var(--violet) 70%, transparent); color:var(--violet); }
+.catchup-row .summarize { flex:2 1 0; min-width:150px; border-color:color-mix(in srgb, var(--violet) 70%, transparent); color:var(--violet); }
 .catchup-row .summarize:disabled { opacity:.45; cursor:not-allowed; }
 .catchup-row .skipall { color:var(--muted); }
 </style>

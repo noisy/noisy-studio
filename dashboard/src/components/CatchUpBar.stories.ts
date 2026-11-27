@@ -24,7 +24,7 @@ export const SessionOffline: StoryObj<typeof CatchUpBar> = {
   args: { count: 5, canSummarize: false },
 };
 
-/** Narrow window: Skip all wraps below, the two halves stay equal. */
+/** Narrow window: Skip all wraps below, and at their minimum width the two buttons match. */
 export const Narrow: StoryObj<typeof CatchUpBar> = {
   args: { count: 12, canSummarize: true },
   render: (args) => ({
