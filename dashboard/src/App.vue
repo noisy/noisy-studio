@@ -193,12 +193,14 @@ onUnmounted(() => {
 const keyInput = ref("");
 const showSettings = ref(false);
 const showStage = ref(false);
-const stageButton = ref<HTMLButtonElement | null>(null);
+// Stage is opened from Settings > Appearance; leaving it returns focus to
+// the Settings toggle, the nearest control that is always on screen.
+const settingsToggle = ref<HTMLButtonElement | null>(null);
 async function closeStage() {
   stopPtt();
   showStage.value = false;
   await nextTick();
-  stageButton.value?.focus();
+  settingsToggle.value?.focus();
 }
 // The gate must not blink away mid-verification OR right after a
 // rejection: the daemon stores the candidate key while it live-checks it,
@@ -444,8 +446,7 @@ function changeAudio({id,value}: AudioChange) {
           </div>
 
           <div class="sysstate">
-            <button ref="stageButton" class="ctl header-action" :disabled="unconfigured" @click="showStage = true">Stage ↗</button>
-            <button class="ctl header-action settings-toggle" :aria-pressed="showSettings" @click="showSettings = !showSettings">Settings</button>
+            <button ref="settingsToggle" class="ctl header-action settings-toggle" :aria-pressed="showSettings" @click="showSettings = !showSettings">Settings</button>
             <button
               class="ctl header-action header-mute" :disabled="offline" :aria-pressed="!!status?.voice_muted"
               :title="status?.voice_muted ? 'Resume agent playback' : 'Mute playback and keep replies for later'"
@@ -520,6 +521,7 @@ function changeAudio({id,value}: AudioChange) {
             @toggle-cue="setCue"
             @set-hum="setHum"
             @run-checks="runChecks"
+            @open-stage="showStage = true"
           >
             <template #audio-controls><AudioControls :status="status" :devices="devices" :cues-enabled="cuesEnabled" @change="changeAudio" @refresh-devices="loadDevices" /></template>
           </SettingsView>

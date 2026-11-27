@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import App from './App.vue';
 import StageLive from './components/StageLive.vue';
+import SettingsView from './components/SettingsView.vue';
 import { setPtt } from './api/client';
 import { getStatus, getUtterances, resetScenario } from './storybook/daemon.fixture';
 
@@ -19,10 +20,18 @@ beforeEach(async () => {
   vi.mocked(setPtt).mockClear();
 });
 afterEach(() => vi.useRealTimers());
+// Stage lives in Settings > Appearance now, not in the header. HudPanel
+// renders its slot so the stubbed SettingsView inside it can be reached.
+const MOUNT = { global: { stubs: { HudPanel: { template: '<section><slot /></section>' } } } };
+async function enterStage(wrapper: ReturnType<typeof shallowMount>) {
+  expect(wrapper.findAll('button').some(button => button.text() === 'Stage ↗')).toBe(false);
+  await wrapper.findAll('button').find(button => button.text() === 'Settings')!.trigger('click');
+  wrapper.getComponent(SettingsView).vm.$emit('openStage');
+  await wrapper.vm.$nextTick();
+}
 it('enters and exits Stage while keeping restart controls and the microphone recipient', async () => {
-  const wrapper = shallowMount(App);
-  const entry = wrapper.findAll('button').find(button => button.text() === 'Stage ↗')!;
-  await entry.trigger('click');
+  const wrapper = shallowMount(App, MOUNT);
+  await enterStage(wrapper);
   expect(wrapper.findComponent(StageLive).exists()).toBe(true);
   expect(wrapper.get('.hud').attributes('style')).toContain('display: none');
   expect(wrapper.findComponent({ name:'ShutdownBanner' }).exists()).toBe(true);
@@ -33,8 +42,8 @@ it('enters and exits Stage while keeping restart controls and the microphone rec
   wrapper.unmount();
 });
 it('releases a Stage Space hold even when keyup lands on a select and when the window loses focus', async () => {
-  const wrapper = shallowMount(App);
-  await wrapper.findAll('button').find(button => button.text() === 'Stage ↗')!.trigger('click');
+  const wrapper = shallowMount(App, MOUNT);
+  await enterStage(wrapper);
   window.dispatchEvent(new KeyboardEvent('keydown', { code:'Space', bubbles:true }));
   const picker = document.createElement('select');
   document.body.appendChild(picker);

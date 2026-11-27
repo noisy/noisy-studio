@@ -60,4 +60,11 @@ describe("SettingsView", () => {
     await w.find(".gate button").trigger("click");
     expect(w.emitted("grantHotkeys")).toHaveLength(1);
   });
+
+  it("opens the experimental Stage from the Appearance tab", async () => {
+    const wrapper = mount(SettingsView, { props: { apiKeyHint: "" } });
+    await wrapper.findAll(".tabbtn").find((b) => b.text() === "Appearance")!.trigger("click");
+    await wrapper.findAll("button").find((b) => b.text() === "Open Stage ↗")!.trigger("click");
+    expect(wrapper.emitted("openStage")).toHaveLength(1);
+  });
 });

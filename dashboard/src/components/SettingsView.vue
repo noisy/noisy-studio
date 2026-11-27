@@ -75,6 +75,7 @@ const emit = defineEmits<{
   toggleCue: [name: CueName, value: boolean];
   setHum: [patch: { recordingHum?: boolean; humNoise?: string; humVolume?: number }];
   runChecks: [];
+  openStage: [];
 }>();
 
 const cueNames = Object.keys(CUE_LABELS) as CueName[];
@@ -108,6 +109,15 @@ function submit() {
     </nav>
 
     <AppearanceSettings v-if="tab === 'APPEARANCE'" />
+    <!-- Stage was an experiment that hardly gets used: out of the header,
+         one click away here instead. -->
+    <section v-if="tab === 'APPEARANCE'" class="sec">
+      <div class="keyrow">
+        <span class="lbl">Stage</span>
+        <button class="btn" @click="emit('openStage')">Open Stage ↗</button>
+      </div>
+      <div class="text"><p>Experimental: the conversation as a full-window stage.</p></div>
+    </section>
 
     <HotkeysSettings
       v-if="tab === 'HOTKEYS'"

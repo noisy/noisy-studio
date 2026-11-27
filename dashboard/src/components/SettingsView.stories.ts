@@ -25,6 +25,17 @@ export const NativeAudio: StoryObj<typeof SettingsView> = {
   }),
 };
 
+// Settings > Appearance: also the home of the experimental Stage entry.
+export const AppearanceTab: StoryObj<typeof SettingsView> = {
+  args: { apiKeyHint: "····kRc9" },
+  render: (args) => ({
+    components: { SettingsView },
+    setup: () => ({ args }),
+    template: `<div style="max-width:760px"><SettingsView v-bind="args" /></div>`,
+    mounted() { (this.$el as HTMLElement).querySelectorAll<HTMLButtonElement>(".tabbtn").forEach((b) => { if (b.textContent?.trim() === "Appearance") b.click(); }); },
+  }),
+};
+
 // Settings > Hotkeys (#104): the tab is HUD/Hotkeys tab; here only the
 // pointer in Audio and the tab switch are of interest.
 export const HotkeysTab: StoryObj<typeof SettingsView> = {
