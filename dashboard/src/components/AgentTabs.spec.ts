@@ -256,7 +256,7 @@ describe("AgentTabs", () => {
     });
     const list = wrapper.findAll(".project-head, button.tab").map((el) => el.classes().includes("project-head")
       ? { project: el.find(".project-name").text(), waiting: el.find(".project-waiting").text() }
-      : { label: el.find(".tab-label").text(), where: el.find(".where").text(), waited: el.find(".waited").text() });
+      : { label: el.find(".tab-label").text(), where: el.find(".where").exists() ? el.find(".where").text() : null, waited: el.find(".waited").text() });
     expect(list).toEqual([
       { project: "noisy-studio", waiting: "3" },
       { label: "Release notes", where: "main", waited: "4m" },
@@ -264,7 +264,25 @@ describe("AgentTabs", () => {
       { project: "website", waiting: "" },
       { label: "Landing page", where: "feat/cta", waited: "" },
       { project: "No project", waiting: "" },
-      { label: "Legacy", where: "", waited: "" },
+      { label: "Legacy", where: null, waited: "" },
+    ]);
+  });
+
+  it("centres a row without a branch line, and keeps the wait time in the tooltip the hover actions cover", () => {
+    const base = { online: true, offline_since: null };
+    const wrapper = mount(AgentTabs, {
+      props: {
+        agents: { notes: "Release notes", bare: "Legacy" },
+        meta: {
+          notes: { ...base, activated_at: 1, label: "Release notes", project: "noisy-studio", branch: "main", waiting_since: 1000 - 240 },
+          bare: { ...base, activated_at: 2, label: "Legacy" },
+        },
+        active: null, viewed: null, speaking: [], now: 1000,
+      },
+    });
+    const [notes, bare] = wrapper.findAll("button.tab");
+    expect([notes.classes("single"), bare.classes("single"), notes.attributes("title")]).toEqual([
+      false, true, "Release notes · Ready · Waiting for you 4m",
     ]);
   });
 
