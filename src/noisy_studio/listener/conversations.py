@@ -84,6 +84,11 @@ class ConversationRegistry:
         self._alias: dict[str, str] = {}
         self._capabilities: dict[str, Capabilities] = {}
         self._usage_providers: dict[str, str] = {}
+        # Per-conversation talk keys: conversation key -> canonical chord.
+        # Kept beside the rows, not on Conversation, for the same rollback
+        # reason as usage providers: an older daemon rejects a row with a
+        # field it does not know and would drop the whole conversation.
+        self._talk_keys: dict[str, str] = {}
         if path is not None:
             self._load()
             self.providers.restore_connections()
@@ -288,6 +293,34 @@ class ConversationRegistry:
         self._save()
         return True
 
+    # -- talk keys ----------------------------------------------------
+
+    def talk_keys(self) -> dict[str, str]:
+        """conversation key -> the chord that hands it the mic."""
+        return dict(self._talk_keys)
+
+    def talk_key(self, key: str) -> str:
+        return self._talk_keys.get(key, "")
+
+    def set_talk_key(self, key: str, chord: str) -> str | None:
+        """Give a known conversation its own talk key ("" clears it).
+
+        A chord belongs to one conversation at most: assigning one that
+        another conversation holds MOVES it here. Returns the conversation
+        that lost the chord, if any. Validation against the other hotkeys
+        is the caller's job; the registry only keeps chords unique."""
+        self._require(key)
+        lost = None
+        if chord:
+            lost = next((k for k, c in self._talk_keys.items() if c == chord and k != key), None)
+            if lost is not None:
+                del self._talk_keys[lost]
+            self._talk_keys[key] = chord
+        else:
+            self._talk_keys.pop(key, None)
+        self._save()
+        return lost
+
     # -- snapshot -----------------------------------------------------
 
     def snapshot(self) -> dict:
@@ -311,6 +344,7 @@ class ConversationRegistry:
                 "last_event_at": c.last_event_at,
                 "created_at": c.created_at,
                 "listening_until": c.listener.expires_at if c.listener else None,
+                "talk_key": self._talk_keys.get(key, ""),
             }
         return out
 
@@ -333,6 +367,7 @@ class ConversationRegistry:
                 {**asdict(c), "listener": None} for c in self._by_key.values()
             ],
             "usage_providers": dict(self._usage_providers),
+            "talk_keys": dict(self._talk_keys),
             "capabilities": {name: asdict(caps) for name, caps in self._capabilities.items()},
         }
         try:
@@ -388,8 +423,25 @@ class ConversationRegistry:
             key: provider for key, provider in data.get("usage_providers", {}).items()
             if key in self._by_key and provider in ("claude", "codex", "grok")
         } if isinstance(data.get("usage_providers", {}), dict) else {}
+        self._talk_keys = self._restored_talk_keys(data.get("talk_keys"))
         for name, caps in data.get("capabilities", {}).items():
             try:
                 self._capabilities[provider_name(name)] = Capabilities(**caps)
             except TypeError:
                 continue
+
+    def _restored_talk_keys(self, saved: object) -> dict[str, str]:
+        """Saved talk keys, re-pointed through the alias table: a key folded
+        onto its canonical identity at load keeps its chord. A chord whose
+        conversation is gone is dropped; a duplicate keeps its first owner."""
+        if not isinstance(saved, dict):
+            return {}
+        restored: dict[str, str] = {}
+        for presented, chord in saved.items():
+            key = self.resolve(str(presented))
+            if key is None or not isinstance(chord, str) or not chord:
+                continue
+            if key in restored or chord in restored.values():
+                continue
+            restored[key] = chord
+        return restored
