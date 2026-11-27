@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import CatchUpBar from "./CatchUpBar.vue";
 
 describe("CatchUpBar", () => {
-  it("offers catch up, summarize and skip for the backlog", async () => {
+  it("offers summarize first, then one-by-one catch up and skip", async () => {
     const wrapper = mount(CatchUpBar, { props: { count: 5, canSummarize: true } });
 
     for (const button of wrapper.findAll("button")) await button.trigger("click");
@@ -12,8 +12,8 @@ describe("CatchUpBar", () => {
       labels: wrapper.findAll("button").map((button) => button.text()),
       emitted: Object.keys(wrapper.emitted()).filter((name) => name !== "click"),
     }).toEqual({
-      labels: ["▶ Catch up (5 unheard)", "Σ Summarize", "Skip all"],
-      emitted: ["catchUp", "summarize", "skip"],
+      labels: ["Σ Summarize 5 unheard", "▶ Catch up one by one", "Skip all"],
+      emitted: ["summarize", "catchUp", "skip"],
     });
   });
 
