@@ -12,10 +12,12 @@ Global keys that open the microphone for a conversation from any app.
   if it was settled. The registry keeps each chord on one conversation at
   most (`ConversationRegistry.set_talk_key`).
 - **Tab 1–4** (`tab1`–`tab4`, F16–F19 on the dev machine): positional. Tab N
-  is the N-th visible conversation, top to bottom in the dashboard list
-  (project order, then order inside the project), skipping conversations
-  that have their own key (`ListenerState.tab_shortcuts`, capped by
-  `TAB_SHORTCUT_COUNT`).
+  is the N-th visible conversation in the registry's position order (what
+  dragging rows and projects sets), skipping conversations that have their
+  own key (`ListenerState.tab_shortcuts`, capped by `TAB_SHORTCUT_COUNT`).
+  A new conversation takes the last position even when its project is
+  drawn higher up, so the dashboard shows each row's key on hover rather
+  than implying the order.
 
 ## Decision: Tab 1–4 stay for v3 and go in v4 (2026-11-28)
 

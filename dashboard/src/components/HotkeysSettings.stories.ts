@@ -20,7 +20,7 @@ const panes = (over: Over = {}) => {
     },
     tabs: {
       title: "…to a specific tab",
-      caption: "Toggle aimed at a conversation by its place in the list, top to bottom, skipping any that has its own key (right-click a conversation to give it one). Press again to close; another tab's key hands the mic over.",
+      caption: "Toggle aimed at one conversation: hover a row in the list to see its key. A conversation with its own key is skipped (right-click a conversation to give it one). Press again to close; another tab's key hands the mic over.",
       bindings: [k("tab1", "Tab 1", "F1"), k("tab2", "Tab 2", "F2"), k("tab3", "Tab 3", "F3"), k("tab4", "Tab 4", "F4")],
     },
     dictate: {
