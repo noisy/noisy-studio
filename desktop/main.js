@@ -16,6 +16,7 @@ const { loadDesktopIcons } = require("./icons");
 const http = require("node:http");
 const { createDesktopAnalytics, loadAnalyticsConfig } = require('./analytics');
 const { startDictationOverlay } = require("./dictation-overlay");
+const { createWidgetVisibility } = require("./widget-visibility");
 let analytics = null;
 
 // V3 uses distinct canonical production and development profiles.
@@ -203,6 +204,12 @@ let tray = null;
 let dictationOverlay = null;
 /** Click-through: the widget is visible but the editor beneath stays usable. */
 let ghost = false;
+// The tray's show/hide is the user's choice; reloads and the tray icon must not overrule it.
+const widget = createWidgetVisibility({
+  getWindow: () => win,
+  createWindow: () => createWindow(),
+  track: (event) => analytics?.track(event),
+});
 
 function createDashboard() {
   analytics?.track('dashboard_opened');
@@ -256,8 +263,8 @@ function createWindow() {
 
   win.loadURL(widgetUrl());
   win.once("ready-to-show", () => {
-    win.show();
-    analytics?.track('widget_shown');
+    widget.afterLoad();
+    if (widget.isShown()) analytics?.track('widget_shown');
   });
 
   /* Hide the window while it reloads.
@@ -287,7 +294,7 @@ function createWindow() {
     }
     // One frame more, so the first paint is the transparent one.
     await new Promise((r) => setTimeout(r, 32));
-    win?.show();
+    widget.afterLoad();
   });
 
   watchHover(win);
@@ -418,12 +425,9 @@ function buildTray() {
     { type: "separator" },
     { label: "Open dashboard", click: () => createDashboard() },
     {
-      label: win && !win.isDestroyed() && win.isVisible() ? "Hide widget" : "Show widget",
+      label: widget.isShown() ? "Hide widget" : "Show widget",
       click: () => {
-        if (!win || win.isDestroyed()) return createWindow();
-        const wasVisible = win.isVisible();
-        wasVisible ? win.hide() : win.show();
-        analytics?.track(wasVisible ? 'widget_hidden' : 'widget_shown');
+        widget.toggle();
         buildTray();
       },
     },
@@ -558,13 +562,12 @@ app.whenReady().then(async () => {
    * also cannot be mistaken for the production one at a glance. */
   tray = new Tray(trayIcon.isEmpty() ? nativeImage.createEmpty() : trayIcon);
   if (trayIcon.isEmpty()) tray.setTitle("◉");
-  // Clicking the icon brings the widget back if it was closed or lost.
-  tray.on("click", () => {
-    if (!win || win.isDestroyed()) return createWindow();
-    win.show();
-    analytics?.track('widget_shown');
-    win.setAlwaysOnTop(true, "screen-saver");
-  });
+  /* On macOS a click on the icon opens the menu, and Electron ALSO emits
+   * "click": showing the widget there popped it up every time you only
+   * meant to pick "Open dashboard". The menu's Show widget covers it. Other
+   * platforms open the menu on a right-click, so a left-click may still
+   * bring the widget back. */
+  if (process.platform !== "darwin") tray.on("click", () => widget.show());
   tray.setToolTip(
     attachedPort
       ? `Noisy Studio - attached to :${attachedPort}`

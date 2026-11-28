@@ -38,6 +38,7 @@
       "main.js",
       "external-links.js",
       "dictation-overlay.js",
+      "widget-visibility.js",
       "package.json",
       "build/tray*.png",
       "icons.js",
