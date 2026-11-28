@@ -1198,7 +1198,13 @@ class ListenerState:
             )
 
     def restore_delivery(self, speech: Speech, receipt: Receipt) -> None:
-        """Recover journaled speech even when the periodic history save lagged."""
+        """Recover journaled speech even when the periodic history save lagged.
+
+        Speech older than PENDING_MAX_AGE_SECONDS stays out, as in
+        load_transcripts: the journal keeps unfinished entries forever, and
+        without this they came back as waiting messages on every restart."""
+        if time.time() - speech.created_at > PENDING_MAX_AGE_SECONDS:
+            return
         with self._lock:
             if not any(t.utterance_id == speech.utterance_id and t.addressee == speech.conversation
                        and t.timestamp == speech.created_at for t in self._transcripts):

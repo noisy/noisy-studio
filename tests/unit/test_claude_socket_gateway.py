@@ -1,3 +1,4 @@
+import time
 from unittest.mock import Mock
 
 import pytest
@@ -105,7 +106,7 @@ def test_deliberate_hook_rollback_preserves_identity_and_holds_unconfirmed_speec
 def test_journal_recovers_pending_speech_missing_from_periodic_history(tmp_path):
     from noisy_studio.harness.provider import Speech
     from noisy_studio.harness.claude.journal import Journal
-    speech = Speech(23, SESSION, 'preserve this pending message', 100)
+    speech = Speech(23, SESSION, 'preserve this pending message', time.time())
     Journal(tmp_path / 'claude-delivery.sqlite3').add(speech)
     state = ListenerState()
     state.conversations = ConversationRegistry(path=tmp_path / 'conversations.json')
@@ -117,6 +118,23 @@ def test_journal_recovers_pending_speech_missing_from_periodic_history(tmp_path)
 
     assert [(r['utterance_id'], r['text']) for r in state.snapshot_transcripts()] == [(23, speech.text)]
     assert state.snapshot_utterances()[0]['id'] == 23
+
+
+def test_journal_leaves_out_pending_speech_older_than_a_day(tmp_path):
+    from noisy_studio.harness.provider import Speech
+    from noisy_studio.harness.claude.journal import Journal
+    from noisy_studio.listener.state import PENDING_MAX_AGE_SECONDS
+    speech = Speech(23, SESSION, 'said long ago', time.time() - PENDING_MAX_AGE_SECONDS - 60)
+    Journal(tmp_path / 'claude-delivery.sqlite3').add(speech)
+    state = ListenerState()
+    state.conversations = ConversationRegistry(path=tmp_path / 'conversations.json')
+    register(state, tmp_path / 'inbox')
+    provider = state.conversations.providers.get('claude')
+
+    provider._implementation.start(state.record_delivery, state.reserve_speech, lambda: False, state.restore_delivery)
+    provider._implementation.stop()
+
+    assert state.snapshot_transcripts() == []
 
 
 def test_durable_cancellation_removes_an_older_history_copy_on_restart(tmp_path):
