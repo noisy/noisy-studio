@@ -13,7 +13,9 @@ feeds it `Interpretation`s from a harness adapter and asks it questions.
 
 from __future__ import annotations
 
+import functools
 import json
+import threading
 import time
 from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
@@ -70,6 +72,15 @@ class Conversation:
         return conversation_label(self.title, self.key, self.short_id, *self.aliases)
 
 
+def _locked(method):
+    """Run a registry method under the registry lock (see ConversationRegistry)."""
+    @functools.wraps(method)
+    def wrapper(self, *args, **kwargs):
+        with self._lock:
+            return method(self, *args, **kwargs)
+    return wrapper
+
+
 class ConversationRegistry:
     def __init__(
         self,
@@ -78,6 +89,13 @@ class ConversationRegistry:
     ) -> None:
         self._clock = clock
         self._path = path
+        # Hook, HTTP, hotkey and saver threads all change the registry. Every
+        # change and every save runs under this lock, so a save never copies
+        # a row mid-change and two saves never write the same .tmp at once (a
+        # torn file loads as empty: every order, key and snooze gone). Readers
+        # take copies instead, and nothing that calls out - provider
+        # readiness, status - runs under it, so it cannot deadlock.
+        self._lock = threading.RLock()
         self.providers = AgentProviders(self)
         self._readiness = {}
         self._by_key: dict[str, Conversation] = {}
@@ -101,6 +119,7 @@ class ConversationRegistry:
 
     # -- identity -----------------------------------------------------
 
+    @_locked
     def set_usage_provider(self, key: str, provider: str | None) -> None:
         # Presentation metadata must never reclassify a conversation's delivery
         # transport or lifecycle. Kept outside row data for rollback compatibility.
@@ -132,6 +151,7 @@ class ConversationRegistry:
         self._readiness[provider.name] = provider.availability
         return self.apply(provider.name, observation, provider.capabilities)
 
+    @_locked
     def apply(
         self, harness: str, result: Observation, capabilities: Capabilities
     ) -> Conversation:
@@ -194,6 +214,7 @@ class ConversationRegistry:
         self._save()
         return conversation
 
+    @_locked
     def adopt(
         self, key: str, title: str = "", harness: str = "legacy", unhide: bool = True
     ) -> Conversation:
@@ -219,6 +240,7 @@ class ConversationRegistry:
 
     # -- listener lease -----------------------------------------------
 
+    @_locked
     def listener_started(
         self, key: str, listener_id: str | None = None, window: float | None = None
     ) -> str:
@@ -234,6 +256,7 @@ class ConversationRegistry:
     def listener_alive(self, key: str, listener_id: str) -> bool:
         return hook_runtime.alive(self._by_key.get(key), listener_id, self._clock())
 
+    @_locked
     def listener_stopped(self, key: str, listener_id: str, reason: str = "") -> None:
         conversation = self._by_key.get(key)
         if conversation is None or conversation.listener is None:
@@ -278,6 +301,7 @@ class ConversationRegistry:
 
     # -- order and visibility ----------------------------------------
 
+    @_locked
     def reorder(self, keys: list[str]) -> None:
         """User-chosen order for the given keys; others keep relative order after them."""
         known = [k for k in keys if k in self._by_key]
@@ -286,6 +310,7 @@ class ConversationRegistry:
             self._by_key[key].position = position
         self._save()
 
+    @_locked
     def hide(self, key: str) -> bool:
         conversation = self._by_key.get(key)
         if conversation is None:
@@ -295,6 +320,7 @@ class ConversationRegistry:
         self._save()
         return True
 
+    @_locked
     def unhide(self, key: str) -> bool:
         conversation = self._by_key.get(key)
         if conversation is None:
@@ -307,9 +333,10 @@ class ConversationRegistry:
 
     def settled_keys(self) -> list[str]:
         """Hidden (settled) conversations, most recently active first."""
-        hidden = [c for c in self._by_key.values() if c.hidden]
+        hidden = [c for c in list(self._by_key.values()) if c.hidden]
         return [c.key for c in sorted(hidden, key=lambda c: c.last_event_at, reverse=True)]
 
+    @_locked
     def keep_in_project(self, key: str) -> None:
         """The user restored this conversation: if its session has ended it
         stays in its project as an ended row, until the session starts again
@@ -324,6 +351,7 @@ class ConversationRegistry:
 
     # -- snooze -------------------------------------------------------
 
+    @_locked
     def snooze(self, key: str, until: float | None) -> None:
         """Wake a settled conversation at `until` (epoch s); None cancels.
         Hiding it is the caller's job; any way back clears the snooze."""
@@ -340,7 +368,7 @@ class ConversationRegistry:
     def due_snoozes(self, now: float | None = None) -> list[str]:
         """Snoozed conversations whose wake time has come."""
         now = self._clock() if now is None else now
-        return [key for key, until in self._snoozed.items() if until <= now]
+        return [key for key, until in list(self._snoozed.items()) if until <= now]
 
     # -- talk keys ----------------------------------------------------
 
@@ -351,6 +379,7 @@ class ConversationRegistry:
     def talk_key(self, key: str) -> str:
         return self._talk_keys.get(key, "")
 
+    @_locked
     def set_talk_key(self, key: str, chord: str) -> str | None:
         """Give a known conversation its own talk key ("" clears it).
 
@@ -408,6 +437,7 @@ class ConversationRegistry:
     def _next_position(self) -> int:
         return max((c.position for c in self._by_key.values()), default=-1) + 1
 
+    @_locked
     def _save(self) -> None:
         if self._path is None:
             return
