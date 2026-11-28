@@ -83,6 +83,10 @@ DEFAULT_SMART_TURN = 0.0  # 0 = off (pure VAD); 0.5-0.9 = semantic endpointing
 # never leave the daemon stuck recording. Structural safety, not a timer
 # guessing at human behavior.
 PTT_LEASE_SECONDS = 2.0
+# A spoken message no agent picked up within a day is stale: replaying an old
+# instruction into a live turn does more harm than leaving it in the history
+# as dropped. Without this, undeliverable messages came back on every restart.
+PENDING_MAX_AGE_SECONDS = 24 * 3600.0
 # Talkative-driven silence limits, interpolated between anchors; zero disables nudges.
 TALKATIVE_NUDGE_ANCHORS = ((25, 600.0), (50, 300.0), (75, 120.0), (100, 75.0))
 # Only nudge agents whose live activity moved recently.
@@ -984,15 +988,16 @@ class ListenerState:
         with self._lock:
             return [asdict(t) for t in self._transcripts]
 
-    def load_transcripts(self, items: list[dict]) -> int:
+    def load_transcripts(self, items: list[dict], now: float | None = None) -> int:
         """Restore transcripts a previous daemon run had not delivered yet.
 
         Call AFTER load_utterances: the cards these belong to were coerced to
         'dropped — daemon restart' there, and here they go back to awaiting
-        pickup, because the new process CAN deliver them. Returns how many
-        were restored.
+        pickup, because the new process CAN deliver them. Messages older than
+        PENDING_MAX_AGE_SECONDS stay dropped. Returns how many were restored.
         """
-        restored = 0
+        now = time.time() if now is None else now
+        restored = stale = 0
         with self._lock:
             for item in items:
                 try:
@@ -1005,6 +1010,9 @@ class ListenerState:
                     )
                 except (KeyError, TypeError, ValueError):
                     continue
+                if now - transcript.timestamp > PENDING_MAX_AGE_SECONDS:
+                    stale += 1
+                    continue
                 self._transcripts.append(transcript)
                 restored += 1
                 for utterance in self._utterances:
@@ -1016,6 +1024,8 @@ class ListenerState:
                         )
             if restored:
                 self._add_event_locked("restored", f"{restored} waiting message(s) survived the restart")
+            if stale:
+                self._add_event_locked("restored", f"{stale} waiting message(s) older than a day were dropped")
         return restored
 
     def load_utterances(self, items: list[dict]) -> None:

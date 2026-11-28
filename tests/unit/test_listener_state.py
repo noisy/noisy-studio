@@ -596,6 +596,23 @@ def test_pending_transcripts_survive_a_restart_and_are_delivered_by_the_new_proc
     assert new.load_transcripts([{"garbage": True}]) == 0  # a bad row is skipped, not fatal
 
 
+def test_a_waiting_message_older_than_a_day_stays_dropped_after_a_restart():
+    old = ListenerState()
+    old.register_agent("tab-a", "Alpha")
+    card = old.create_utterance("user", "recording…", agent="tab-a")
+    old.add_transcript("said yesterday", card)
+    saved_pending = old.snapshot_transcripts()
+    a_day_later = saved_pending[0]["timestamp"] + state_module.PENDING_MAX_AGE_SECONDS + 1
+
+    new = ListenerState()
+    new.register_agent("tab-a", "Alpha")
+    new.load_utterances(old.snapshot_utterances())
+
+    assert new.load_transcripts(saved_pending, now=a_day_later) == 0
+    assert new.drain("tab-a") == []
+    assert new.utterances()[-1]["status"] == "dropped — daemon restart"
+
+
 
 def test_new_agent_tabs_get_distinct_voices_not_a_copy_of_the_default():
     state = ListenerState()
