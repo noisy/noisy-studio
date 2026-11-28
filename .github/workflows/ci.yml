@@ -13,7 +13,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v5
-      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libportaudio2
+      - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends libportaudio2 pulseaudio pulseaudio-utils
+      # sounddevice initializes PortAudio at import, and the runner's
+      # PortAudio fails Pa_Initialize (-9999, "PulseAudio_Initialize: Can't
+      # connect to server") when no sound server runs. A null PulseAudio
+      # server is enough; no test plays or records real audio.
+      - run: pulseaudio --start --exit-idle-time=-1 && pactl info
       - run: uv sync --locked
       - run: uv run ruff check src tests hooks
       # All suites: integration was left out and stayed red for two months.
